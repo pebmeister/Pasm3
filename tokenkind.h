@@ -1,7 +1,9 @@
 #pragma once
 
 enum class TokenKind {
-    Eof, Newline, Semicolon,
+    Eof=999,
+    Newline=1, 
+    Semicolon,
     Opcode, Label, Identifier, Number, PcSymbol,
     Hash, Comma, LParen, RParen,
     Plus, Minus, Star, Slash, Percent,
