@@ -6,7 +6,7 @@
 #include <string_view>
 
 #include "ruletype.h"
-#include "tokenkind.h"
+#include "opcode.h"
 
 struct OpCodeInfo {
     std::string_view mnemonic;
