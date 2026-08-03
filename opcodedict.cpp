@@ -3,7 +3,7 @@
 
 #include "opcodedict.h"
 
-using enum RULE_TYPE;
+using enum Opcode;
 
 /// <summary>
 /// A mapping of 6502 CPU instruction tokens to their opcode information, including mnemonic, addressing modes, opcodes, instruction lengths, and descriptions.
