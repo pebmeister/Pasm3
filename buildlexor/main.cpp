@@ -2,6 +2,8 @@
 #include <fstream>
 #include "RegexEngine.h" // Header containing your NFABuilder, DFAConverter, and RegexCompiler
 
+#include "..\tokeniind.h"
+
 // 1. Define distinct Token IDs for your grammar
 enum class TokenKind {
 	Eof=-1,
@@ -22,11 +24,10 @@ int main() {
 
     compiler.addRules({
 		{ "[\\n]", static_cast<int>(Newline)},
-		{ "[ \\t]", static_cast<int>(Ws)},
+		{ "[ \\t]*", static_cast<int>(Ws)},
 		{ "[;]", static_cast<int>(Semicolon)},
 		{ "[a-z_][a-z0-9_]*[:]?", static_cast<int>(Identifier), true},
-
-		{ "[\\.][a-z_][0-9_]*", static_cast<int>(Directive), true},
+		{ "[\\.][a-z_][a-z0-9_]*", static_cast<int>(Directive), true},
 
 		{ "[1-9][0-9]*", static_cast<int>(Number)},
 		{ "[$][0-9|A-F]*", static_cast<int>(Number)},
@@ -34,7 +35,6 @@ int main() {
 
 		{ "[=]", static_cast<int>(Equal)},
 		{ "[\\*]", static_cast<int>(Star)},
-	
 		{ "[,]", static_cast<int>(Comma)},
 		{ "[\\(]", static_cast<int>(LParen)},
 		{ "[\\)]", static_cast<int>(RParen)},
