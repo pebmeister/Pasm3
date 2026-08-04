@@ -32,4 +32,4 @@ struct OpCodeInfo {
     }
 };
 
-extern std::map<TokenKind, OpCodeInfo> opcodeDict;
+extern std::map<int, OpCodeInfo> opcodeDict;
