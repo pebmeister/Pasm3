@@ -3,14 +3,12 @@
 
 #include "opcodedict.h"
 
-using enum Opcode;
-
 /// <summary>
 /// A mapping of 6502 CPU instruction tokens to their opcode information, including mnemonic, addressing modes, opcodes, instruction lengths, and descriptions.
 /// </summary
-std::map<TokenKind, OpCodeInfo> opcodeDict = {
+std::map<int, OpCodeInfo> opcodeDict = {
     {
-        TokenKind::ORA,
+        ORA,
         OpCodeInfo
         {
             "ORA",
@@ -31,7 +29,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::AND,
+        AND,
         OpCodeInfo
         {
             "AND",
@@ -52,7 +50,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::PHA,
+        PHA,
         OpCodeInfo
         {
             "PHA",
@@ -66,7 +64,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::PHP, OpCodeInfo
+        PHP, OpCodeInfo
         {
             "PHP",
             {
@@ -78,7 +76,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::PLA, 
+        PLA, 
         OpCodeInfo
         {
             "PLA",
@@ -91,7 +89,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::PLP, 
+        PLP, 
         OpCodeInfo
         {
             "PLP",
@@ -104,7 +102,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::TSX, 
+        TSX, 
         OpCodeInfo
         {
             "TSX",
@@ -117,7 +115,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::TXS, 
+        TXS, 
         OpCodeInfo
         {
             "TXS",
@@ -130,7 +128,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::EOR, 
+        EOR, 
         OpCodeInfo
         {
             "EOR",
@@ -151,7 +149,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::ADC, 
+        ADC, 
         OpCodeInfo
         {
             "ADC",
@@ -172,7 +170,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::SBC, 
+        SBC, 
         OpCodeInfo
         {
             "SBC",
@@ -193,7 +191,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::CMP, 
+        CMP, 
         OpCodeInfo
         {
             "CMP",
@@ -214,7 +212,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::CPX, 
+        CPX, 
         OpCodeInfo
         {
             "CPX",
@@ -229,7 +227,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::CPY, 
+        CPY, 
         OpCodeInfo
         {
             "CPY",
@@ -244,7 +242,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::DEC, 
+        DEC, 
         OpCodeInfo
         {
             "DEC",
@@ -260,7 +258,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::DEX, 
+        DEX, 
         OpCodeInfo
         {
             "DEX",
@@ -273,7 +271,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::DEY, 
+        DEY, 
         OpCodeInfo
         {
             "DEY",
@@ -286,7 +284,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::INC, 
+        INC, 
         OpCodeInfo
         {
             "INC",
@@ -302,7 +300,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::INX, 
+        INX, 
         OpCodeInfo
         {
             "INX",
@@ -315,7 +313,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::INY, 
+        INY, 
         OpCodeInfo
         {
             "INY",
@@ -328,7 +326,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::ASL, 
+        ASL, 
         OpCodeInfo
         {
             "ASL",
@@ -345,7 +343,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::ROL, 
+        ROL, 
         OpCodeInfo
         {
             "ROL",
@@ -362,7 +360,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::LSR, 
+        LSR, 
         OpCodeInfo
         {
             "LSR",
@@ -379,7 +377,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::ROR, 
+        ROR, 
         OpCodeInfo
         {
             "ROR",
@@ -396,7 +394,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::LDA, 
+        LDA, 
         OpCodeInfo
         {
             "LDA",
@@ -417,7 +415,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::STA, 
+        STA, 
         OpCodeInfo
         {
             "STA",
@@ -437,7 +435,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::LDX, 
+        LDX, 
         OpCodeInfo
         {
             "LDX",
@@ -454,7 +452,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::STX, 
+        STX, 
         OpCodeInfo
         {
             "STX",
@@ -469,7 +467,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::LDY, 
+        LDY, 
         OpCodeInfo
         {
             "LDY",
@@ -486,7 +484,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::STY, 
+        STY, 
         OpCodeInfo
         {
             "STY",
@@ -501,7 +499,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::RMB0, 
+        RMB0, 
         OpCodeInfo
         {
             "RMB0",
@@ -514,7 +512,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::RMB1, 
+        RMB1, 
         OpCodeInfo
         {
             "RMB1",
@@ -527,7 +525,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::RMB2, 
+        RMB2, 
         OpCodeInfo
         {
             "RMB2",
@@ -540,7 +538,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::RMB3, 
+        RMB3, 
         OpCodeInfo
         {
             "RMB3",
@@ -553,7 +551,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::RMB4, 
+        RMB4, 
         OpCodeInfo
         {
             "RMB4",
@@ -566,7 +564,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::RMB5, 
+        RMB5, 
         OpCodeInfo
         {
             "RMB5",
@@ -579,7 +577,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::RMB6, 
+        RMB6, 
         OpCodeInfo
         {
             "RMB6",
@@ -592,7 +590,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::RMB7, 
+        RMB7, 
         OpCodeInfo
         {
             "RMB7",
@@ -605,7 +603,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::SMB0, 
+        SMB0, 
         OpCodeInfo
         {
             "MBMB0",
@@ -618,7 +616,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::SMB1, 
+        SMB1, 
         OpCodeInfo
         {
             "SMB1",
@@ -631,7 +629,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::SMB2, 
+        SMB2, 
         OpCodeInfo
             {
             "SMB2",
@@ -644,7 +642,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::SMB3, 
+        SMB3, 
         OpCodeInfo
         {
             "SMB3",
@@ -657,7 +655,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::SMB4, 
+        SMB4, 
         OpCodeInfo
         {
             "SMB4",
@@ -670,7 +668,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::SMB5, 
+        SMB5, 
         OpCodeInfo
         {
         "SMB5",
@@ -683,7 +681,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::SMB6, 
+        SMB6, 
         OpCodeInfo
         {
             "SMB6",
@@ -696,7 +694,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::SMB7, 
+        SMB7, 
         OpCodeInfo
         {
             "SMB7",
@@ -709,7 +707,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::STZ, 
+        STZ, 
         OpCodeInfo
         {
             "STZ",
@@ -725,7 +723,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::TRB, 
+        TRB, 
         OpCodeInfo
         {
             "TRB",
@@ -739,7 +737,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::TSB, 
+        TSB, 
         OpCodeInfo
         {
             "TSB",
@@ -753,7 +751,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::TAX, 
+        TAX, 
         OpCodeInfo
         {
             "TAX",
@@ -766,7 +764,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::TXA, 
+        TXA, 
         OpCodeInfo
         {
             "TXA",
@@ -779,7 +777,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::TAY, 
+        TAY, 
         OpCodeInfo
         {
             "TAY",
@@ -792,7 +790,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::TYA, 
+        TYA, 
         OpCodeInfo
         {
             "TYA",
@@ -805,7 +803,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BRA, 
+        BRA, 
         OpCodeInfo
         {
             "BRA",
@@ -818,7 +816,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BPL, 
+        BPL, 
         OpCodeInfo
         {
             "BPL",
@@ -831,7 +829,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BMI, 
+        BMI, 
         OpCodeInfo
         {
             "BMI",
@@ -844,7 +842,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BVC, 
+        BVC, 
         OpCodeInfo
         {
             "BVC",
@@ -857,7 +855,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BVS, 
+        BVS, 
         OpCodeInfo
         {
             "BVS",
@@ -870,7 +868,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BCC, 
+        BCC, 
         OpCodeInfo
         {
             "BCC",
@@ -883,7 +881,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::BCS, 
+        BCS, 
         OpCodeInfo
         {
             "BCS",
@@ -896,7 +894,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BNE, 
+        BNE, 
         OpCodeInfo
         {
             "BNE",
@@ -909,7 +907,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BEQ, 
+        BEQ, 
         OpCodeInfo
         {
             "BEQ",
@@ -922,7 +920,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BBR0, 
+        BBR0, 
         OpCodeInfo
         {
             "BBR0",
@@ -935,7 +933,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::BBR1, 
+        BBR1, 
         OpCodeInfo
         {
             "BBR1",
@@ -948,7 +946,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BBR2,
+        BBR2,
         OpCodeInfo
             {
             "BBR2",
@@ -961,7 +959,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::BBR3, 
+        BBR3, 
         OpCodeInfo
         {
             "BBR3",
@@ -974,7 +972,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::BBR4, 
+        BBR4, 
         OpCodeInfo
         {
             "BBR4",
@@ -987,7 +985,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BBR5,
+        BBR5,
         OpCodeInfo
         {
             "BBR5",
@@ -1000,7 +998,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::BBR6, 
+        BBR6, 
         OpCodeInfo
         {
             "BBR6",
@@ -1013,7 +1011,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BBR7, 
+        BBR7, 
         OpCodeInfo
         {
             "BBR7",
@@ -1026,7 +1024,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },       
     { 
-        TokenKind::BBS0, 
+        BBS0, 
         OpCodeInfo
         {
             "BBS0",
@@ -1039,7 +1037,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BBS1, 
+        BBS1, 
         OpCodeInfo
         {
             "BBS1",
@@ -1052,7 +1050,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BBS2, 
+        BBS2, 
         OpCodeInfo
         {
             "BBS2",
@@ -1065,7 +1063,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BBS3, 
+        BBS3, 
         OpCodeInfo
         {
             "BBS3",
@@ -1078,7 +1076,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BBS4, 
+        BBS4, 
         OpCodeInfo
         {
             "BBS4",
@@ -1091,7 +1089,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::BBS5, 
+        BBS5, 
         OpCodeInfo
         {
             "BBS5",
@@ -1104,7 +1102,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::BBS6, 
+        BBS6, 
         OpCodeInfo
         {
             "BBS6",
@@ -1117,7 +1115,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::BBS7, 
+        BBS7, 
         OpCodeInfo
         {
             "BBS7",
@@ -1130,7 +1128,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::STP, 
+        STP, 
         OpCodeInfo
         {
             "STP",
@@ -1143,7 +1141,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::WAI, 
+        WAI, 
         OpCodeInfo
         {
             "WAI",
@@ -1156,7 +1154,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::BRK, 
+        BRK, 
         OpCodeInfo
         {
             "BRK",
@@ -1169,7 +1167,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::RTI, 
+        RTI, 
         OpCodeInfo
         {
             "RTI",
@@ -1182,7 +1180,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::JSR, 
+        JSR, 
         OpCodeInfo
         {
             "JSR",
@@ -1196,7 +1194,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
     },
     // RTS (Return from Subroutine)
     { 
-        TokenKind::RTS, 
+        RTS, 
         OpCodeInfo
         {
             "RTS",
@@ -1209,7 +1207,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::JMP, 
+        JMP, 
         OpCodeInfo
         {
             "JMP",
@@ -1225,7 +1223,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
     },
     // BIT (Test Bits in Memory with Accumulator)
     { 
-        TokenKind::BIT, 
+        BIT, 
         OpCodeInfo
         {
             "BIT",
@@ -1242,7 +1240,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::TRB, 
+        TRB, 
         OpCodeInfo
         {
             "TRB",
@@ -1256,7 +1254,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::TSB, 
+        TSB, 
         OpCodeInfo
         {
             "TSB",
@@ -1270,7 +1268,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::CLC, 
+        CLC, 
         OpCodeInfo
         {
             "CLC",
@@ -1283,7 +1281,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::SEC, 
+        SEC, 
         OpCodeInfo
         {
             "SEC",
@@ -1296,7 +1294,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::CLD, 
+        CLD, 
         OpCodeInfo
         {
             "CLD",
@@ -1309,7 +1307,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::SED,
+        SED,
         OpCodeInfo
         {
             "SED",
@@ -1322,7 +1320,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::CLI, 
+        CLI, 
         OpCodeInfo
         {
             "CLI",
@@ -1335,7 +1333,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::SEI,
+        SEI,
         OpCodeInfo
         {
             "SEI",
@@ -1348,7 +1346,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::CLV, 
+        CLV, 
         OpCodeInfo
         {
             "CLV",
@@ -1361,7 +1359,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::NOP, 
+        NOP, 
         OpCodeInfo
         {
             "NOP",
@@ -1374,7 +1372,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::SLO,
+        SLO,
         OpCodeInfo
         {
             "SLO",
@@ -1393,7 +1391,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::RLA, 
+        RLA, 
         OpCodeInfo
         {
             "RLA",
@@ -1412,7 +1410,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::SRE, 
+        SRE, 
         OpCodeInfo
         {
             "SRE",
@@ -1431,7 +1429,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::RRA, 
+        RRA, 
         OpCodeInfo
         {
             "RRA",
@@ -1450,7 +1448,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::SAX, 
+        SAX, 
         OpCodeInfo
         {
             "SAX",
@@ -1466,7 +1464,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::LAX, 
+        LAX, 
         OpCodeInfo
         {
             "LAX",
@@ -1485,7 +1483,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::DCP, 
+        DCP, 
         OpCodeInfo
         {
             "DCP",
@@ -1504,7 +1502,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::ISC, 
+        ISC, 
         OpCodeInfo
         {
             "ISC",
@@ -1523,7 +1521,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::ANC, 
+        ANC, 
         OpCodeInfo
         {
         "ANC",
@@ -1536,7 +1534,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::ANC2, 
+        ANC2, 
         OpCodeInfo
         {
             "ANC2",
@@ -1549,7 +1547,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::ALR, 
+        ALR, 
         OpCodeInfo
         {
             "ALR",
@@ -1562,7 +1560,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::ARR,
+        ARR,
         OpCodeInfo
         {
             "ARR",
@@ -1575,7 +1573,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::XAA, 
+        XAA, 
         OpCodeInfo
         {
             "XAA",
@@ -1588,7 +1586,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::AXS, 
+        AXS, 
         OpCodeInfo
         {
             "AXS",
@@ -1601,7 +1599,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::USBC, 
+        USBC, 
         OpCodeInfo
         {
             "USBC",
@@ -1614,7 +1612,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::AHX, 
+        AHX, 
         OpCodeInfo
         {
             "AHX",
@@ -1628,7 +1626,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     {
-        TokenKind::SHY, 
+        SHY, 
         OpCodeInfo
         {
             "SHY",
@@ -1641,7 +1639,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         }
     },
     { 
-        TokenKind::SHX, 
+        SHX, 
         OpCodeInfo
         {
             "SHX",
@@ -1654,7 +1652,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::TAS, 
+        TAS, 
         OpCodeInfo{
         "TAS",
         {
@@ -1666,7 +1664,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::LAS, 
+        LAS, 
         OpCodeInfo
         {
             "LAS",
@@ -1679,7 +1677,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::PHX, 
+        PHX, 
         OpCodeInfo
         {
             "PHX",
@@ -1692,7 +1690,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::PHY, 
+        PHY, 
         OpCodeInfo
         {
             "PHY",
@@ -1705,7 +1703,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::PLX, 
+        PLX, 
         OpCodeInfo
         {
             "PLX",
@@ -1718,7 +1716,7 @@ std::map<TokenKind, OpCodeInfo> opcodeDict = {
         } 
     },
     { 
-        TokenKind::PLY, 
+        PLY, 
         OpCodeInfo
         {
             "PLY",
