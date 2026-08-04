@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "ruletype.h"
+#include "tokenkind.h"
 #include "opcodes.h"
 
 struct OpCodeInfo {

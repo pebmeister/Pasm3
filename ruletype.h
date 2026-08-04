@@ -1,6 +1,6 @@
 #pragma once
 
-enum class RULE_TYPE {
+enum RULE_TYPE {
     Op_Implied,
     Op_Immediate,
     Op_Absolute,

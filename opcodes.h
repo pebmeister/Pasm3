@@ -1,4 +1,4 @@
- class enum Opcode {
+ enum Opcode {
 
     ORA, AND, EOR, ADC, SBC,
     CMP, CPX, CPY, DEC, DEX,
