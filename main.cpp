@@ -357,7 +357,6 @@ public:
 		}
 	}
 
-
 	std::vector<std::unique_ptr<Statement>> ParseProgram() {
 		std::vector<std::unique_ptr<Statement>> statements;
 
