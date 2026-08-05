@@ -2,21 +2,8 @@
 #include <fstream>
 #include "RegexEngine.h" // Header containing your NFABuilder, DFAConverter, and RegexCompiler
 
-#include "..\tokeniind.h"
+#include "..\tokenkind.h"
 
-// 1. Define distinct Token IDs for your grammar
-enum class TokenKind {
-	Eof=-1,
-    Newline=1, 
-    Semicolon,
-	Ws,
-    Opcode, Label, Identifier, Number,
-    Hash, Comma, LParen, RParen,
-    Plus, Minus, Star, Slash, Percent,
-    Ampersand, Pipe, Caret, Shl, Shr, Equal,
-    LowByte, HighByte, Tilde, Bang, Directive,
-
-};
 using enum TokenKind;
 
 int main() {
@@ -28,20 +15,28 @@ int main() {
 		{ "[;]", static_cast<int>(Semicolon)},
 		{ "[a-z_][a-z0-9_]*[:]?", static_cast<int>(Identifier), true},
 		{ "[\\.][a-z_][a-z0-9_]*", static_cast<int>(Directive), true},
-
 		{ "[1-9][0-9]*", static_cast<int>(Number)},
 		{ "[$][0-9|A-F]*", static_cast<int>(Number)},
 		{ "[%][0-1]*", static_cast<int>(Number)},
-
 		{ "[=]", static_cast<int>(Equal)},
 		{ "[\\*]", static_cast<int>(Star)},
 		{ "[,]", static_cast<int>(Comma)},
+		{ "[%]", static_cast<int>(Percent)},
+		{ "[&]", static_cast<int>(Ampersand)},
 		{ "[\\(]", static_cast<int>(LParen)},
 		{ "[\\)]", static_cast<int>(RParen)},
 		{ "[\\+]", static_cast<int>(Plus)},
 		{ "[\\-]", static_cast<int>(Minus)},
 		{ "[\\#]", static_cast<int>(Hash)},
-				
+		{ "[$]", static_cast<int>(PcSymbol)},
+		{ "[\\|]", static_cast<int>(Pipe)},
+		{ "[\\^]", static_cast<int>(Caret)},
+		{ "[<<]", static_cast<int>(Shl)},
+		{ "[>>]", static_cast<int>(Shr)},
+		{ "[<]", static_cast<int>(LowByte)},
+		{ "[>]", static_cast<int>(HighByte)},
+		{ "[~]", static_cast<int>(Tilde)},
+		{ "[!]", static_cast<int>(Bang)},
         { "ORA|AND|EOR|ADC|SBC", static_cast<int>(Opcode), true},
         { "CMP|CPX|CPY|DEC|DEX", static_cast<int>(Opcode), true},
         { "DEY|INC|INX|INY|ASL", static_cast<int>(Opcode), true},
@@ -63,15 +58,17 @@ int main() {
         { "BBR[0-7]|BBS[0-7]",   static_cast<int>(Opcode), true},
     });
 
+	std::string classname = "PasmTokenizer";
+	std::string outfile = "../PasmTokenizer.hpp";
 
     // 2. Generate the C++ code for the compiled DFA tokenizer
-    std::string generated_code = compiler.generateCppClass("PasmTokenizer");
+    std::string generated_code = compiler.generateCppClass(classname);
 
     // 3. Save the generated class to a standalone header file
-    std::ofstream out("PasmTokenizer.hpp");
+    std::ofstream out(outfile);
     out << generated_code;
     out.close();
 
-    std::cout << "Successfully generated 'PasmTokenizer.hpp'!\n";
+    std::cout << "Successfully generated '" << outfile << "'!\n";
     return 0;
 }
