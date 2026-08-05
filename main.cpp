@@ -182,6 +182,7 @@ class SymbolTable {
 	std::map<std::string, uint16_t> symbols_;
 public:
 	bool Define(const std::string& name, uint16_t val) {
+				
 		auto it = symbols_.find(name);
 		if (it == symbols_.end()) {
 			symbols_[name] = val;
@@ -365,6 +366,7 @@ public:
 			
 			// check for a comment
 			if (TokIs(TokenKind::Semicolon)) {
+				std::cout << "comment skip to eol\n";
 				while (!TokIs(TokenKind::Newline)) {
 					ConsumeToken();
 				}
@@ -574,9 +576,9 @@ private:
 		[](unsigned char c) {
 			return std::tolower(c);
 		});
-		if (mnemonic == "bne" || mnemonic == "beq" || mnemonic == "bpl" ||
-		        mnemonic == "bmi" || mnemonic == "bcc" || mnemonic == "bcs" ||
-		        mnemonic == "bvc" || mnemonic == "bvs" || mnemonic == "bra") {
+		
+		const OpCodeInfo* info = FindOpCodeInfo(mnemonic);
+		if (info->mode_to_opcode.contains(RULE_TYPE::Op_Relative)) {
 			return RULE_TYPE::Op_Relative;
 		}
 		return RULE_TYPE::Op_Absolute;
@@ -626,6 +628,7 @@ private:
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				changed |= symbols_.Define(lbl->name, pc);
+				std::cout << "define " << lbl->name << " " << pc << "\n";				
 			}
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
@@ -637,6 +640,7 @@ private:
 				if (equ->value_expr) {
 					auto val = EvaluateExpr(equ->value_expr.get(), symbols_);
 					if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
+				std::cout << "define " << equ->name << " " << static_cast<uint16_t>(*val) << "\n";				
 				}
 			}
 			else if (auto data = dynamic_cast<const DataStatement*>(stmt.get())) {
@@ -840,11 +844,13 @@ int main() {
 	std::string source_code =
 R"(
 	SCREEN = $0400
-	*=$1000+75* %10
+	.org $1000+75*6
 START:
 	lda #1	; THATS A BIG 1
 	sta SCREEN
+	bne target
 	rts
+	jmp START
 target
 	.byte $20,$22
 	.word $1234, $5678	
@@ -874,12 +880,6 @@ target
             
             continue;
         }
-
-		
-        std::cout << "Token ID: " << tok.id 
-                  << " | Text: [" << text << "]"
-                  << " | Line: " << tok.line 
-                  << " | Col: " << tok.col << "\n";
     }
 
 
