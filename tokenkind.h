@@ -2,8 +2,8 @@
 
 enum class TokenKind {
     Eof=999,
-    Newline=1, 
-			Ws,
+    Newline=1,
+    Ws,
     Semicolon,
     Opcode, Label, Identifier, Number, PcSymbol,
     Hash, Comma, LParen, RParen,
