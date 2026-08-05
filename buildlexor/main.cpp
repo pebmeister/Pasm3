@@ -2,7 +2,7 @@
 #include <fstream>
 #include "RegexEngine.h" // Header containing your NFABuilder, DFAConverter, and RegexCompiler
 
-#include "..\tokenkind.h"
+#include "tokenkind.h"
 
 using enum TokenKind;
 
