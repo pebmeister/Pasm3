@@ -1,6 +1,4 @@
 // written by Paul Baxter
-#include  <map>
-
 #include "opcodedict.h"
 
 /// <summary>
