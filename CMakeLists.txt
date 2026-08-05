@@ -14,7 +14,9 @@ add_executable(buildlexor
 )
 
 # Optional: Organize header inclusion inside buildlexor source
-target_include_directories(buildlexor PRIVATE buildlexor)
+target_include_directories(buildlexor PRIVATE buildlexor
+"${CMAKE_CURRENT_SOURCE_DIR}"
+)
 
 # ------------------------------------------------------------------------------
 # 2. Custom Command & Target to Generate PasmTokenizer.hpp
