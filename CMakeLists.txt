@@ -11,10 +11,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(buildlexor
     buildlexor/main.cpp
     buildlexor/RegexEngine.h
+    ruletype.h
+    tokenkind.h
 )
 
 # Optional: Organize header inclusion inside buildlexor source
-target_include_directories(buildlexor PRIVATE buildlexor
+target_include_directories(buildlexor PRIVATE
+buildlexor
 "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
