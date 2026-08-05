@@ -84,6 +84,12 @@ struct Token {
 	[[nodiscard]] bool isNot(TokenKind k) const {
 		return kind != k;
 	}
+	[[nodiscard]] bool is(int k) const {
+		return static_cast<int>(kind) == k;
+	}
+	[[nodiscard]] bool isNot(int k) const {
+		return static_cast<int>(kind) != k;
+	}
 };
 
 enum class Associativity { Left, Right };
@@ -149,6 +155,28 @@ public:
 		return std::move(node_);
 	}
 };
+inline int GetInstructionLength(RULE_TYPE mode) {
+	switch (mode) {
+	case RULE_TYPE::Op_Implied:
+	case RULE_TYPE::Op_Accumulator:
+		return 1;
+	case RULE_TYPE::Op_Immediate:
+	case RULE_TYPE::Op_ZeroPage:
+	case RULE_TYPE::Op_ZeroPageX:
+	case RULE_TYPE::Op_ZeroPageY:
+	case RULE_TYPE::Op_Relative:
+	case RULE_TYPE::Op_IndirectX:
+	case RULE_TYPE::Op_IndirectY:
+		return 2;
+	case RULE_TYPE::Op_Absolute:
+	case RULE_TYPE::Op_AbsoluteX:
+	case RULE_TYPE::Op_AbsoluteY:
+	case RULE_TYPE::Op_Indirect:
+		return 3;
+	default:
+		return 1;
+	}
+}
 
 class SymbolTable {
 	std::map<std::string, uint16_t> symbols_;
@@ -189,7 +217,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 		if (!un->operand) return std::nullopt;
 		auto val = EvaluateExpr(un->operand.get(), symbols);
 		if (!val) return std::nullopt;
-		switch (un->op) {
+		switch ((TokenKind)un->op) {
 		case TokenKind::Minus:
 			return -(*val);
 		case TokenKind::Plus:
@@ -213,7 +241,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 		auto rhs = EvaluateExpr(bin->rhs.get(), symbols);
 		if (!lhs || !rhs) return std::nullopt;
 
-		switch (bin->op) {
+		switch ((TokenKind)bin->op) {
 		case TokenKind::Plus:
 			return *lhs + *rhs;
 		case TokenKind::Minus:
@@ -303,19 +331,19 @@ public:
 	PasmTokenizer::Token ConsumeToken() {
 		PasmTokenizer::Token prev = Tok;
 		index_++;
-		Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{TokenKind::Eof, ""};
+		Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), ""};
 		SkipWs();
 		return prev;
 	}
 
 	[[nodiscard]] bool TokIs(TokenKind kind) const {
-		return Tok.is(kind);
+		return Tok.is(static_cast<int>(kind));
 	}
 
 	[[nodiscard]] bool TokAheadIs(TokenKind kind) const {
 		auto temp_index = index_;		
 		while (temp_index + 1 < tokens_.size()) {
-			if (tokens_[temp_index + 1].is(kind)) {
+			if (tokens_[temp_index + 1].is(static_cast<int>(kind))) {
 				return true;
 			}
 			temp_index++;
@@ -328,6 +356,7 @@ public:
 			ConsumeToken();
 		}
 	}
+
 
 	std::vector<std::unique_ptr<Statement>> ParseProgram() {
 		std::vector<std::unique_ptr<Statement>> statements;
@@ -351,7 +380,7 @@ public:
 			// ideally should be done in the lexor
 			// if an identifier is on col 1 then its really a label
 			if (TokIs(TokenKind::Identifier) && Tok.col == 1) {
-				Tok.id = TokenKind::Label;
+				Tok.id = static_cast<int>(TokenKind::Label);
 			}
 			
 			// 1. Symbol definition / EQU (e.g. SCREEN = $0400)
@@ -511,7 +540,7 @@ private:
 	}
 
 	static OpPrecedence GetBinaryPrecedence(int kind) {
-		switch (kind) {
+		switch ((TokenKind)kind) {
 		case TokenKind::Equal:
 			return { 5,  Associativity::Right };
 		case TokenKind::Pipe:
@@ -536,9 +565,9 @@ private:
 	}
 
 	static bool IsUnaryPrefix(int k) {
-		return k == TokenKind::LowByte || k == TokenKind::HighByte ||
-		       k == TokenKind::Minus   || k == TokenKind::Plus     ||
-		       k == TokenKind::Tilde   || k == TokenKind::Bang;
+		return k == static_cast<int>(TokenKind::LowByte) || k == static_cast<int>(TokenKind::HighByte) ||
+		       k == static_cast<int>(TokenKind::Minus)   || k == static_cast<int>(TokenKind::Plus)     ||
+		       k == static_cast<int>(TokenKind::Tilde)   || k == static_cast<int>(TokenKind::Bang);
 	}
 
 	RULE_TYPE DeduceMemoryMode(std::string mnemonic) const {
@@ -621,9 +650,10 @@ private:
 
 				auto mode_it = info->mode_to_opcode.find(inst->mode);
 				if (mode_it != info->mode_to_opcode.end()) {
-					pc += mode_it->second.second;
+					pc += GetInstructionLength(inst->mode);
 				}
 			}
+
 		}
 		return changed;
 	}
@@ -759,7 +789,9 @@ private:
 				auto mode_it = info->mode_to_opcode.find(inst->mode);
 				if (mode_it == info->mode_to_opcode.end()) continue;
 
-				auto [opcode_byte, length] = mode_it->second;
+				auto opcode_byte = mode_it->second.first;
+				int length = GetInstructionLength(inst->mode);
+
 				std::vector<uint8_t> inst_bytes;
 				inst_bytes.push_back(opcode_byte);
 
@@ -771,8 +803,8 @@ private:
 					if (length == 2) {
 						inst_bytes.push_back(static_cast<uint8_t>(evaluated & 0xFF));
 					} else if (length == 3) {
-						inst_bytes.push_back(static_cast<uint8_t>(evaluated & 0xFF));
-						inst_bytes.push_back(static_cast<uint8_t>((evaluated >> 8) & 0xFF));
+						inst_bytes.push_back(static_cast<uint8_t>(evaluated & 0xFF));        // Low byte
+						inst_bytes.push_back(static_cast<uint8_t>((evaluated >> 8) & 0xFF)); // High byte
 					}
 				}
 
@@ -784,7 +816,6 @@ private:
 					hex_str += std::format("{:02X} ", b);
 				}
 
-				// Reconstruct full statement line: e.g. "lda #$00", "sta $C000,X"
 				std::string op_str = inst->operand ? FormatOperand(inst->mode, evaluated) : "";
 				std::string full_stmt = op_str.empty() ? inst->mnemonic : std::format("{} {}", inst->mnemonic, op_str);
 
