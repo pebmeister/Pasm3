@@ -11,7 +11,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(buildlexor
     buildlexor/main.cpp
     buildlexor/RegexEngine.h
-    ruletype.h
     tokenkind.h
 )
 
