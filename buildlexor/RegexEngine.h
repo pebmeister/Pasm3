@@ -838,7 +838,7 @@ public:
 		ss << "            } else {\n";
 		ss << "                // Fallback for unmatched character\n";
 		ss << "                char bad_char = input[start_pos];\n";
-		ss << "                tokens.push_back({-1, std::string(1, bad_char), start_pos, current_line, current_column});\n";
+		ss << "                tokens.push_back({-2, std::string(1, bad_char), start_pos, current_line, current_column});\n";
 		ss << "                pos = start_pos + 1;\n";
 		ss << "                \n";
 		ss << "                // Advance state for the single bad character\n";
