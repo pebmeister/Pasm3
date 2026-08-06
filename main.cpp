@@ -860,13 +860,13 @@ target
 	
    // Process tokens
     for (const auto& tok : tokens) {
-		auto text = tok.text;
-		if (text == "\n") text = "\\n";
-		if (text == "\r") text = "\\r";
-		if (text == "\t") text = "\\t";
-		if (text == " ") text = "' '";
-		
+
         if (tok.id == -1) {
+		          auto text = tok.text;
+		          if (text == "\n") text = "\\n";
+		          if (text == "\r") text = "\\r";
+		          if (text == "\t") text = "\\t";
+		          if (text == " ") text = "' '";
             std::cerr << "Lexical Error at line " << tok.line 
                       << ", col " << tok.col 
                       << ": Unexpected character '" << text << "'\n";
