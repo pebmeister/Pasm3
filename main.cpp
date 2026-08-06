@@ -22,6 +22,39 @@
 #include "opcodedict.h"
 #include "PasmTokenizer.hpp"
 
+std::map<TokenKind, std::string_view> tokmap = {
+    { TokenKind::Eof,"Eof"},
+    { TokenKind::Newline,"Newline"},
+    { TokenKind::Ws,"Ws"},
+    { TokenKind::Semicolon,"Semicolon"},
+    { TokenKind::Opcode,"Opcode"}, 
+	{ TokenKind::Label,"Label"},
+	{ TokenKind::Identifier,"Identifier"},
+	{ TokenKind::Number,"Number"}, 
+	{ TokenKind::PcSymbol,"PcSymbol"},
+    { TokenKind::Hash,"Hash"}, 
+	{ TokenKind::Comma,"Comma"}, 
+	{ TokenKind::LParen,"LParen"}, 
+	{ TokenKind::RParen,"RParen"},
+    { TokenKind::Plus,"Plus"},
+	{ TokenKind::Minus,"Minus"}, 
+	{ TokenKind::Star,"Star"},
+	{ TokenKind::Slash,"Slash"},
+	{ TokenKind::Percent,"Percent"},
+    { TokenKind::Ampersand,"Ampersand"}, 
+	{ TokenKind::Pipe,"Pipe"},
+	{ TokenKind::Caret,"Caret"}, 
+	{ TokenKind::Shl,"Shl"},
+	{ TokenKind::Shr,"Shr"},
+	{ TokenKind::Equal,"Equal"},
+    { TokenKind::LowByte,"LowByte"}, 
+	{ TokenKind::HighByte,"HighByte"}, 
+	{ TokenKind::Tilde,"Tilde"},
+	{ TokenKind::Bang,"Bang"},
+	{ TokenKind::Directive,"Directive"}
+};
+
+
 // ============================================================================
 // 1. Core Enums & Data Structures
 // ============================================================================
@@ -72,7 +105,6 @@ inline const OpCodeInfo* FindOpCodeInfo(std::string_view mnemonic) {
 // ============================================================================
 // 2. AST Expression Subsystem
 // ============================================================================
-
 
 enum class Associativity { Left, Right };
 
@@ -160,30 +192,67 @@ inline int GetInstructionLength(RULE_TYPE mode) {
 	}
 }
 
-class SymbolTable {
-	std::map<std::string, uint16_t> symbols_;
-public:
-	bool Define(const std::string& name, uint16_t val) {
-				
-		auto it = symbols_.find(name);
-		if (it == symbols_.end()) {
-			symbols_[name] = val;
-			return true;
-		}
-		if (it->second != val) {
-			it->second = val;
-			return true;
-		}
-		return false;
-	}
+// Case-insensitive hash function
+struct CaseInsensitiveHash {
+    using is_transparent = void;
 
-	[[nodiscard]] std::optional<uint16_t> Lookup(const std::string& name) const {
-		if (auto it = symbols_.find(name); it != symbols_.end()) {
-			return it->second;
-		}
-		return std::nullopt;
-	}
+    std::size_t operator()(std::string_view sv) const {
+        std::size_t hash = 14695981039346656037ULL; // FNV-1a offset basis
+        for (char c : sv) {
+            auto uc = static_cast<unsigned char>(c);
+            hash ^= static_cast<std::size_t>(std::tolower(uc));
+            hash *= 1099511628211ULL; // FNV-1a prime
+        }
+        return hash;
+    }
 };
+
+// Case-insensitive equality predicate
+struct CaseInsensitiveEqual {
+    using is_transparent = void;
+
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
+        return std::equal(
+            lhs.begin(), lhs.end(),
+            rhs.begin(), rhs.end(),
+            [](unsigned char a, unsigned char b) {
+                return std::tolower(a) == std::tolower(b);
+            }
+        );
+    }
+};
+
+class SymbolTable {
+    // Map with custom Key, Value, Hash, and KeyEqual types
+    std::unordered_map<
+        std::string, 
+        uint16_t, 
+        CaseInsensitiveHash, 
+        CaseInsensitiveEqual
+    > symbols_;
+
+public:
+    bool Define(const std::string& name, uint16_t val) {
+        auto it = symbols_.find(name);
+        if (it == symbols_.end()) {
+            symbols_[name] = val;
+            return true;
+        }
+        if (it->second != val) {
+            it->second = val;
+            return true;
+        }
+        return false;
+    }
+
+    [[nodiscard]] std::optional<uint16_t> Lookup(std::string_view name) const {
+        if (auto it = symbols_.find(name); it != symbols_.end()) {
+            return it->second;
+        }
+        return std::nullopt;
+    }
+};
+
 
 inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols) {
 	if (!node) return std::nullopt;
@@ -329,6 +398,9 @@ public:
 			if (tokens_[temp_index + 1].is(static_cast<int>(kind))) {
 				return true;
 			}
+			else if (!tokens_[temp_index + 1].is(static_cast<int>(TokenKind::Ws))) {
+				return false;
+			}
 			temp_index++;
 		}	
 		return false;
@@ -343,29 +415,26 @@ public:
 	std::vector<std::unique_ptr<Statement>> ParseProgram() {
 		std::vector<std::unique_ptr<Statement>> statements;
 
+		auto line = 1;
+
 		while (!TokIs(TokenKind::Eof)) {
-			
 			
 			// check for a comment
 			if (TokIs(TokenKind::Semicolon)) {
-				std::cout << "comment skip to eol\n";
-				while (!TokIs(TokenKind::Newline)) {
+				
+				while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
 					ConsumeToken();
 				}
+				continue;
 			}
 
 			// end of line
 			if (TokIs(TokenKind::Newline)) {
 				ConsumeToken();
+				line++;
 				continue;
 			}
-					
-			// ideally should be done in the lexor
-			// if an identifier is on col 1 then its really a label
-			if (TokIs(TokenKind::Identifier) && Tok.col == 1) {
-				Tok.id = static_cast<int>(TokenKind::Label);
-			}
-			
+							
 			// 1. Symbol definition / EQU (e.g. SCREEN = $0400)
 			if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
 				std::string sym_name = ConsumeToken().text;
@@ -384,9 +453,13 @@ public:
 				continue;
 			}
 
-			// 3. Labels
-			if (TokIs(TokenKind::Label)) {
-				statements.push_back(std::make_unique<LabelStatement>(Tok.text));
+			// 3. Labels			
+			if (TokIs(TokenKind::Label) || TokIs(TokenKind::Identifier)) {
+				std::string name = Tok.text;
+				if (!name.empty() && name.back() == ':')
+					name.pop_back();
+				Tok.id = static_cast<int>(TokenKind::Label);
+				statements.push_back(std::make_unique<LabelStatement>(std::move(name)));
 				ConsumeToken();
 				continue;
 			}
@@ -453,7 +526,7 @@ public:
 				                     ));
 				continue;
 			}
-
+			std::cout << "Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << "\n";
 			ConsumeToken();
 		}
 
@@ -610,7 +683,6 @@ private:
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				changed |= symbols_.Define(lbl->name, pc);
-				std::cout << "define " << lbl->name << " " << pc << "\n";				
 			}
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
@@ -622,7 +694,6 @@ private:
 				if (equ->value_expr) {
 					auto val = EvaluateExpr(equ->value_expr.get(), symbols_);
 					if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
-				std::cout << "define " << equ->name << " " << static_cast<uint16_t>(*val) << "\n";				
 				}
 			}
 			else if (auto data = dynamic_cast<const DataStatement*>(stmt.get())) {
@@ -638,11 +709,9 @@ private:
 					pc += GetInstructionLength(inst->mode);
 				}
 			}
-
 		}
 		return changed;
 	}
-
 
 	// Helper to format 6502 operands based on addressing mode
 	std::string FormatOperand(RULE_TYPE mode, int64_t val) {
@@ -765,6 +834,7 @@ private:
 					}
 				}
 			}
+		
 			// 5. Instruction Statements
 			else if (auto inst = dynamic_cast<const InstructionStatement*>(stmt.get())) {
 				uint16_t current_pc = pc;
@@ -782,14 +852,23 @@ private:
 
 				int64_t evaluated = 0;
 				if (inst->operand) {
-					auto val = EvaluateExpr(inst->operand.get(), symbols_);
+					auto val = EvaluateExpr(inst->operand.get(), symbols_);					
 					evaluated = val.value_or(0);
+					
+					// By default, we emit exactly what was evaluated
+					int64_t emitted_val = evaluated;
+
+					// If it's a branch instruction, calculate the relative distance
+					if (inst->mode == RULE_TYPE::Op_Relative) {
+						int64_t offset = evaluated - (current_pc + length);
+						emitted_val = offset; 
+					}
 
 					if (length == 2) {
-						inst_bytes.push_back(static_cast<uint8_t>(evaluated & 0xFF));
+						inst_bytes.push_back(static_cast<uint8_t>(emitted_val & 0xFF));
 					} else if (length == 3) {
-						inst_bytes.push_back(static_cast<uint8_t>(evaluated & 0xFF));        // Low byte
-						inst_bytes.push_back(static_cast<uint8_t>((evaluated >> 8) & 0xFF)); // High byte
+						inst_bytes.push_back(static_cast<uint8_t>(emitted_val & 0xFF));        // Low byte
+						inst_bytes.push_back(static_cast<uint8_t>((emitted_val >> 8) & 0xFF)); // High byte
 					}
 				}
 
@@ -801,20 +880,19 @@ private:
 					hex_str += std::format("{:02X} ", b);
 				}
 
+				// FormatOperand still gets 'evaluated' so the listing shows the absolute target address
 				std::string op_str = inst->operand ? FormatOperand(inst->mode, evaluated) : "";
 				std::string full_stmt = op_str.empty() ? inst->mnemonic : std::format("{} {}", inst->mnemonic, op_str);
 
 				listing << std::format("${:04X}  {:14} {}\n", current_pc, hex_str, full_stmt);
 			}
 		}
-
 		listing << "-------------------------------------------------------------------------------\n";
 		listing << std::format("Emitted {} bytes.\n", binary_output.size());
 
 		std::cout << listing.str();
 	}
 };
-
 
 std::string read_file_to_string(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
@@ -850,21 +928,6 @@ int main(int argc, char* argv[])
 
     PasmTokenizer tokenizer;
 
-    std::string test_source_code =
-R"(
-	SCREEN = $0400
-	.org $1000+75*6
-START:
-	lda #1	; THATS A BIG 1
-	sta SCREEN
-	bne target
-	rts
-	jmp START
-target
-	.byte $20,$22
-	.word $1234, $5678	
-)";
-
     std::vector<PasmTokenizer::Token> tokens;
     for (auto& file: files) {
         auto source_code = read_file_to_string(file);
@@ -873,31 +936,43 @@ target
     }
 
     // Process tokens
+	bool in_comment = false;
+	auto line = 1;
     for (const auto& tok : tokens) {
+		auto text = tok.text;
+		if (text == "\n") text = "[EOL]";
+		else if (text == "\r") text = "[EOL]";
+		else if (text == "\r\n") text = "[EOL]";
+		else if (text == "\t") text = "\\t";
+		else if (text == " ") text = "' '";
 
-        if (tok.id == -1) {
-		          auto text = tok.text;
-		          if (text == "\n") text = "\\n";
-		          else if (text == "\r") text = "\\r";
-		          else if (text == "\t") text = "\\t";
-		          else if (text == " ") text = "' '";
-            std::cerr << "Lexical Error at line " << tok.line 
-                      << ", col " << tok.col 
-                      << ": Unexpected character '" << text << "'\n";
+		// Track whether we are inside a comment
+        if (tok.id == static_cast<int>(TokenKind::Semicolon)) {
+            in_comment = true;
+#if DEBUG_TOKENS
+			std::cout << "Line [" << line << "] Token: text='" << text << "' id=" << tokmap[(TokenKind)tok.id] << "\n";	
+#endif
+        } else if (tok.id == static_cast<int>(TokenKind::Newline)) {
+            in_comment = false;
+			line++;
+        }
+		if (in_comment ) {
+			continue;
+		}
 
+#if DEBUG_TOKENS
+		std::cout << "Line [" << line << "] Token: text='" << text << "' id=" << tokmap[(TokenKind)tok.id] << "\n";	
+#endif	
+        if (tok.id == static_cast<int>(TokenKind::Invalid)) {
 
-/*
-            // Column is 0-indexed position
-            if (source_code.length() >= tok.col ) {
-                unsigned char c = source_code[tok.col -1];
-                std::cout << "Byte at column" << tok.col << ":" << (int)c 
-                      << " (0x" << std::hex << (int)c << std::dec << ")\n";
-            }
-*/
+			if (!in_comment) {
+				std::cerr << "Lexical Error at line " << tok.line 
+					<< ", col " << tok.col 
+					<< ": Unexpected character '" << text << "'\n";
+			}
             continue;
         }
     }
-
 
 	AssemblerParser parser(tokens);
 	auto statements = parser.ParseProgram();
@@ -906,5 +981,4 @@ target
 	assembler.Assemble(statements);
 
 	return 0;
-
 }
