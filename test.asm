@@ -30,7 +30,9 @@ LOOP:
     sta SCREEN_RAM,y       ; Absolute, Y-indexed
     iny                    ; Implied
     bne LOOP               ; Relative branch (Backward reference)
-
+	bcc DONE
+	beq LOOP-255		   ; out of range
+	
 DONE:
     cli                    
     rts                    
