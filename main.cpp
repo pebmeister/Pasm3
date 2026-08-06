@@ -885,13 +885,15 @@ target
                       << ", col " << tok.col 
                       << ": Unexpected character '" << text << "'\n";
 
+
+/*
             // Column is 0-indexed position
             if (source_code.length() >= tok.col ) {
                 unsigned char c = source_code[tok.col -1];
                 std::cout << "Byte at column" << tok.col << ":" << (int)c 
                       << " (0x" << std::hex << (int)c << std::dec << ")\n";
             }
-            
+*/
             continue;
         }
     }
