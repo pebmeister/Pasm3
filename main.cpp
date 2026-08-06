@@ -69,28 +69,9 @@ inline const OpCodeInfo* FindOpCodeInfo(std::string_view mnemonic) {
 }
 
 // ============================================================================
-// 2. Tokens & AST Expression Subsystem
+// 2. AST Expression Subsystem
 // ============================================================================
 
-struct Token {
-	TokenKind kind{TokenKind::Eof};
-	std::string text;
-	size_t line{1};
-	size_t col{1};
-
-	[[nodiscard]] bool is(TokenKind k) const {
-		return kind == k;
-	}
-	[[nodiscard]] bool isNot(TokenKind k) const {
-		return kind != k;
-	}
-	[[nodiscard]] bool is(int k) const {
-		return static_cast<int>(kind) == k;
-	}
-	[[nodiscard]] bool isNot(int k) const {
-		return static_cast<int>(kind) != k;
-	}
-};
 
 enum class Associativity { Left, Right };
 
