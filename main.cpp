@@ -869,7 +869,7 @@ target
     for (auto& file: files) {
         auto source_code = read_file_to_string(file);
         auto filetokens = tokenizer.tokenize(source_code);
-        tokens.insert(tokens.end(), filetokens.begin(), filetokens.end())'
+        tokens.insert(tokens.end(), filetokens.begin(), filetokens.end());
     }
 
     // Process tokens
