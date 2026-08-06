@@ -833,7 +833,7 @@ int main(int argc, char* argv[])
 {
     std::vector<std::string> files;
     auto arg = 1;
-    while(argc < argc) {
+    while(arg < argc) {
         if (argv[arg][0] != '-') {
             files.push_back(argv[arg]);
             arg++;
