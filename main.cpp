@@ -14,12 +14,13 @@
 #include <sstream>
 #include <utility>
 #include <format>
+#include <fstream>
+#include <sstream>
 
 #include "ruletype.h"
 #include "tokenkind.h"
 #include "opcodedict.h"
 #include "PasmTokenizer.hpp"
-
 
 // ============================================================================
 // 1. Core Enums & Data Structures
@@ -814,15 +815,42 @@ private:
 	}
 };
 
+
+std::string read_file_to_string(const std::string& path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) throw std::runtime_error("Failed to open file: " + path);
+
+    std::ostringstream ss;
+    ss << file.rdbuf();          // reads entire file
+    return ss.str();
+}
+
 // ============================================================================
 // 6. Main Test Driver
 // ============================================================================
 
-int main() {
+int main(int argc, char* argv[])
+{
+    std::vector<std::string> files;
+    auto arg = 1;
+    while(argc < argc) {
+        if (argv[arg][0] != '-') {
+            files.push_back(argv[arg]);
+            arg++;
+        }
+        else {
+            std::cout << "Unknown option " << argv[arg] << "\n";
+            return -1;
+        }
+				}
+    if (files.empty()) {
+       std::cout << "No input file specified.\n";
+       return 1;
+    }
 
-	PasmTokenizer tokenizer;
+    PasmTokenizer tokenizer;
 
-	std::string source_code =
+    std::string test_source_code =
 R"(
 	SCREEN = $0400
 	.org $1000+75*6
@@ -837,17 +865,22 @@ target
 	.word $1234, $5678	
 )";
 
-	auto tokens = tokenizer.tokenize(source_code);
-	
-   // Process tokens
+    std::vector<PasmTokenizer::Token> tokens;
+    for (auto& file: files) {
+        auto source_code = read_file_to_string(file);
+        auto filetokens = tokenizer.tokenize(source_code);
+        tokens.insert(tokens.end(), filetokens.begin(), filetokens.end())'
+    }
+
+    // Process tokens
     for (const auto& tok : tokens) {
 
         if (tok.id == -1) {
 		          auto text = tok.text;
 		          if (text == "\n") text = "\\n";
-		          if (text == "\r") text = "\\r";
-		          if (text == "\t") text = "\\t";
-		          if (text == " ") text = "' '";
+		          else if (text == "\r") text = "\\r";
+		          else if (text == "\t") text = "\\t";
+		          else if (text == " ") text = "' '";
             std::cerr << "Lexical Error at line " << tok.line 
                       << ", col " << tok.col 
                       << ": Unexpected character '" << text << "'\n";
