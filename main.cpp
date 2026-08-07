@@ -978,11 +978,15 @@ int main(int argc, char* argv[])
         }
     }
 
-	AssemblerParser parser(tokens);
-	auto statements = parser.ParseProgram();
+	try {
+		AssemblerParser parser(tokens);
+		auto statements = parser.ParseProgram();
 
-	MultiPassAssembler assembler(0xC000);
-	assembler.Assemble(statements);
-
+		MultiPassAssembler assembler(0xC000);
+		assembler.Assemble(statements);
+	}
+	catch (std::execption& ex) {
+		std::cerr << "Error " + ex.what() + "\n");
+	}
 	return 0;
 }
