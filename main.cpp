@@ -988,66 +988,89 @@ private:
                     }
                 }
             }
+			// 5. Opcodes
+            if (TokIs(TokenKind::Opcode)) {
+                PasmTokenizer::Token opcode_tok = ConsumeToken();
+                std::string mnemonic = opcode_tok.text;
+                RULE_TYPE mode = RULE_TYPE::Op_Implied;
+                ExprResult operand_expr;
 
-            // 5. Instruction Statements
-            else if (auto inst = dynamic_cast<const InstructionStatement*>(stmt.get())) {
-                uint16_t current_pc = pc;
-                const OpCodeInfo* info = FindOpCodeInfo(inst->mnemonic);
-                if (!info) continue;
-
-                auto mode_it = info->mode_to_opcode.find(inst->mode);
-                if (mode_it == info->mode_to_opcode.end()) continue;
-
-                auto opcode_byte = mode_it->second.first;
-                int length = GetInstructionLength(inst->mode);
-
-                std::vector<uint8_t> inst_bytes;
-                inst_bytes.push_back(opcode_byte);
-
-                int64_t evaluated = 0;
-                if (inst->operand) {
-                    auto val = EvaluateExpr(inst->operand.get(), symbols_);
-                    evaluated = val.value_or(0);
-                    auto emitted_val = evaluated;
-
-                    // If it's a branch instruction, calculate the relative distance
-                    if (inst->mode == RULE_TYPE::Op_Relative) {
-                        int64_t offset = evaluated - (current_pc + length);
-
-                        if (offset < -128 || offset > 127) {
-                            throw std::runtime_error("Branch out of range " + std::format("${:04X}", pc));
+                if (TokIs(TokenKind::Hash)) {
+                    // Immediate: #expr
+                    ConsumeToken();
+                    mode = RULE_TYPE::Op_Immediate;
+                    operand_expr = ParseExpression();
+                } else if (TokIs(TokenKind::Newline) || TokIs(TokenKind::Eof) || TokIs(TokenKind::Semicolon)) {
+                    // Implied
+                    mode = RULE_TYPE::Op_Implied;
+                } else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
+                    // Accumulator: LSR A
+                    ConsumeToken();
+                    mode = RULE_TYPE::Op_Accumulator; // Ensure you have this in your RULE_TYPE enum
+                } else if (TokIs(TokenKind::LParen)) {
+                    // Indirect modes
+                    ConsumeToken(); // Consume '('
+                    operand_expr = ParseExpression();
+                    
+                    if (TokIs(TokenKind::Comma)) {
+                        // Indexed Indirect: (expr, X)
+                        ConsumeToken(); // Consume ','
+                        if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
+                            ConsumeToken(); // Consume 'X'
+                            if (TokIs(TokenKind::RParen)) {
+                                ConsumeToken(); // Consume ')'
+                                mode = RULE_TYPE::Op_IndirectX;
+                            } else {
+                                throw std::runtime_error("Expected ')' for Indirect X addressing");
+                            }
+                        } else {
+                            throw std::runtime_error("Expected 'X' for Indirect X addressing");
                         }
-                        emitted_val = offset;
+                    } else if (TokIs(TokenKind::RParen)) {
+                        ConsumeToken(); // Consume ')'
+                        if (TokIs(TokenKind::Comma)) {
+                            // Indirect Indexed: (expr), Y
+                            ConsumeToken(); // Consume ','
+                            if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
+                                ConsumeToken(); // Consume 'Y'
+                                mode = RULE_TYPE::Op_IndirectY;
+                            } else {
+                                throw std::runtime_error("Expected 'Y' for Indirect Y addressing");
+                            }
+                        } else {
+                            // Standard Indirect: (expr) - typically used by JMP
+                            mode = RULE_TYPE::Op_Indirect;
+                        }
+                    } else {
+                        throw std::runtime_error("Malformed indirect addressing mode");
                     }
-                    if (length == 2) {
-                        if (inst->mode != RULE_TYPE::Op_Relative &&  (emitted_val < 0 || emitted_val > 0xFF)) {
-                            throw std::runtime_error("Operand out of range " + std::format("${:04X}", pc));
+                } else {
+                    // Absolute, Absolute X/Y, Relative, or Zero-Page
+                    operand_expr = ParseExpression();
+                    if (TokIs(TokenKind::Comma)) {
+                        ConsumeToken();
+                        if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
+                            ConsumeToken();
+                            mode = RULE_TYPE::Op_AbsoluteX; // (May be downgraded to ZeroPageX later)
+                        } else if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
+                            ConsumeToken();
+                            mode = RULE_TYPE::Op_AbsoluteY; // (May be downgraded to ZeroPageY later)
+                        } else {
+                            throw std::runtime_error("Expected X or Y register after comma");
                         }
-                        inst_bytes.push_back(static_cast<uint8_t>(emitted_val & 0xFF));
-                    } else if (length == 3) {
-                        if (emitted_val < 0 || emitted_val > 0xFFFF) {
-                            throw std::runtime_error("Operand out of range " + std::format("${:04X}", pc));
-                        }
-                        inst_bytes.push_back(static_cast<uint8_t>(emitted_val & 0xFF));        // Low byte
-                        inst_bytes.push_back(static_cast<uint8_t>((emitted_val >> 8) & 0xFF)); // High byte
+                    } else {
+                        mode = DeduceMemoryMode(mnemonic);
                     }
                 }
 
-                binary_output.insert(binary_output.end(), inst_bytes.begin(), inst_bytes.end());
-                pc += length;
-
-                std::string hex_str;
-                for (uint8_t b : inst_bytes) {
-                    hex_str += std::format("{:02X} ", b);
-                }
-
-                // FormatOperand still gets 'evaluated' so the listing shows the absolute target address
-                std::string op_str = inst->operand ? FormatOperand(inst->mode, evaluated) : "";
-                std::string full_stmt = op_str.empty() ? inst->mnemonic : std::format("{} {}", inst->mnemonic, op_str);
-
-                listing << std::format("${:04X}  {:14} {}\n", current_pc, hex_str, full_stmt);
+                statements.push_back(std::make_unique<InstructionStatement>(
+                                         mnemonic, mode, operand_expr.release()
+                                     ));
+                continue;
             }
+
         }
+		
         listing << "-------------------------------------------------------------------------------\n";
         listing << std::format("Emitted {} bytes.\n", binary_output.size());
 
