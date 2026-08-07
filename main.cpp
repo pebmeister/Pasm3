@@ -473,7 +473,6 @@ public:
                 }
                 
                 else if (dir == ".macro") {
-                    ConsumeToken(); // consume '.macro'
                     PasmTokenizer::Token name_tok = ConsumeToken();
 					 std::cout << "name_tok " << name_tok.text << " id " << name_tok.id << "\n";
 
