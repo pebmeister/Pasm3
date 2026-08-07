@@ -2,6 +2,11 @@
 ; PASM3 Comprehensive Test File
 ; ==============================================================================
 
+    .macro TestM
+    nop
+    .endm
+    
+    
 ; 1. Symbol Definitions (EQU) and formatting parsing
 SCREEN_RAM = $0400         ; Hex assignment
 BORDER_COL = $D020
