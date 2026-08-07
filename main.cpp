@@ -487,7 +487,7 @@ public:
                     }
 
                     MacroDef def;
-                    def.name = name_token.text;
+                    def.name = name_tok.text;
 
                     // Slurp all tokens until .endm directive is reached
                     auto slurp = ConsumeToken();
