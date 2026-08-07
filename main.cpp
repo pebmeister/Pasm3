@@ -24,37 +24,36 @@
 #include "PasmTokenizer.hpp"
 
 std::map<TokenKind, std::string_view> tokmap = {
-    { TokenKind::Eof,"Eof"},
-    { TokenKind::Newline,"Newline"},
-    { TokenKind::Ws,"Ws"},
-    { TokenKind::Semicolon,"Semicolon"},
-    { TokenKind::Opcode,"Opcode"}, 
+	{ TokenKind::Eof,"Eof"},
+	{ TokenKind::Newline,"Newline"},
+	{ TokenKind::Ws,"Ws"},
+	{ TokenKind::Semicolon,"Semicolon"},
+	{ TokenKind::Opcode,"Opcode"}, 
 	{ TokenKind::Label,"Label"},
 	{ TokenKind::Identifier,"Identifier"},
 	{ TokenKind::Number,"Number"}, 
 	{ TokenKind::PcSymbol,"PcSymbol"},
-    { TokenKind::Hash,"Hash"}, 
+	{ TokenKind::Hash,"Hash"}, 
 	{ TokenKind::Comma,"Comma"}, 
 	{ TokenKind::LParen,"LParen"}, 
 	{ TokenKind::RParen,"RParen"},
-    { TokenKind::Plus,"Plus"},
+	{ TokenKind::Plus,"Plus"},
 	{ TokenKind::Minus,"Minus"}, 
 	{ TokenKind::Star,"Star"},
 	{ TokenKind::Slash,"Slash"},
 	{ TokenKind::Percent,"Percent"},
-    { TokenKind::Ampersand,"Ampersand"}, 
+	{ TokenKind::Ampersand,"Ampersand"}, 
 	{ TokenKind::Pipe,"Pipe"},
 	{ TokenKind::Caret,"Caret"}, 
 	{ TokenKind::Shl,"Shl"},
 	{ TokenKind::Shr,"Shr"},
 	{ TokenKind::Equal,"Equal"},
-    { TokenKind::LowByte,"LowByte"}, 
+	{ TokenKind::LowByte,"LowByte"}, 
 	{ TokenKind::HighByte,"HighByte"}, 
 	{ TokenKind::Tilde,"Tilde"},
 	{ TokenKind::Bang,"Bang"},
 	{ TokenKind::Directive,"Directive"}
 };
-
 
 // ============================================================================
 // 1. Core Enums & Data Structures
@@ -652,7 +651,7 @@ class MultiPassAssembler {
 public:
 	explicit MultiPassAssembler(uint16_t start_pc = 0xC000) : start_pc_(start_pc) {}
 
-	void Assemble(const std::vector<std::unique_ptr<Statement>>& statements) {
+	void Assemble(std::vector<std::unique_ptr<Statement>>& statements) {
 		size_t pass = 1;
 		bool symbols_changed = true;
 		const size_t max_passes = 10;
@@ -675,52 +674,104 @@ public:
 	}
 
 private:
-	bool ResolutionPass(const std::vector<std::unique_ptr<Statement>>& statements) {
+	bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements) {
 		uint16_t pc = start_pc_;
 		bool changed = false;
+		std::vector<std::unique_ptr<Statement>> new_statements;
+		new_statements.reserve(statements.size());
 
-		for (const auto& stmt : statements) {
+		// Inversion lookup table for 6502 branches
+		static const std::unordered_map<std::string, std::string> inverted_branches = {
+			{"bne", "beq"}, {"beq", "bne"},
+			{"bcc", "bcs"}, {"bcs", "bcc"},
+			{"bvc", "bvs"}, {"bvs", "bvc"},
+			{"bmi", "bpl"}, {"bpl", "bmi"}
+		};
+
+		for (auto& stmt : statements) {
 			if (!stmt) continue;
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				changed |= symbols_.Define(lbl->name, pc);
+				new_statements.push_back(std::move(stmt));
 			}
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
 					auto val = EvaluateExpr(org->address_expr.get(), symbols_);
 					if (val) pc = static_cast<uint16_t>(*val);
 				}
+				new_statements.push_back(std::move(stmt));
 			}
 			else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
 				if (equ->value_expr) {
 					auto val = EvaluateExpr(equ->value_expr.get(), symbols_);
 					if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
 				}
+				new_statements.push_back(std::move(stmt));
 			}
 			else if (auto data = dynamic_cast<const DataStatement*>(stmt.get())) {
 				uint16_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
 				pc += static_cast<uint16_t>(data->elements.size() * bytes_per_elem);
+				new_statements.push_back(std::move(stmt));
 			}
-			else if (auto inst = dynamic_cast<const InstructionStatement*>(stmt.get())) {
+			else if (auto inst = dynamic_cast<InstructionStatement*>(stmt.get())) {
 				const OpCodeInfo* info = FindOpCodeInfo(inst->mnemonic);
-				if (!info) continue;
+				if (!info) {
+					new_statements.push_back(std::move(stmt));
+					continue;
+				}
 
 				auto mode_it = info->mode_to_opcode.find(inst->mode);
 				if (mode_it != info->mode_to_opcode.end()) {
 
-					if (inst->mode == RULETYPE::Op_Relative) {
-						auto val = EvaluateExpr(inst->operand.get(), symbols_);					
+					if (inst->mode == RULE_TYPE::Op_Relative) {
+						auto val = EvaluateExpr(inst->operand.get(), symbols_);                    
 						if (val.has_value()) {
-							evaluated = val.value();
-							int64_t offset = evaluated - (current_pc + 2);
-							std::cout << "offset " << offset << "\n";
+							auto evaluated = val.value();
+							int64_t offset = evaluated - (pc + 2);
 
-						}	
+							if (offset < -128 || offset > 127) {
+								auto it = inverted_branches.find(inst->mnemonic);
+								if (it != inverted_branches.end()) {
+									std::cout << "Warning: Branch out of range for '" << inst->mnemonic 
+											  << "' at $" << std::hex << pc 
+											  << ". Expanding to trampoline JMP.\n" << std::dec;
+
+									// 1. Create the JMP statement FIRST by moving the original target expression
+									auto jmp_inst = std::make_unique<InstructionStatement>(
+										"jmp", 
+										RULE_TYPE::Op_Absolute, 
+										std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
+									);
+																
+									// 2. Modify the original statement in-place into the inverted branch
+									inst->mnemonic = it->second;
+									inst->mode = RULE_TYPE::Op_Relative;
+									
+									// 3. Refill the now-empty operand with the new relative jump target (+5)
+									inst->operand = std::make_unique<NumberExpr>(pc + 5);
+
+									// 4. Push the modified branch first, followed immediately by the new JMP
+									new_statements.push_back(std::move(stmt));
+									new_statements.push_back(std::move(jmp_inst));
+
+									pc += 5;
+									changed = true;
+									continue;
+								}
+							}
+						}
 					}
 					pc += GetInstructionLength(inst->mode);
 				}
+				new_statements.push_back(std::move(stmt));
+			}
+			else {
+				new_statements.push_back(std::move(stmt));
 			}
 		}
+
+		statements = std::move(new_statements);
 		return changed;
 	}
 
