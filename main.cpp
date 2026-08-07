@@ -38,7 +38,6 @@ std::unordered_map<std::string, MacroDef> macros_;
 // 1. Core Enums & Data Structures
 // ============================================================================
 
-
 // Direct O(1) lookup by TokenKind
 inline const OpCodeInfo* FindOpCodeInfo(int kind) {
     auto it = opcodeDict.find(kind);
@@ -354,6 +353,14 @@ class AssemblerParser {
     size_t index_{0};
     PasmTokenizer::Token Tok;
 
+private:
+    bool IsMacro(const std::string& name) const {
+        std::string lower_key = name;
+        std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return macros_.contains(lower_key);
+    }
+
 public:
     explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens) : tokens_(std::move(tokens)) {
         if (!tokens_.empty()) Tok = tokens_[0];
@@ -435,8 +442,10 @@ public:
                 continue;
             }
 
-            // 3. Labels
-            if (TokIs(TokenKind::Label) || TokIs(TokenKind::Identifier)) {
+   
+			// 3. Labels
+            // Ensure we don't accidentally treat a macro invocation as a label
+            if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text))) {
                 std::string name = Tok.text;
                 if (!name.empty() && name.back() == ':')
                     name.pop_back();
@@ -513,6 +522,68 @@ public:
                 continue;
             }
 
+			// 4.5 Macro Expansion
+            if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
+                std::string mac_name = ConsumeToken().text;
+                
+                std::string lower_key = mac_name;
+                std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                
+                const MacroDef& mac = macros_[lower_key];
+
+                // Parse the arguments passed to the macro call
+                std::vector<std::vector<PasmTokenizer::Token>> args;
+                std::vector<PasmTokenizer::Token> current_arg;
+                
+                while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof) && !TokIs(TokenKind::Semicolon)) {
+                    if (TokIs(TokenKind::Comma)) {
+                        args.push_back(current_arg);
+                        current_arg.clear();
+                        ConsumeToken();
+                    } else {
+                        current_arg.push_back(ConsumeToken());
+                    }
+                }
+                if (!current_arg.empty()) {
+                    args.push_back(current_arg);
+                }
+
+                // Positional Token Substitution
+                std::vector<PasmTokenizer::Token> expanded_tokens;
+                for (size_t i = 0; i < mac.body_tokens.size(); ++i) {
+                    const auto& body_tok = mac.body_tokens[i];
+                    bool substituted = false;
+                    
+                    // Look for positional identifiers like \1, \2, \3
+                    // Note: If your PasmTokenizer splits '\' and '1' into two separate tokens, 
+                    // you will need to check (body_tok is '\' && next token is a number) instead.
+                    if (body_tok.text.size() == 2 && body_tok.text[0] == '\\' && std::isdigit(body_tok.text[1])) {
+                        int arg_idx = body_tok.text[1] - '1'; // \1 maps to index 0
+                        
+                        if (arg_idx >= 0 && arg_idx < args.size()) {
+                            // Inject the passed argument tokens in place of the positional marker
+                            expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
+                            substituted = true;
+                        } else {
+                            throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
+                        }
+                    }
+                    
+                    if (!substituted) {
+                        expanded_tokens.push_back(body_tok);
+                    }
+                }
+
+                // Inject the expanded tokens back into the main token stream
+                tokens_.insert(tokens_.begin() + index_, expanded_tokens.begin(), expanded_tokens.end());
+                
+                // Point Tok at the newly injected stream
+                Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), ""};
+                
+                continue;
+            }
+			
             // 5. Opcodes
             if (TokIs(TokenKind::Opcode)) {
                 PasmTokenizer::Token opcode_tok = ConsumeToken();
@@ -1065,8 +1136,6 @@ int main(int argc, char* argv[])
     try {
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-
         AssemblerParser parser(tokens);
         auto statements = parser.ParseProgram();
 
