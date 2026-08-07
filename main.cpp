@@ -17,6 +17,7 @@
 #include <fstream>
 #include <sstream>
 #include <exception>
+#include <chrono>
 
 #include "ruletype.h"
 #include "tokenkind.h"
@@ -1009,7 +1010,7 @@ int main(int argc, char* argv[])
 	auto line = 1;
     for (const auto& tok : tokens) {
 		auto text = tok.text;
-		if ((text == "\n") || (text == "\r") || (text == "\r\n") text = "[EOL]";
+		if ((text == "\n") || (text == "\r") || (text == "\r\n")) text = "[EOL]";
 		else if (text == "\t") text = "\\t";
 		else if (text == " ") text = "' '";
 
@@ -1042,11 +1043,17 @@ int main(int argc, char* argv[])
     }
 
 	try {
+	
+		std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+
 		AssemblerParser parser(tokens);
 		auto statements = parser.ParseProgram();
 
 		MultiPassAssembler assembler(0xC000);
 		assembler.Assemble(statements);
+		std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+		std::cout << "Elapsed " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds." << std::endl;
 	}
 	catch (std::exception& ex) {
 		std::cerr << "Error " << ex.what() << "\n";

@@ -5,6 +5,7 @@ enum class TokenKind {
 	Invalid=-2,
     Newline=1,
     Ws,
+	MacroArg,
     Semicolon,
     Opcode, 
 	Label, 

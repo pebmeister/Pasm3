@@ -13,6 +13,8 @@ BIT_MASK   = %00001111     ; Binary assignment
 
 ; 3. Standard Instructions & Immediate/Absolute Modes
 START:
+	bcc POINTERS + $1000
+
     sei                    ; Implied mode (testing lowercase)
     lda #SYS_COLOR         ; Immediate mode with symbol
     sta BORDER_COL         ; Absolute mode with symbol
@@ -36,7 +38,6 @@ LOOP:
 DONE:
     cli                    
     rts                    
-	bcc POINTERS + 255
 
 ; 6. Data Directives & Binary Math Expressions
 MESSAGE:
