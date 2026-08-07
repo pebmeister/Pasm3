@@ -707,6 +707,16 @@ private:
 
 				auto mode_it = info->mode_to_opcode.find(inst->mode);
 				if (mode_it != info->mode_to_opcode.end()) {
+
+					if (inst->mode == RULETYPE::Op_Relative) {
+						auto val = EvaluateExpr(inst->operand.get(), symbols_);					
+						if (val.has_value()) {
+							evaluated = val.value();
+							int64_t offset = evaluated - (current_pc + 2);
+							std::cout << "offset " << offset << "\n";
+
+						}	
+					}
 					pc += GetInstructionLength(inst->mode);
 				}
 			}
@@ -864,7 +874,7 @@ private:
 						int64_t offset = evaluated - (current_pc + length);
 						
 						if (offset < -128 || offset > 127) {
-							throw std::runtime_error("Branch out of range $" + std::format("{:X}", pc));
+							throw std::runtime_error("Branch out of range " + std::format("${:04X}", pc));
 						}
 						emitted_val = offset; 
 					}
