@@ -490,7 +490,6 @@ public:
 
                     // Slurp all tokens until .endm directive is reached
                     auto slurp = ConsumeToken();
-     
                     while (!(slurp.is(static_cast<int>(TokenKind::Directive)) && slurp.text == ".endm")) {
                         def.body_tokens.push_back(slurp);
                         slurp = ConsumeToken();
@@ -501,9 +500,12 @@ public:
                     }
                     
                     // Store in registry
-                    macros_[def.name] = std::move(def);
-
-					std::cout << "found macro " << name_tok.text << "\n";
+					std::string lower_key(def.name);
+    				std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+					    [](unsigned char c) {
+        					return static_cast<char>(std::tolower(c));
+  					});
+                    macros_[lower_key] = std::move(def);
                     
                     // Macro definitions emit no statements into the AST
                     continue;
