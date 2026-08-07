@@ -57,6 +57,6 @@ POINTERS:
     .word SCREEN_RAM + $1000 
     .word (SCREEN_RAM * 2) & $FFFF
 
-    testm 50 LOOP
+    testm 50,LOOP
 
 	
