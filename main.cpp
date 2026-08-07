@@ -388,24 +388,6 @@ public:
         return false;
     }
 
-        [[nodiscard]] bool TokAheadIs(TokenKind kind, int n, int& foundindex) const {
-        auto temp_index = index_;
-        auto count = 0;
-        while (temp_index + 1 < tokens_.size()) {
-            if (tokens_[temp_index + 1].is(static_cast<int>(TokenKind::Ws))) {
-                temp_index++;
-                continue;
-            }
-            count++;
-            if (count == n) {
-                foundindex = temp_index + 1;
-                return (tokens_[temp_index + 1].is(static_cast<int>(kind)));
-            }
-            temp_index++;
-        }
-        return false;
-    }
-
     void SkipWs() {
         while (TokIs(TokenKind::Ws)) {
             ConsumeToken();
@@ -491,27 +473,36 @@ public:
                 }
                 
                 else if (dir == ".macro") {
-                    ConsumeToken(); // consume '.token'
+                    ConsumeToken(); // consume '.macro'
                     PasmTokenizer::Token name_token = ConsumeToken();
-                    
+                    if (!name_token.is(static_cast<int>(TokenKind::Identifier))) {
+						throw std::runtime_error(".macro expected name");
+					}
+
+					// skip to EOL
+                    while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
+                        ConsumeToken();
+                    }
+
                     MacroDef def;
                     def.name = name_token.text;
 
                     // Slurp all tokens until .endm directive is reached
                     auto slurp = ConsumeToken();
-                    if (slurp.is(static_cast<int>(TokenKind::Eof))) continue;
-                    
+     
                     while (!(slurp.is(static_cast<int>(TokenKind::Directive)) && slurp.text == ".endm")) {
                         def.body_tokens.push_back(slurp);
                         slurp = ConsumeToken();
-                        
                     }
+
                     if (TokIs(TokenKind::Eof)) {
                         throw std::runtime_error("Expected .endm to close macro definition");
                     }
                     
                     // Store in registry
                     macros_[def.name] = std::move(def);
+
+					std::cout << "found macro " << name_token.text << "\n";
                     
                     // Macro definitions emit no statements into the AST
                     continue;
