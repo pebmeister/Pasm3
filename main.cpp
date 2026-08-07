@@ -16,6 +16,7 @@
 #include <format>
 #include <fstream>
 #include <sstream>
+#include <exception>
 
 #include "ruletype.h"
 #include "tokenkind.h"
