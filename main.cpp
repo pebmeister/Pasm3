@@ -916,10 +916,8 @@ private:
 				if (inst->operand) {
 					auto val = EvaluateExpr(inst->operand.get(), symbols_);					
 					evaluated = val.value_or(0);
+					auto emitted_val = evaluated;
 					
-					// By default, we emit exactly what was evaluated
-					int64_t emitted_val = evaluated;
-
 					// If it's a branch instruction, calculate the relative distance
 					if (inst->mode == RULE_TYPE::Op_Relative) {
 						int64_t offset = evaluated - (current_pc + length);
@@ -929,10 +927,15 @@ private:
 						}
 						emitted_val = offset; 
 					}
-
 					if (length == 2) {
+						if (inst->mode != RULE_TYPE::Op_Relative &&  (emitted_val < 0 || emitted_val > 0xFF)) {
+							throw std::runtime_error("Operand out of range " + std::format("${:04X}", pc));
+						}
 						inst_bytes.push_back(static_cast<uint8_t>(emitted_val & 0xFF));
 					} else if (length == 3) {
+						if (emitted_val < 0 || emitted_val > 0xFFFF) {
+							throw std::runtime_error("Operand out of range " + std::format("${:04X}", pc));
+						}
 						inst_bytes.push_back(static_cast<uint8_t>(emitted_val & 0xFF));        // Low byte
 						inst_bytes.push_back(static_cast<uint8_t>((emitted_val >> 8) & 0xFF)); // High byte
 					}
@@ -1006,9 +1009,7 @@ int main(int argc, char* argv[])
 	auto line = 1;
     for (const auto& tok : tokens) {
 		auto text = tok.text;
-		if (text == "\n") text = "[EOL]";
-		else if (text == "\r") text = "[EOL]";
-		else if (text == "\r\n") text = "[EOL]";
+		if ((text == "\n") || (text == "\r") || (text == "\r\n") text = "[EOL]";
 		else if (text == "\t") text = "\\t";
 		else if (text == " ") text = "' '";
 

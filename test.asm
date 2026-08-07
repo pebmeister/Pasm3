@@ -37,7 +37,6 @@ DONE:
     cli                    
     rts                    
 	bcc POINTERS + 255
-	
 
 ; 6. Data Directives & Binary Math Expressions
 MESSAGE:
