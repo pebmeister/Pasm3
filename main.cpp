@@ -986,7 +986,7 @@ int main(int argc, char* argv[])
 		assembler.Assemble(statements);
 	}
 	catch (std::execption& ex) {
-		std::cerr << "Error " << ex.what() << "\n");
+		std::cerr << "Error " << ex.what() << "\n";
 	}
 	return 0;
 }
