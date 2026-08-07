@@ -4,8 +4,8 @@
 
     .macro TestM
     nop
-    lda #9
-    sta $2000
+    lda #\1
+    sta \2
     .endm
     
     
@@ -57,6 +57,6 @@ POINTERS:
     .word SCREEN_RAM + $1000 
     .word (SCREEN_RAM * 2) & $FFFF
 
-    testm
+    testm 50 LOOP
 
 	
