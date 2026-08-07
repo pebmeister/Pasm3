@@ -475,6 +475,8 @@ public:
                 else if (dir == ".macro") {
                     ConsumeToken(); // consume '.macro'
                     PasmTokenizer::Token name_token = ConsumeToken();
+					 std::cout << "name_tok " << name_tok.txt << " id " << nme_tok.id << "\n";
+
                     if (!name_token.is(static_cast<int>(TokenKind::Identifier))) {
 						throw std::runtime_error(".macro expected name");
 					}
