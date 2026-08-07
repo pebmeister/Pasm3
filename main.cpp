@@ -504,7 +504,7 @@ public:
                     // Store in registry
                     macros_[def.name] = std::move(def);
 
-					std::cout << "found macro " << name_token.text << "\n";
+					std::cout << "found macro " << name_tok.text << "\n";
                     
                     // Macro definitions emit no statements into the AST
                     continue;
