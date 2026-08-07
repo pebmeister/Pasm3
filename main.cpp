@@ -666,7 +666,7 @@ public:
 		}
 
 		if (symbols_changed) {
-			std::cerr << "Error: Symbol resolution failed to converge after " << max_passes << " passes.\n";
+			throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +" passes.");
 			return;
 		}
 
@@ -863,52 +863,8 @@ private:
 						int64_t offset = evaluated - (current_pc + length);
 						
 						if (offset < -128 || offset > 127) {
-							// Map of standard 6502 branch mnemonics to their inverted counterparts
-							static const std::unordered_map<std::string, std::string> inverted_branches = {
-								{"bne", "beq"}, {"beq", "bne"},
-								{"bcc", "bcs"}, {"bcs", "bcc"},
-								{"bvc", "bvs"}, {"bvs", "bvc"},
-								{"bmi", "bpl"}, {"bpl", "bmi"}
-							};
-
-							auto it = inverted_branches.find(inst->mnemonic);
-							if (it != inverted_branches.end()) {
-								std::string br = it->second;
-
-								// 1. Get opcode for inverted branch instruction
-								info = FindOpCodeInfo(br);
-								mode_it = info->mode_to_opcode.find(inst->mode);
-								opcode_byte = mode_it->second.first;
-
-								// 2. Replace original opcode with inverted branch opcode
-								inst_bytes.pop_back(); // Remove original branch opcode
-								inst_bytes.push_back(opcode_byte);
-								
-								// 3. Offset for inverted branch: jump over 3-byte JMP instruction
-								inst_bytes.push_back(static_cast<uint8_t>(0x03));
-								pc += 2;
-
-								// 4. Append JMP Absolute opcode
-								info = FindOpCodeInfo("jmp");
-								mode_it = info->mode_to_opcode.find(Op_Absolute);
-								opcode_byte = mode_it->second.first;
-								inst_bytes.push_back(opcode_byte);
-
-								// make it look like we are just processing the jump
-								
-								// 5. Append 16-bit Absolute target address (Little-Endian) by setting the length to 3
-								// which is for the jmp instuction
-								length = 3;
-								
-								// 6. offset should now be emmitted since its swapped below
-								offset = emitted_val;
-
-								std::cout << "Warning: branch out of range for '" << inst->mnemonic 
-										  << "' at $" << std::hex << current_pc 
-										  << ". Replaced with trampoline jump to $" << evaluated << std::dec << ".\n";
-							}
+							throw std::runtime_error("Branch out of range $" + std::format("{:X}", pc));
 						}
-						
 						emitted_val = offset; 
 					}
 
