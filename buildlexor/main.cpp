@@ -13,6 +13,7 @@ int main() {
 		{ "[\\r]?[\\n]", static_cast<int>(Newline)},
 		{ "[ \\t]*", static_cast<int>(Ws)},
 		{ "[;]", static_cast<int>(Semicolon)},
+		{ "[\\\\][1-9]*", static_cast<int>(MacroArg)},
 		{ "[a-z_][a-z0-9_]*[:]?", static_cast<int>(Identifier), true},
 		{ "[\\.][a-z_][a-z0-9_]*", static_cast<int>(Directive), true},
 		{ "[0-9]*", static_cast<int>(Number)},
