@@ -477,7 +477,7 @@ public:
                     PasmTokenizer::Token name_tok = ConsumeToken();
 					 std::cout << "name_tok " << name_tok.text << " id " << name_tok.id << "\n";
 
-                    if (!name_token.is(static_cast<int>(TokenKind::Identifier))) {
+                    if (!name_tok.is(static_cast<int>(TokenKind::Identifier))) {
 						throw std::runtime_error(".macro expected name");
 					}
 
