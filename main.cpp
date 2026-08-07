@@ -528,7 +528,7 @@ public:
                 
                 std::string lower_key = mac_name;
                 std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        	        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                 
                 const MacroDef& mac = macros_[lower_key];
 
