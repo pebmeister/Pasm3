@@ -986,7 +986,7 @@ int main(int argc, char* argv[])
 		MultiPassAssembler assembler(0xC000);
 		assembler.Assemble(statements);
 	}
-	catch (std::execption& ex) {
+	catch (std::exception& ex) {
 		std::cerr << "Error " << ex.what() << "\n";
 	}
 	return 0;
