@@ -4,6 +4,8 @@
 
     .macro TestM
     nop
+    lda #9
+    sta $2000
     .endm
     
     
@@ -54,4 +56,7 @@ POINTERS:
     ; .word testing binary arithmetic and precedence
     .word SCREEN_RAM + $1000 
     .word (SCREEN_RAM * 2) & $FFFF
+
+    testm
+
 	
