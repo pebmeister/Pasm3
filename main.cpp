@@ -564,7 +564,7 @@ public:
 			// 4.5 Macro Expansion
 			if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
 
-				printProTok("Macro call ", Tok);
+				printProcTok("Macro call ", Tok);
 
 				// 1. Save the start position of the macro call in the token stream
 				size_t start_idx = index_;
@@ -667,7 +667,7 @@ public:
 			// 5. Opcodes
 			if (TokIs(TokenKind::Opcode)) {
 				
-				printProTok("Opcode ", Tok);
+				printProcTok("Opcode ", Tok);
 				
 				PasmTokenizer::Token opcode_tok = ConsumeToken();
 				std::string mnemonic = opcode_tok.text;
