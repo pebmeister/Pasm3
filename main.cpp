@@ -549,35 +549,39 @@ public:
                     args.push_back(current_arg);
                 }
 
-                // Positional Token Substitution
+	            // Positional Token Substitution
                 std::vector<PasmTokenizer::Token> expanded_tokens;
                 for (size_t i = 0; i < mac.body_tokens.size(); ++i) {
                     const auto& body_tok = mac.body_tokens[i];
                     bool substituted = false;
                     
-                    // Look for positional identifiers like \1, \2, \3
-                    // Note: If your PasmTokenizer splits '\' and '1' into two separate tokens, 
-                    // you will need to check (body_tok is '\' && next token is a number) instead.
-					std::cout << "token index " << i << "\n";
+                    // Look for positional identifiers like \1, \2, \10
                     if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
-						auto valid = true;
-						int arg_idx = 0;
-						for (auto tokidx = 1; tokidx < body_tok.text.size(); ++tokidx) {
-							if (!std::isdigit(body_tok.text[tokidx])) {
-								valid = false;
-								break;
-							}
-							arg_idx *= 10;
-							arg_idx += body_tok.text[tokidx] - '1';
-						}
-						std::cout << "arg index " << arg_idx << "args.size " << args.size() << "\n";
+                        auto valid = true;
+                        int arg_idx = 0;
                         
-                        if (valid && arg_idx >= 0 && arg_idx < args.size()) {
-                            // Inject the passed argument tokens in place of the positional marker
-                            expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
-                            substituted = true;
-                        } else {
-                            throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
+                        // FIX: Use 'j' so we don't shadow the outer 'i' loop
+                        for (size_t j = 1; j < body_tok.text.size(); ++j) {
+                            if (!std::isdigit(body_tok.text[j])) {
+                                valid = false;
+                                break;
+                            }
+                            arg_idx *= 10;
+                            // FIX: Must subtract '0' to safely get the actual integer value
+                            arg_idx += body_tok.text[j] - '0';
+                        }
+                        
+                        if (valid) {
+                            // FIX: Now that we extracted the raw integer (e.g., 1), shift it to 0-based index
+                            arg_idx -= 1; 
+
+                            if (arg_idx >= 0 && arg_idx < args.size()) {
+                                // Inject the passed argument tokens in place of the positional marker
+                                expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
+                                substituted = true;
+                            } else {
+                                throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
+                            }
                         }
                     }
                     
