@@ -560,14 +560,14 @@ public:
                     // you will need to check (body_tok is '\' && next token is a number) instead.
                     if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
 						auto valid = true;
-						int arg_index = 0;
+						int arg_idx = 0;
 						for (auto i = 1; i < body_tok.text.size(); ++i) {
 							if (!std::isdigit(body_tok[i])) {
 								valid = false;
 								break;
 							}
-							arg_index *= 10;
-							arg_index += body_tok[i] - '1';
+							arg_idx *= 10;
+							arg_idx += body_tok[i] - '1';
 						}
                         
                         if (valid && arg_idx >= 0 && arg_idx < args.size()) {
