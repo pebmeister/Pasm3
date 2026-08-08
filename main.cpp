@@ -568,9 +568,9 @@ public:
 								break;
 							}
 							arg_idx *= 10;
-							arg_idx += body_tok.text[tokidx] - '0';
+							arg_idx += body_tok.text[tokidx] - '1';
 						}
-						std::cout << "arg index " << arg_idx << "\n";
+						std::cout << "arg index " << arg_idx << "args.size " << args.size() << "\n";
                         
                         if (valid && arg_idx >= 0 && arg_idx < args.size()) {
                             // Inject the passed argument tokens in place of the positional marker
