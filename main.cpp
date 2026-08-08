@@ -667,7 +667,7 @@ public:
 			// 5. Opcodes
 			if (TokIs(TokenKind::Opcode)) {
 				
-				printProcToc("Opcode ", Tok);
+				printProTok("Opcode ", Tok);
 				
 				PasmTokenizer::Token opcode_tok = ConsumeToken();
 				std::string mnemonic = opcode_tok.text;
