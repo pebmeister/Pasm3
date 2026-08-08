@@ -558,10 +558,19 @@ public:
                     // Look for positional identifiers like \1, \2, \3
                     // Note: If your PasmTokenizer splits '\' and '1' into two separate tokens, 
                     // you will need to check (body_tok is '\' && next token is a number) instead.
-                    if (body_tok.text.size() == 2 && body_tok.text[0] == '\\' && std::isdigit(body_tok.text[1])) {
-                        int arg_idx = body_tok.text[1] - '1'; // \1 maps to index 0
+                    if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
+						auto valid = true;
+						int arg_index = 0;
+						for (auto i = 1; i < body_tok.text.size(); ++i) {
+							if (!std::isdigit(body_tok[i])) {
+								valid = false;
+								break;
+							}
+							arg_index *= 10;
+							arg_index += body_tok[i] - '1';
+						}
                         
-                        if (arg_idx >= 0 && arg_idx < args.size()) {
+                        if (valid && arg_idx >= 0 && arg_idx < args.size()) {
                             // Inject the passed argument tokens in place of the positional marker
                             expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
                             substituted = true;
