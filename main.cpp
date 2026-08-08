@@ -436,12 +436,12 @@ public:
 			
 			if (display_tok) {
 				std::cout << "index = " << index_;
-				printToc(" [main] ", Tok);
+				printTok("[ParseProgram]", Tok);
 			}
 
             // check for a comment
             if (TokIs(TokenKind::Semicolon)) {
-				printProTok("Comment  ", Tok);
+				printProcToc("Comment  ", Tok);
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                     ConsumeToken();
                 }
@@ -450,7 +450,7 @@ public:
 
             // end of line
             if (TokIs(TokenKind::Newline)) {
-            	prontProcTok("EOL  ", Tok);
+            	printProcTok("EOL  ", Tok);
 				ConsumeToken();
                 line++;
                 continue;
@@ -458,7 +458,7 @@ public:
 
             // 1. Symbol definition / EQU (e.g. SCREEN = $0400)
             if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
-				printProTok("Equate  ", Tok);
+				printProcTok("Equate  ", Tok);
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
@@ -493,7 +493,7 @@ public:
 
             // 4. Directives (.org, .byte, .word)
             if (TokIs(TokenKind::Directive)) {
-				printProTok("Directive ", Tok);
+				printProcTol("Directive ", Tok);
 
                 PasmTokenizer::Token dir_tok = ConsumeToken();
                 std::string dir = dir_tok.text;
