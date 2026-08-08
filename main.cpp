@@ -32,6 +32,7 @@ struct MacroDef {
     std::vector<PasmTokenizer::Token> body_tokens;
 };
 
+
 // Add this as a private member in your Parser class
 std::unordered_map<std::string, MacroDef> macros_;
 // ============================================================================
@@ -147,26 +148,41 @@ public:
         return std::move(node_);
     }
 };
-inline int GetInstructionLength(RULE_TYPE mode) {
+
+int printTok(std::string msg, PasmTokenizer::Token& tok) {
+	auto text = tok.text;
+	auto id = tok.id;
+	if (id == (int)TokenKind::Newline) text = "[\\n]";
+	if (id == (int)TokenKind::Eof) text = "[EOF]";
+	if (id == (int)TokenKind::Invalid) text = "[INVALID]";
+		
+	std::cout << msg << " '" << text << "' [" << tokmap[(TokenKind)id] << "]\n";
+	return 0; 
+}
+
+size_t GetInstructionSize(RULE_TYPE mode) {
     switch (mode) {
-    case RULE_TYPE::Op_Implied:
-    case RULE_TYPE::Op_Accumulator:
-        return 1;
-    case RULE_TYPE::Op_Immediate:
-    case RULE_TYPE::Op_ZeroPage:
-    case RULE_TYPE::Op_ZeroPageX:
-    case RULE_TYPE::Op_ZeroPageY:
-    case RULE_TYPE::Op_Relative:
-    case RULE_TYPE::Op_IndirectX:
-    case RULE_TYPE::Op_IndirectY:
-        return 2;
-    case RULE_TYPE::Op_Absolute:
-    case RULE_TYPE::Op_AbsoluteX:
-    case RULE_TYPE::Op_AbsoluteY:
-    case RULE_TYPE::Op_Indirect:
-        return 3;
-    default:
-        return 1;
+        case RULE_TYPE::Op_Implied:
+        case RULE_TYPE::Op_Accumulator:
+            return 1;
+
+        case RULE_TYPE::Op_Immediate:
+        case RULE_TYPE::Op_ZeroPage:
+        case RULE_TYPE::Op_ZeroPageX:
+        case RULE_TYPE::Op_ZeroPageY:
+        case RULE_TYPE::Op_IndirectX:
+        case RULE_TYPE::Op_IndirectY:
+        case RULE_TYPE::Op_Relative:
+            return 2;
+
+        case RULE_TYPE::Op_Absolute:
+        case RULE_TYPE::Op_AbsoluteX:
+        case RULE_TYPE::Op_AbsoluteY:
+        case RULE_TYPE::Op_Indirect:
+            return 3;
+
+        default:
+            return 1;
     }
 }
 
@@ -314,14 +330,15 @@ struct LabelStatement : Statement {
 };
 
 struct InstructionStatement : Statement {
+    uint16_t address{0};
     std::string mnemonic;
     RULE_TYPE mode{RULE_TYPE::Op_Implied};
     std::unique_ptr<ExprNode> operand{nullptr};
+    std::vector<uint8_t> bytes;
 
     InstructionStatement(std::string m, RULE_TYPE mode, std::unique_ptr<ExprNode> op)
         : mnemonic(std::move(m)), mode(mode), operand(std::move(op)) {}
 };
-
 struct OrgStatement : Statement {
     std::unique_ptr<ExprNode> address_expr;
     explicit OrgStatement(std::unique_ptr<ExprNode> expr) : address_expr(std::move(expr)) {}
@@ -354,13 +371,11 @@ class AssemblerParser {
     PasmTokenizer::Token Tok;
 
 private:
-    bool IsMacro(const std::string& name) const {
-        std::string lower_key = name;
-        std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        return macros_.contains(lower_key);
-    }
-
+bool IsMacro(std::string name) const {
+    std::transform(name.begin(), name.end(), name.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return macros_.find(name) != macros_.end();
+}
 public:
     explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens) : tokens_(std::move(tokens)) {
         if (!tokens_.empty()) Tok = tokens_[0];
@@ -405,8 +420,13 @@ public:
         std::vector<std::unique_ptr<Statement>> statements;
 
         auto line = 1;
-
+		bool display_tok = true;
         while (!TokIs(TokenKind::Eof)) { 
+			
+			if (display_tok) {
+				std::cout << "index = " << index_;
+				printTok(" [main] ", Tok);
+			}
 
             // check for a comment
             if (TokIs(TokenKind::Semicolon)) {
@@ -435,7 +455,8 @@ public:
 
             // 2. PC Assignment (e.g., * = $C000)
             if (TokIs(TokenKind::Star) && TokAheadIs(TokenKind::Equal)) {
-                ConsumeToken(); // consume '*'
+				printTok("PROCESS PC Assignment  ", Tok);
+				ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
                 statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
@@ -446,7 +467,9 @@ public:
 			// 3. Labels
             // Ensure we don't accidentally treat a macro invocation as a label
             if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text))) {
-                std::string name = Tok.text;
+     			printTok("PROCESS Label ", Tok);
+
+				std::string name = Tok.text;
                 if (!name.empty() && name.back() == ':')
                     name.pop_back();
                 Tok.id = static_cast<int>(TokenKind::Label);
@@ -457,6 +480,8 @@ public:
 
             // 4. Directives (.org, .byte, .word)
             if (TokIs(TokenKind::Directive)) {
+				printTok("PROCESS Directive ", Tok);
+
                 PasmTokenizer::Token dir_tok = ConsumeToken();
                 std::string dir = dir_tok.text;
                 std::transform(dir.begin(), dir.end(), dir.begin(),
@@ -483,8 +508,6 @@ public:
                 
                 else if (dir == ".macro") {
                     PasmTokenizer::Token name_tok = ConsumeToken();
-					 std::cout << "name_tok " << name_tok.text << " id " << name_tok.id << "\n";
-
                     if (!name_tok.is(static_cast<int>(TokenKind::Identifier))) {
 						throw std::runtime_error(".macro expected name");
 					}
@@ -493,6 +516,8 @@ public:
                     while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                         ConsumeToken();
                     }
+					// consume newline
+					ConsumeToken();
 
                     MacroDef def;
                     def.name = name_tok.text;
@@ -500,7 +525,7 @@ public:
                     // Slurp all tokens until .endm directive is reached
                     auto slurp = ConsumeToken();
                     while (!(slurp.is(static_cast<int>(TokenKind::Directive)) && slurp.text == ".endm")) {
-                        def.body_tokens.push_back(slurp);
+						def.body_tokens.push_back(slurp);
                         slurp = ConsumeToken();
                     }
 
@@ -514,7 +539,8 @@ public:
 					    [](unsigned char c) {
         					return static_cast<char>(std::tolower(c));
   					});
-                    macros_[lower_key] = std::move(def);
+                    std::cout << "saving macro " << lower_key << "\n";
+					macros_[lower_key] = std::move(def);
                     
                     // Macro definitions emit no statements into the AST
                     continue;
@@ -523,163 +549,191 @@ public:
             }
 
 			// 4.5 Macro Expansion
-            if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
-                std::string mac_name = ConsumeToken().text;
-                
-                std::string lower_key = mac_name;
-                std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-        	        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                
-                const MacroDef& mac = macros_[lower_key];
+			if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
+				// 1. Save the start position of the macro call in the token stream
+				size_t start_idx = index_;
 
-                // Parse the arguments passed to the macro call
-                std::vector<std::vector<PasmTokenizer::Token>> args;
-                std::vector<PasmTokenizer::Token> current_arg;
-                
-                while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof) && !TokIs(TokenKind::Semicolon)) {
-                    if (TokIs(TokenKind::Comma)) {
-                        args.push_back(current_arg);
-                        current_arg.clear();
-                        ConsumeToken();
-                    } else {
-                        current_arg.push_back(ConsumeToken());
-                    }
-                }
-                if (!current_arg.empty()) {
-                    args.push_back(current_arg);
-                }
+				std::string mac_name = ConsumeToken().text;
+				
+				std::cout << "\n\nexpanding macro " << mac_name << "\n\n";
+				std::cout << "index " << start_idx << "\n";
+				
+				std::string lower_key = mac_name;
+				std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+					[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+				
+				const MacroDef& mac = macros_[lower_key];
 
-	            // Positional Token Substitution
-                std::vector<PasmTokenizer::Token> expanded_tokens;
-                for (size_t i = 0; i < mac.body_tokens.size(); ++i) {
-                    const auto& body_tok = mac.body_tokens[i];
-                    bool substituted = false;
-                    
-                    // Look for positional identifiers like \1, \2, \10
-                    if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
-                        auto valid = true;
-                        int arg_idx = 0;
-                        
-                        // FIX: Use 'j' so we don't shadow the outer 'i' loop
-                        for (size_t j = 1; j < body_tok.text.size(); ++j) {
-                            if (!std::isdigit(body_tok.text[j])) {
-                                valid = false;
-                                break;
-                            }
-                            arg_idx *= 10;
-                            // FIX: Must subtract '0' to safely get the actual integer value
-                            arg_idx += body_tok.text[j] - '0';
-                        }
-                        
-                        if (valid) {
-                            // FIX: Now that we extracted the raw integer (e.g., 1), shift it to 0-based index
-                            arg_idx -= 1; 
+				// Parse the arguments passed to the macro call
+				std::vector<std::vector<PasmTokenizer::Token>> args;
+				std::vector<PasmTokenizer::Token> current_arg;
+				
+				while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof) && !TokIs(TokenKind::Semicolon)) {
+					if (TokIs(TokenKind::Comma)) {
+						args.push_back(current_arg);
+						current_arg.clear();
+						ConsumeToken();
+					} else {
+						current_arg.push_back(ConsumeToken());
+					}
+				}
+				if (!current_arg.empty()) {
+					args.push_back(current_arg);
+				}
 
-                            if (arg_idx >= 0 && arg_idx < args.size()) {
-                                // Inject the passed argument tokens in place of the positional marker
-                                expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
-                                substituted = true;
-                            } else {
-                                throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
-                            }
-                        }
-                    }
-                    
-                    if (!substituted) {
-                        expanded_tokens.push_back(body_tok);
-                    }
-                }
+				if (TokIs(TokenKind::Newline)) {
+					ConsumeToken();
+				}
 
-                // Inject the expanded tokens back into the main token stream
-                tokens_.insert(tokens_.begin() + index_, expanded_tokens.begin(), expanded_tokens.end());
-                
-                // Point Tok at the newly injected stream
-                Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), ""};
-                
-                continue;
-            }
+				// 2. Save the end position after consuming the invocation line
+				size_t end_idx = index_;
+
+				// Positional Token Substitution
+				std::vector<PasmTokenizer::Token> expanded_tokens;
+				for (size_t i = 0; i < mac.body_tokens.size(); ++i) {
+					const auto& body_tok = mac.body_tokens[i];
+
+					bool substituted = false;
+					
+					// Look for positional identifiers like \1, \2, \10
+					if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
+						auto valid = true;
+						int arg_idx = 0;
+						
+						for (size_t j = 1; j < body_tok.text.size(); ++j) {
+							if (!std::isdigit(body_tok.text[j])) {
+								valid = false;
+								break;
+							}
+							arg_idx *= 10;
+							arg_idx += body_tok.text[j] - '0';
+						}
+						
+						if (valid) {
+							arg_idx -= 1; 
+
+							if (arg_idx >= 0 && arg_idx < static_cast<int>(args.size())) {
+								for (auto a : args[arg_idx]) {
+									expanded_tokens.push_back(a);
+								}
+								substituted = true;
+							} else {
+								throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
+							}
+						}
+					}
+					
+					if (!substituted) {
+						expanded_tokens.push_back(body_tok);
+					}
+				}
+
+				for (auto& exp: expanded_tokens) {
+					printTok("expansion tokens", exp);
+				}
+
+
+				// 3. Remove the original invocation tokens (testm 50,LOOP\n)
+				std::cout << "erasing " << start_idx << " to " << end_idx << "\n";
+				tokens_.erase(tokens_.begin() + start_idx, tokens_.begin() + end_idx);
+
+				// 4. Insert expanded tokens into the exact spot of the macro call
+				std::cout << "inserting " << start_idx << "\n";
+				tokens_.insert(tokens_.begin() + start_idx, expanded_tokens.begin(), expanded_tokens.end());
+				
+				// 5. Reset index_ and Tok back to start_idx to process the injected tokens
+				index_ = start_idx -1;
+				ConsumeToken();
+				continue;
+			}
 
 			// 5. Opcodes
-            if (TokIs(TokenKind::Opcode)) {
-                PasmTokenizer::Token opcode_tok = ConsumeToken();
-                std::string mnemonic = opcode_tok.text;
-                RULE_TYPE mode = RULE_TYPE::Op_Implied;
-                ExprResult operand_expr;
+			if (TokIs(TokenKind::Opcode)) {
+				
+				printTok("PROCESS Opcode ", Tok);
+				
+				PasmTokenizer::Token opcode_tok = ConsumeToken();
+				std::string mnemonic = opcode_tok.text;
+				RULE_TYPE mode = RULE_TYPE::Op_Implied;
+				ExprResult operand_expr;
 
-                if (TokIs(TokenKind::Hash)) {
-                    // Immediate: #expr
-                    ConsumeToken();
-                    mode = RULE_TYPE::Op_Immediate;
-                    operand_expr = ParseExpression();
-                } else if (TokIs(TokenKind::Newline) || TokIs(TokenKind::Eof) || TokIs(TokenKind::Semicolon)) {
-                    // Implied
-                    mode = RULE_TYPE::Op_Implied;
-                } else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
-                    // Accumulator: LSR A
-                    ConsumeToken();
-                    mode = RULE_TYPE::Op_Accumulator; // Ensure you have this in your RULE_TYPE enum
-                } else if (TokIs(TokenKind::LParen)) {
-                    // Indirect modes
-                    ConsumeToken(); // Consume '('
-                    operand_expr = ParseExpression();
-                    
-                    if (TokIs(TokenKind::Comma)) {
-                        // Indexed Indirect: (expr, X)
-                        ConsumeToken(); // Consume ','
-                        if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
-                            ConsumeToken(); // Consume 'X'
-                            if (TokIs(TokenKind::RParen)) {
-                                ConsumeToken(); // Consume ')'
-                                mode = RULE_TYPE::Op_IndirectX;
-                            } else {
-                                throw std::runtime_error("Expected ')' for Indirect X addressing");
-                            }
-                        } else {
-                            throw std::runtime_error("Expected 'X' for Indirect X addressing");
-                        }
-                    } else if (TokIs(TokenKind::RParen)) {
-                        ConsumeToken(); // Consume ')'
-                        if (TokIs(TokenKind::Comma)) {
-                            // Indirect Indexed: (expr), Y
-                            ConsumeToken(); // Consume ','
-                            if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
-                                ConsumeToken(); // Consume 'Y'
-                                mode = RULE_TYPE::Op_IndirectY;
-                            } else {
-                                throw std::runtime_error("Expected 'Y' for Indirect Y addressing");
-                            }
-                        } else {
-                            // Standard Indirect: (expr) - typically used by JMP
-                            mode = RULE_TYPE::Op_Indirect;
-                        }
-                    } else {
-                        throw std::runtime_error("Malformed indirect addressing mode");
-                    }
-                } else {
-                    // Absolute, Absolute X/Y, Relative, or Zero-Page
-                    operand_expr = ParseExpression();
-                    if (TokIs(TokenKind::Comma)) {
-                        ConsumeToken();
-                        if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
-                            ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteX; // (May be downgraded to ZeroPageX later)
-                        } else if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
-                            ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteY; // (May be downgraded to ZeroPageY later)
-                        } else {
-                            throw std::runtime_error("Expected X or Y register after comma");
-                        }
-                    } else {
-                        mode = DeduceMemoryMode(mnemonic);
-                    }
-                }
+				if (TokIs(TokenKind::Hash)) {
+					printTok("Hash ", Tok);
 
-                statements.push_back(std::make_unique<InstructionStatement>(
-                                         mnemonic, mode, operand_expr.release()
-                                     ));
-                continue;
-            }
+					// Immediate: #expr
+					ConsumeToken();
+					mode = RULE_TYPE::Op_Immediate;
+					operand_expr = ParseExpression();
+				} else if (TokIs(TokenKind::Newline) || TokIs(TokenKind::Eof) || TokIs(TokenKind::Semicolon)) {
+					// Implied
+					mode = RULE_TYPE::Op_Implied;
+				} else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
+					// Accumulator: LSR A
+					ConsumeToken();
+					mode = RULE_TYPE::Op_Accumulator;
+				} else if (TokIs(TokenKind::LParen)) {
+					// Indirect modes
+					ConsumeToken(); // Consume '('
+					operand_expr = ParseExpression();
+					
+					if (TokIs(TokenKind::Comma)) {
+						// Indexed Indirect: (expr, X)
+						ConsumeToken(); // Consume ','
+						if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
+							ConsumeToken(); // Consume 'X'
+							if (TokIs(TokenKind::RParen)) {
+								ConsumeToken(); // Consume ')'
+								mode = RULE_TYPE::Op_IndirectX;
+							} else {
+								throw std::runtime_error("Expected ')' for Indirect X addressing");
+							}
+						} else {
+							throw std::runtime_error("Expected 'X' for Indirect X addressing");
+						}
+					} else if (TokIs(TokenKind::RParen)) {
+						ConsumeToken(); // Consume ')'
+						if (TokIs(TokenKind::Comma)) {
+							// Indirect Indexed: (expr), Y
+							ConsumeToken(); // Consume ','
+							if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
+								ConsumeToken(); // Consume 'Y'
+								mode = RULE_TYPE::Op_IndirectY;
+							} else {
+								throw std::runtime_error("Expected 'Y' for Indirect Y addressing");
+							}
+						} else {
+							// Standard Indirect: (expr) - used by JMP
+							mode = RULE_TYPE::Op_Indirect;
+						}
+					} else {
+						throw std::runtime_error("Malformed indirect addressing mode");
+					}
+				} else {
+					// Absolute, Absolute X/Y, Relative, or Zero-Page
+					operand_expr = ParseExpression();
+					if (TokIs(TokenKind::Comma)) {
+						ConsumeToken();
+						if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
+							ConsumeToken();
+							mode = RULE_TYPE::Op_AbsoluteX;
+						} else if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
+							ConsumeToken();
+							mode = RULE_TYPE::Op_AbsoluteY;
+						} else {
+							throw std::runtime_error("Expected X or Y register after comma");
+						}
+					} else {
+						mode = DeduceMemoryMode(mnemonic);
+					}
+				}
 
+				std::cout << "creating InstructionStatement [" << mnemonic << "] mode [" << mode << "]\n";
+				
+				statements.push_back(std::make_unique<InstructionStatement>(
+					mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.release())
+				));
+				continue;
+			}			
             std::cout << "Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << "\n";
             ConsumeToken();
         }
@@ -916,7 +970,7 @@ private:
                             }
                         }
                     }
-                    pc += GetInstructionLength(inst->mode);
+                    pc += GetInstructionSize(inst->mode);
                 }
                 new_statements.push_back(std::move(stmt));
             }
