@@ -441,7 +441,7 @@ public:
 
             // check for a comment
             if (TokIs(TokenKind::Semicolon)) {
-				printProcToc("Comment  ", Tok);
+				printProcTok("Comment  ", Tok);
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                     ConsumeToken();
                 }
@@ -493,7 +493,7 @@ public:
 
             // 4. Directives (.org, .byte, .word)
             if (TokIs(TokenKind::Directive)) {
-				printProcTol("Directive ", Tok);
+				printProcTok("Directive ", Tok);
 
                 PasmTokenizer::Token dir_tok = ConsumeToken();
                 std::string dir = dir_tok.text;
