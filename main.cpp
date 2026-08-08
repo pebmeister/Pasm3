@@ -521,7 +521,7 @@ public:
                 }
                 continue;
             }
-
+/*
 			// 4.5 Macro Expansion
             if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
                 std::string mac_name = ConsumeToken().text;
@@ -592,7 +592,7 @@ public:
                 
                 continue;
             }
-			
+			*/
             // 5. Opcodes
             if (TokIs(TokenKind::Opcode)) {
                 PasmTokenizer::Token opcode_tok = ConsumeToken();
