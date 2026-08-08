@@ -436,7 +436,7 @@ public:
 			
 			if (display_tok) {
 				std::cout << "index = " << index_;
-				printTok("[ParseProgram]", Tok);
+				printTok("  [ParseProgram]", Tok);
 			}
 
             // check for a comment
