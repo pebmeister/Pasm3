@@ -441,7 +441,7 @@ public:
 
             // check for a comment
             if (TokIs(TokenKind::Semicolon)) {
-				printProcToc("comment  ", Tok);
+				printProTok("Comment  ", Tok);
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                     ConsumeToken();
                 }
@@ -450,7 +450,7 @@ public:
 
             // end of line
             if (TokIs(TokenKind::Newline)) {
-            	prontProcToc("EOL  ", Tok);
+            	prontProcTok("EOL  ", Tok);
 				ConsumeToken();
                 line++;
                 continue;
@@ -458,7 +458,7 @@ public:
 
             // 1. Symbol definition / EQU (e.g. SCREEN = $0400)
             if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
-				printProcToc("Equate  ", Tok);
+				printProTok("Equate  ", Tok);
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
@@ -468,7 +468,7 @@ public:
 
             // 2. PC Assignment (e.g., * = $C000)
             if (TokIs(TokenKind::Star) && TokAheadIs(TokenKind::Equal)) {
-				prinProcToc("PC Assignment  ", Tok);
+				printProcTok("PC Assignment  ", Tok);
 				ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
@@ -480,7 +480,7 @@ public:
 			// 3. Labels
             // Ensure we don't accidentally treat a macro invocation as a label
             if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text))) {
-     			printProcToc("Label ", Tok);
+     			printProcTok("Label ", Tok);
 
 				std::string name = Tok.text;
                 if (!name.empty() && name.back() == ':')
@@ -493,7 +493,7 @@ public:
 
             // 4. Directives (.org, .byte, .word)
             if (TokIs(TokenKind::Directive)) {
-				printProcToc("Directive ", Tok);
+				printProTok("Directive ", Tok);
 
                 PasmTokenizer::Token dir_tok = ConsumeToken();
                 std::string dir = dir_tok.text;
@@ -564,7 +564,7 @@ public:
 			// 4.5 Macro Expansion
 			if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
 
-				printProcToc("Macro call ", Tok);
+				printProTok("Macro call ", Tok);
 
 				// 1. Save the start position of the macro call in the token stream
 				size_t start_idx = index_;
