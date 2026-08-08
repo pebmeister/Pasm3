@@ -406,7 +406,7 @@ public:
 
         auto line = 1;
 
-        while (!TokIs(TokenKind::Eof)) {
+        while (!TokIs(TokenKind::Eof)) { 
 
             // check for a comment
             if (TokIs(TokenKind::Semicolon)) {
@@ -521,7 +521,7 @@ public:
                 }
                 continue;
             }
-/*
+
 			// 4.5 Macro Expansion
             if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
                 std::string mac_name = ConsumeToken().text;
@@ -592,8 +592,8 @@ public:
                 
                 continue;
             }
-			*/
-            // 5. Opcodes
+
+			// 5. Opcodes
             if (TokIs(TokenKind::Opcode)) {
                 PasmTokenizer::Token opcode_tok = ConsumeToken();
                 std::string mnemonic = opcode_tok.text;
@@ -601,21 +601,67 @@ public:
                 ExprResult operand_expr;
 
                 if (TokIs(TokenKind::Hash)) {
+                    // Immediate: #expr
                     ConsumeToken();
                     mode = RULE_TYPE::Op_Immediate;
                     operand_expr = ParseExpression();
                 } else if (TokIs(TokenKind::Newline) || TokIs(TokenKind::Eof) || TokIs(TokenKind::Semicolon)) {
+                    // Implied
                     mode = RULE_TYPE::Op_Implied;
+                } else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
+                    // Accumulator: LSR A
+                    ConsumeToken();
+                    mode = RULE_TYPE::Op_Accumulator; // Ensure you have this in your RULE_TYPE enum
+                } else if (TokIs(TokenKind::LParen)) {
+                    // Indirect modes
+                    ConsumeToken(); // Consume '('
+                    operand_expr = ParseExpression();
+                    
+                    if (TokIs(TokenKind::Comma)) {
+                        // Indexed Indirect: (expr, X)
+                        ConsumeToken(); // Consume ','
+                        if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
+                            ConsumeToken(); // Consume 'X'
+                            if (TokIs(TokenKind::RParen)) {
+                                ConsumeToken(); // Consume ')'
+                                mode = RULE_TYPE::Op_IndirectX;
+                            } else {
+                                throw std::runtime_error("Expected ')' for Indirect X addressing");
+                            }
+                        } else {
+                            throw std::runtime_error("Expected 'X' for Indirect X addressing");
+                        }
+                    } else if (TokIs(TokenKind::RParen)) {
+                        ConsumeToken(); // Consume ')'
+                        if (TokIs(TokenKind::Comma)) {
+                            // Indirect Indexed: (expr), Y
+                            ConsumeToken(); // Consume ','
+                            if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
+                                ConsumeToken(); // Consume 'Y'
+                                mode = RULE_TYPE::Op_IndirectY;
+                            } else {
+                                throw std::runtime_error("Expected 'Y' for Indirect Y addressing");
+                            }
+                        } else {
+                            // Standard Indirect: (expr) - typically used by JMP
+                            mode = RULE_TYPE::Op_Indirect;
+                        }
+                    } else {
+                        throw std::runtime_error("Malformed indirect addressing mode");
+                    }
                 } else {
+                    // Absolute, Absolute X/Y, Relative, or Zero-Page
                     operand_expr = ParseExpression();
                     if (TokIs(TokenKind::Comma)) {
                         ConsumeToken();
                         if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
                             ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteX;
+                            mode = RULE_TYPE::Op_AbsoluteX; // (May be downgraded to ZeroPageX later)
                         } else if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
                             ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteY;
+                            mode = RULE_TYPE::Op_AbsoluteY; // (May be downgraded to ZeroPageY later)
+                        } else {
+                            throw std::runtime_error("Expected X or Y register after comma");
                         }
                     } else {
                         mode = DeduceMemoryMode(mnemonic);
@@ -627,6 +673,7 @@ public:
                                      ));
                 continue;
             }
+
             std::cout << "Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << "\n";
             ConsumeToken();
         }
@@ -997,86 +1044,7 @@ private:
                     }
                 }
             }
-			// 5. Opcodes
-            if (TokIs(TokenKind::Opcode)) {
-                PasmTokenizer::Token opcode_tok = ConsumeToken();
-                std::string mnemonic = opcode_tok.text;
-                RULE_TYPE mode = RULE_TYPE::Op_Implied;
-                ExprResult operand_expr;
 
-                if (TokIs(TokenKind::Hash)) {
-                    // Immediate: #expr
-                    ConsumeToken();
-                    mode = RULE_TYPE::Op_Immediate;
-                    operand_expr = ParseExpression();
-                } else if (TokIs(TokenKind::Newline) || TokIs(TokenKind::Eof) || TokIs(TokenKind::Semicolon)) {
-                    // Implied
-                    mode = RULE_TYPE::Op_Implied;
-                } else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
-                    // Accumulator: LSR A
-                    ConsumeToken();
-                    mode = RULE_TYPE::Op_Accumulator; // Ensure you have this in your RULE_TYPE enum
-                } else if (TokIs(TokenKind::LParen)) {
-                    // Indirect modes
-                    ConsumeToken(); // Consume '('
-                    operand_expr = ParseExpression();
-                    
-                    if (TokIs(TokenKind::Comma)) {
-                        // Indexed Indirect: (expr, X)
-                        ConsumeToken(); // Consume ','
-                        if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
-                            ConsumeToken(); // Consume 'X'
-                            if (TokIs(TokenKind::RParen)) {
-                                ConsumeToken(); // Consume ')'
-                                mode = RULE_TYPE::Op_IndirectX;
-                            } else {
-                                throw std::runtime_error("Expected ')' for Indirect X addressing");
-                            }
-                        } else {
-                            throw std::runtime_error("Expected 'X' for Indirect X addressing");
-                        }
-                    } else if (TokIs(TokenKind::RParen)) {
-                        ConsumeToken(); // Consume ')'
-                        if (TokIs(TokenKind::Comma)) {
-                            // Indirect Indexed: (expr), Y
-                            ConsumeToken(); // Consume ','
-                            if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
-                                ConsumeToken(); // Consume 'Y'
-                                mode = RULE_TYPE::Op_IndirectY;
-                            } else {
-                                throw std::runtime_error("Expected 'Y' for Indirect Y addressing");
-                            }
-                        } else {
-                            // Standard Indirect: (expr) - typically used by JMP
-                            mode = RULE_TYPE::Op_Indirect;
-                        }
-                    } else {
-                        throw std::runtime_error("Malformed indirect addressing mode");
-                    }
-                } else {
-                    // Absolute, Absolute X/Y, Relative, or Zero-Page
-                    operand_expr = ParseExpression();
-                    if (TokIs(TokenKind::Comma)) {
-                        ConsumeToken();
-                        if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
-                            ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteX; // (May be downgraded to ZeroPageX later)
-                        } else if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
-                            ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteY; // (May be downgraded to ZeroPageY later)
-                        } else {
-                            throw std::runtime_error("Expected X or Y register after comma");
-                        }
-                    } else {
-                        mode = DeduceMemoryMode(mnemonic);
-                    }
-                }
-
-                statements.push_back(std::make_unique<InstructionStatement>(
-                                         mnemonic, mode, operand_expr.release()
-                                     ));
-                continue;
-            }
 
         }
 		
