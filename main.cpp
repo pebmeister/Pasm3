@@ -560,24 +560,24 @@ public:
                     // you will need to check (body_tok is '\' && next token is a number) instead.
                     if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
 						auto valid = true;
-						int ardx = 0;
+						int arg_index = 0;
 						for (auto i = 1; i < body_tok.text.size(); ++i) {
 							if (!std::isdigit(body_tok[i])) {
 								valid = false;
 								break;
 							}
-							arg_idx *= 10;
-							arg_idx += body_tok[i] - '1';
+							arg_index *= 10;
+							arg_index += body_tok[i] - '1';
 						}
-                    }
-                    if (valid && arg_idx >= 0 && arg_idx < args.size()) {
+                        
+                        if (valid && arg_idx >= 0 && arg_idx < args.size()) {
                             // Inject the passed argument tokens in place of the positional marker
-                        expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
-                        substituted = true;
-                    } else {
-                        throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
-                 	}
-                    
+                            expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
+                            substituted = true;
+                        } else {
+                            throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
+                        }
+                    }
                     
                     if (!substituted) {
                         expanded_tokens.push_back(body_tok);
