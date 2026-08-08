@@ -562,12 +562,12 @@ public:
 						auto valid = true;
 						int arg_idx = 0;
 						for (auto i = 1; i < body_tok.text.size(); ++i) {
-							if (!std::isdigit(body_tok[i])) {
+							if (!std::isdigit(body_tok.text[i])) {
 								valid = false;
 								break;
 							}
 							arg_idx *= 10;
-							arg_idx += body_tok[i] - '1';
+							arg_idx += body_text[i] - '1';
 						}
                         
                         if (valid && arg_idx >= 0 && arg_idx < args.size()) {
