@@ -1,29 +1,31 @@
 // Written by Paul Baxter
 
-#include <algorithm>
-#include <cctype>
-#include <chrono>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+#include <map>
+#include <unordered_map>
 #include <cstdint>
-#include <exception>
+#include <cctype>
+#include <optional>
+#include <algorithm>
+#include <iomanip>
+#include <sstream>
+#include <utility>
 #include <format>
 #include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <map>
-#include <memory>
-#include <optional>
 #include <sstream>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
+#include <exception>
+#include <chrono>
 
 #include "ruletype.h"
 
 #define GEN_TOKMAP
-#include "PasmTokenizer.hpp"
-#include "opcodedict.h"
 #include "tokenkind.h"
+
+#include "opcodedict.h"
+#include "PasmTokenizer.hpp"
 
 struct MacroDef {
     std::string name;
@@ -52,17 +54,22 @@ inline const OpCodeInfo* FindOpCodeInfo(std::string_view mnemonic) {
         for (const auto& [kind, info] : opcodeDict) {
             std::string lower_m(info.mnemonic);
             std::transform(lower_m.begin(), lower_m.end(), lower_m.begin(),
-                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            [](unsigned char c) {
+                return static_cast<char>(std::tolower(c));
+            });
 
             index[lower_m] = kind;
         }
         return index;
-    }();
+    }
+    ();
 
     // 2. Lowercase the search query
     std::string lower_key(mnemonic);
     std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
 
     // 3. O(1) hash lookup into index, then direct lookup in opcodeDict
     auto it = mnemonic_to_kind.find(lower_key);
@@ -101,7 +108,8 @@ struct SymbolExpr : ExprNode {
 struct UnaryExpr : ExprNode {
     int op;
     std::unique_ptr<ExprNode> operand;
-    UnaryExpr(int op, std::unique_ptr<ExprNode> rhs) : op(op), operand(std::move(rhs)) {}
+    UnaryExpr(int op, std::unique_ptr<ExprNode> rhs)
+        : op(op), operand(std::move(rhs)) {}
 };
 
 struct BinaryExpr : ExprNode {
@@ -116,7 +124,7 @@ class ExprResult {
     std::unique_ptr<ExprNode> node_{nullptr};
     bool invalid_{false};
 
-   public:
+public:
     ExprResult() = default;
     ExprResult(std::unique_ptr<ExprNode> node) : node_(std::move(node)) {}
 
@@ -126,31 +134,39 @@ class ExprResult {
         return res;
     }
 
-    [[nodiscard]] bool isInvalid() const { return invalid_; }
-    [[nodiscard]] bool isUsable() const { return !invalid_ && node_ != nullptr; }
-    const ExprNode* get() const { return node_.get(); }
-    std::unique_ptr<ExprNode> release() { return std::move(node_); }
+    [[nodiscard]] bool isInvalid() const {
+        return invalid_;
+    }
+    [[nodiscard]] bool isUsable() const {
+        return !invalid_ && node_ != nullptr;
+    }
+    const ExprNode* get() const {
+        return node_.get();
+    }
+    std::unique_ptr<ExprNode> release() {
+        return std::move(node_);
+    }
 };
 inline int GetInstructionLength(RULE_TYPE mode) {
     switch (mode) {
-        case RULE_TYPE::Op_Implied:
-        case RULE_TYPE::Op_Accumulator:
-            return 1;
-        case RULE_TYPE::Op_Immediate:
-        case RULE_TYPE::Op_ZeroPage:
-        case RULE_TYPE::Op_ZeroPageX:
-        case RULE_TYPE::Op_ZeroPageY:
-        case RULE_TYPE::Op_Relative:
-        case RULE_TYPE::Op_IndirectX:
-        case RULE_TYPE::Op_IndirectY:
-            return 2;
-        case RULE_TYPE::Op_Absolute:
-        case RULE_TYPE::Op_AbsoluteX:
-        case RULE_TYPE::Op_AbsoluteY:
-        case RULE_TYPE::Op_Indirect:
-            return 3;
-        default:
-            return 1;
+    case RULE_TYPE::Op_Implied:
+    case RULE_TYPE::Op_Accumulator:
+        return 1;
+    case RULE_TYPE::Op_Immediate:
+    case RULE_TYPE::Op_ZeroPage:
+    case RULE_TYPE::Op_ZeroPageX:
+    case RULE_TYPE::Op_ZeroPageY:
+    case RULE_TYPE::Op_Relative:
+    case RULE_TYPE::Op_IndirectX:
+    case RULE_TYPE::Op_IndirectY:
+        return 2;
+    case RULE_TYPE::Op_Absolute:
+    case RULE_TYPE::Op_AbsoluteX:
+    case RULE_TYPE::Op_AbsoluteY:
+    case RULE_TYPE::Op_Indirect:
+        return 3;
+    default:
+        return 1;
     }
 }
 
@@ -159,11 +175,11 @@ struct CaseInsensitiveHash {
     using is_transparent = void;
 
     std::size_t operator()(std::string_view sv) const {
-        std::size_t hash = 14695981039346656037ULL;  // FNV-1a offset basis
+        std::size_t hash = 14695981039346656037ULL; // FNV-1a offset basis
         for (char c : sv) {
             auto uc = static_cast<unsigned char>(c);
             hash ^= static_cast<std::size_t>(std::tolower(uc));
-            hash *= 1099511628211ULL;  // FNV-1a prime
+            hash *= 1099511628211ULL; // FNV-1a prime
         }
         return hash;
     }
@@ -174,16 +190,26 @@ struct CaseInsensitiveEqual {
     using is_transparent = void;
 
     bool operator()(std::string_view lhs, std::string_view rhs) const {
-        return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
-                          [](unsigned char a, unsigned char b) { return std::tolower(a) == std::tolower(b); });
+        return std::equal(
+            lhs.begin(), lhs.end(),
+            rhs.begin(), rhs.end(),
+            [](unsigned char a, unsigned char b) {
+                return std::tolower(a) == std::tolower(b);
+            }
+        );
     }
 };
 
 class SymbolTable {
     // Map with custom Key, Value, Hash, and KeyEqual types
-    std::unordered_map<std::string, uint16_t, CaseInsensitiveHash, CaseInsensitiveEqual> symbols_;
+    std::unordered_map<
+        std::string,
+        uint16_t,
+        CaseInsensitiveHash,
+        CaseInsensitiveEqual
+    > symbols_;
 
-   public:
+public:
     bool Define(const std::string& name, uint16_t val) {
         auto it = symbols_.find(name);
         if (it == symbols_.end()) {
@@ -205,6 +231,7 @@ class SymbolTable {
     }
 };
 
+
 inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols) {
     if (!node) return std::nullopt;
 
@@ -221,20 +248,20 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
         auto val = EvaluateExpr(un->operand.get(), symbols);
         if (!val) return std::nullopt;
         switch ((TokenKind)un->op) {
-            case TokenKind::Minus:
-                return -(*val);
-            case TokenKind::Plus:
-                return +(*val);
-            case TokenKind::Tilde:
-                return ~(*val);
-            case TokenKind::Bang:
-                return !(*val);
-            case TokenKind::LowByte:
-                return (*val) & 0xFF;
-            case TokenKind::HighByte:
-                return ((*val) >> 8) & 0xFF;
-            default:
-                return std::nullopt;
+        case TokenKind::Minus:
+            return -(*val);
+        case TokenKind::Plus:
+            return +(*val);
+        case TokenKind::Tilde:
+            return ~(*val);
+        case TokenKind::Bang:
+            return !(*val);
+        case TokenKind::LowByte:
+            return (*val) & 0xFF;
+        case TokenKind::HighByte:
+            return ((*val) >> 8) & 0xFF;
+        default:
+            return std::nullopt;
         }
     }
 
@@ -245,28 +272,28 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
         if (!lhs || !rhs) return std::nullopt;
 
         switch ((TokenKind)bin->op) {
-            case TokenKind::Plus:
-                return *lhs + *rhs;
-            case TokenKind::Minus:
-                return *lhs - *rhs;
-            case TokenKind::Star:
-                return *lhs * *rhs;
-            case TokenKind::Slash:
-                return (*rhs != 0) ? *lhs / *rhs : 0;
-            case TokenKind::Percent:
-                return (*rhs != 0) ? *lhs % *rhs : 0;
-            case TokenKind::Ampersand:
-                return *lhs & *rhs;
-            case TokenKind::Pipe:
-                return *lhs | *rhs;
-            case TokenKind::Caret:
-                return *lhs ^ *rhs;
-            case TokenKind::Shl:
-                return *lhs << *rhs;
-            case TokenKind::Shr:
-                return *lhs >> *rhs;
-            default:
-                return std::nullopt;
+        case TokenKind::Plus:
+            return *lhs + *rhs;
+        case TokenKind::Minus:
+            return *lhs - *rhs;
+        case TokenKind::Star:
+            return *lhs * *rhs;
+        case TokenKind::Slash:
+            return (*rhs != 0) ? *lhs / *rhs : 0;
+        case TokenKind::Percent:
+            return (*rhs != 0) ? *lhs % *rhs : 0;
+        case TokenKind::Ampersand:
+            return *lhs & *rhs;
+        case TokenKind::Pipe:
+            return *lhs | *rhs;
+        case TokenKind::Caret:
+            return *lhs ^ *rhs;
+        case TokenKind::Shl:
+            return *lhs << *rhs;
+        case TokenKind::Shr:
+            return *lhs >> *rhs;
+        default:
+            return std::nullopt;
         }
     }
 
@@ -303,7 +330,8 @@ struct OrgStatement : Statement {
 struct EquStatement : Statement {
     std::string name;
     std::unique_ptr<ExprNode> value_expr;
-    EquStatement(std::string n, std::unique_ptr<ExprNode> expr) : name(std::move(n)), value_expr(std::move(expr)) {}
+    EquStatement(std::string n, std::unique_ptr<ExprNode> expr)
+        : name(std::move(n)), value_expr(std::move(expr)) {}
 };
 
 enum class DataWidth { Byte, Word };
@@ -312,7 +340,8 @@ struct DataStatement : Statement {
     DataWidth width{DataWidth::Byte};
     std::vector<std::unique_ptr<ExprNode>> elements;
 
-    DataStatement(DataWidth w, std::vector<std::unique_ptr<ExprNode>> elems) : width(w), elements(std::move(elems)) {}
+    DataStatement(DataWidth w, std::vector<std::unique_ptr<ExprNode>> elems)
+        : width(w), elements(std::move(elems)) {}
 };
 
 // ============================================================================
@@ -324,15 +353,15 @@ class AssemblerParser {
     size_t index_{0};
     PasmTokenizer::Token Tok;
 
-   private:
+private:
     bool IsMacro(const std::string& name) const {
         std::string lower_key = name;
         std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         return macros_.contains(lower_key);
     }
 
-   public:
+public:
     explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens) : tokens_(std::move(tokens)) {
         if (!tokens_.empty()) Tok = tokens_[0];
     }
@@ -345,7 +374,9 @@ class AssemblerParser {
         return prev;
     }
 
-    [[nodiscard]] bool TokIs(TokenKind kind) const { return Tok.is(static_cast<int>(kind)); }
+    [[nodiscard]] bool TokIs(TokenKind kind) const {
+        return Tok.is(static_cast<int>(kind));
+    }
 
     [[nodiscard]] bool TokAheadIs(TokenKind kind, int n = 1) const {
         auto temp_index = index_;
@@ -376,8 +407,10 @@ class AssemblerParser {
         auto line = 1;
 
         while (!TokIs(TokenKind::Eof)) {
+
             // check for a comment
             if (TokIs(TokenKind::Semicolon)) {
+
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                     ConsumeToken();
                 }
@@ -394,7 +427,7 @@ class AssemblerParser {
             // 1. Symbol definition / EQU (e.g. SCREEN = $0400)
             if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
                 std::string sym_name = ConsumeToken().text;
-                ConsumeToken();  // consume '='
+                ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
                 statements.push_back(std::make_unique<EquStatement>(sym_name, val_expr.release()));
                 continue;
@@ -402,18 +435,20 @@ class AssemblerParser {
 
             // 2. PC Assignment (e.g., * = $C000)
             if (TokIs(TokenKind::Star) && TokAheadIs(TokenKind::Equal)) {
-                ConsumeToken();  // consume '*'
-                ConsumeToken();  // consume '='
+                ConsumeToken(); // consume '*'
+                ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
                 statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
                 continue;
             }
 
-            // 3. Labels
+   
+			// 3. Labels
             // Ensure we don't accidentally treat a macro invocation as a label
             if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text))) {
                 std::string name = Tok.text;
-                if (!name.empty() && name.back() == ':') name.pop_back();
+                if (!name.empty() && name.back() == ':')
+                    name.pop_back();
                 Tok.id = static_cast<int>(TokenKind::Label);
                 statements.push_back(std::make_unique<LabelStatement>(std::move(name)));
                 ConsumeToken();
@@ -424,12 +459,16 @@ class AssemblerParser {
             if (TokIs(TokenKind::Directive)) {
                 PasmTokenizer::Token dir_tok = ConsumeToken();
                 std::string dir = dir_tok.text;
-                std::transform(dir.begin(), dir.end(), dir.begin(), [](unsigned char c) { return std::tolower(c); });
+                std::transform(dir.begin(), dir.end(), dir.begin(),
+                [](unsigned char c) {
+                    return std::tolower(c);
+                });
 
                 if (dir == ".org") {
                     auto addr_expr = ParseExpression();
                     statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
-                } else if (dir == ".byte" || dir == ".word") {
+                }
+                else if (dir == ".byte" || dir == ".word") {
                     DataWidth w = (dir == ".byte") ? DataWidth::Byte : DataWidth::Word;
                     std::vector<std::unique_ptr<ExprNode>> elems;
 
@@ -441,16 +480,16 @@ class AssemblerParser {
 
                     statements.push_back(std::make_unique<DataStatement>(w, std::move(elems)));
                 }
-
+                
                 else if (dir == ".macro") {
                     PasmTokenizer::Token name_tok = ConsumeToken();
-                    std::cout << "name_tok " << name_tok.text << " id " << name_tok.id << "\n";
+					 std::cout << "name_tok " << name_tok.text << " id " << name_tok.id << "\n";
 
                     if (!name_tok.is(static_cast<int>(TokenKind::Identifier))) {
-                        throw std::runtime_error(".macro expected name");
-                    }
+						throw std::runtime_error(".macro expected name");
+					}
 
-                    // skip to EOL
+					// skip to EOL
                     while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                         ConsumeToken();
                     }
@@ -468,33 +507,35 @@ class AssemblerParser {
                     if (TokIs(TokenKind::Eof)) {
                         throw std::runtime_error("Expected .endm to close macro definition");
                     }
-
+                    
                     // Store in registry
-                    std::string lower_key(def.name);
-                    std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-                                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+					std::string lower_key(def.name);
+    				std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+					    [](unsigned char c) {
+        					return static_cast<char>(std::tolower(c));
+  					});
                     macros_[lower_key] = std::move(def);
-
+                    
                     // Macro definitions emit no statements into the AST
                     continue;
                 }
                 continue;
             }
 
-            // 4.5 Macro Expansion
+			// 4.5 Macro Expansion
             if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
                 std::string mac_name = ConsumeToken().text;
-
+                
                 std::string lower_key = mac_name;
                 std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-
+        	        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                
                 const MacroDef& mac = macros_[lower_key];
 
                 // Parse the arguments passed to the macro call
                 std::vector<std::vector<PasmTokenizer::Token>> args;
                 std::vector<PasmTokenizer::Token> current_arg;
-
+                
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof) && !TokIs(TokenKind::Semicolon)) {
                     if (TokIs(TokenKind::Comma)) {
                         args.push_back(current_arg);
@@ -513,32 +554,31 @@ class AssemblerParser {
                 for (size_t i = 0; i < mac.body_tokens.size(); ++i) {
                     const auto& body_tok = mac.body_tokens[i];
                     bool substituted = false;
-
+                    
                     // Look for positional identifiers like \1, \2, \3
-                    // Note: If your PasmTokenizer splits '\' and '1' into two separate tokens,
+                    // Note: If your PasmTokenizer splits '\' and '1' into two separate tokens, 
                     // you will need to check (body_tok is '\' && next token is a number) instead.
                     if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
-                        auto valid = true;
-                        int arg_index = 0;
-                        for (auto i = 1; i < body_tok.text.size(); ++i) {
-                            if (!std::isdigit(body_tok[i])) {
-                                valid = false;
-                                break;
-                            }
-                            arg_index *= 10;
-                            arg_index += body_tok[i] - '1';
-                        }
-
-                        if (valid && arg_idx >= 0 && arg_idx < args.size()) {
-                            // Inject the passed argument tokens in place of the positional marker
-                            expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
-                            substituted = true;
-                        } else {
-                            throw std::runtime_error("Macro call missing argument for positional parameter " +
-                                                     body_tok.text);
-                        }
+						auto valid = true;
+						int ardx = 0;
+						for (auto i = 1; i < body_tok.text.size(); ++i) {
+							if (!std::isdigit(body_tok[i])) {
+								valid = false;
+								break;
+							}
+							arg_idx *= 10;
+							arg_idx += body_tok[i] - '1';
+						}
                     }
-
+                    if (valid && arg_idx >= 0 && arg_idx < args.size()) {
+                            // Inject the passed argument tokens in place of the positional marker
+                        expanded_tokens.insert(expanded_tokens.end(), args[arg_idx].begin(), args[arg_idx].end());
+                        substituted = true;
+                    } else {
+                        throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
+                 	}
+                    
+                    
                     if (!substituted) {
                         expanded_tokens.push_back(body_tok);
                     }
@@ -546,14 +586,13 @@ class AssemblerParser {
 
                 // Inject the expanded tokens back into the main token stream
                 tokens_.insert(tokens_.begin() + index_, expanded_tokens.begin(), expanded_tokens.end());
-
+                
                 // Point Tok at the newly injected stream
-                Tok = (index_ < tokens_.size()) ? tokens_[index_]
-                                                : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), ""};
-
+                Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), ""};
+                
                 continue;
             }
-
+			
             // 5. Opcodes
             if (TokIs(TokenKind::Opcode)) {
                 PasmTokenizer::Token opcode_tok = ConsumeToken();
@@ -583,7 +622,9 @@ class AssemblerParser {
                     }
                 }
 
-                statements.push_back(std::make_unique<InstructionStatement>(mnemonic, mode, operand_expr.release()));
+                statements.push_back(std::make_unique<InstructionStatement>(
+                                         mnemonic, mode, operand_expr.release()
+                                     ));
                 continue;
             }
             std::cout << "Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << "\n";
@@ -593,7 +634,7 @@ class AssemblerParser {
         return statements;
     }
 
-   private:
+private:
     ExprResult ParseExpression(int min_prec = 0) {
         ExprResult lhs = ParsePrefixExpression();
         if (lhs.isInvalid()) return lhs;
@@ -603,12 +644,15 @@ class AssemblerParser {
             if (op_info.prec < min_prec) break;
 
             PasmTokenizer::Token op_tok = ConsumeToken();
-            int next_min_prec = (op_info.assoc == Associativity::Left) ? op_info.prec + 1 : op_info.prec;
+            int next_min_prec = (op_info.assoc == Associativity::Left)
+                                ? op_info.prec + 1 : op_info.prec;
 
             ExprResult rhs = ParseExpression(next_min_prec);
             if (rhs.isInvalid()) return ExprResult::Error();
 
-            lhs = ExprResult(std::make_unique<BinaryExpr>(op_tok.id, lhs.release(), rhs.release()));
+            lhs = ExprResult(std::make_unique<BinaryExpr>(
+                                 op_tok.id, lhs.release(), rhs.release()
+                             ));
         }
         return lhs;
     }
@@ -654,38 +698,40 @@ class AssemblerParser {
 
     static OpPrecedence GetBinaryPrecedence(int kind) {
         switch ((TokenKind)kind) {
-            case TokenKind::Equal:
-                return {5, Associativity::Right};
-            case TokenKind::Pipe:
-                return {10, Associativity::Left};
-            case TokenKind::Caret:
-                return {15, Associativity::Left};
-            case TokenKind::Ampersand:
-                return {20, Associativity::Left};
-            case TokenKind::Shl:
-            case TokenKind::Shr:
-                return {25, Associativity::Left};
-            case TokenKind::Plus:
-            case TokenKind::Minus:
-                return {30, Associativity::Left};
-            case TokenKind::Star:
-            case TokenKind::Slash:
-            case TokenKind::Percent:
-                return {40, Associativity::Left};
-            default:
-                return {-1, Associativity::Left};
+        case TokenKind::Equal:
+            return { 5,  Associativity::Right };
+        case TokenKind::Pipe:
+            return { 10, Associativity::Left  };
+        case TokenKind::Caret:
+            return { 15, Associativity::Left  };
+        case TokenKind::Ampersand:
+            return { 20, Associativity::Left  };
+        case TokenKind::Shl:
+        case TokenKind::Shr:
+            return { 25, Associativity::Left  };
+        case TokenKind::Plus:
+        case TokenKind::Minus:
+            return { 30, Associativity::Left  };
+        case TokenKind::Star:
+        case TokenKind::Slash:
+        case TokenKind::Percent:
+            return { 40, Associativity::Left  };
+        default:
+            return { -1, Associativity::Left  };
         }
     }
 
     static bool IsUnaryPrefix(int k) {
         return k == static_cast<int>(TokenKind::LowByte) || k == static_cast<int>(TokenKind::HighByte) ||
-               k == static_cast<int>(TokenKind::Minus) || k == static_cast<int>(TokenKind::Plus) ||
-               k == static_cast<int>(TokenKind::Tilde) || k == static_cast<int>(TokenKind::Bang);
+               k == static_cast<int>(TokenKind::Minus)   || k == static_cast<int>(TokenKind::Plus)     ||
+               k == static_cast<int>(TokenKind::Tilde)   || k == static_cast<int>(TokenKind::Bang);
     }
 
     RULE_TYPE DeduceMemoryMode(std::string mnemonic) const {
         std::transform(mnemonic.begin(), mnemonic.end(), mnemonic.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+        [](unsigned char c) {
+            return std::tolower(c);
+        });
 
         const OpCodeInfo* info = FindOpCodeInfo(mnemonic);
         if (info->mode_to_opcode.contains(RULE_TYPE::Op_Relative)) {
@@ -703,7 +749,7 @@ class MultiPassAssembler {
     SymbolTable symbols_;
     uint16_t start_pc_{0xC000};
 
-   public:
+public:
     explicit MultiPassAssembler(uint16_t start_pc = 0xC000) : start_pc_(start_pc) {}
 
     void Assemble(std::vector<std::unique_ptr<Statement>>& statements) {
@@ -721,15 +767,14 @@ class MultiPassAssembler {
         }
 
         if (symbols_changed) {
-            throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +
-                                     " passes.");
+            throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +" passes.");
             return;
         }
 
         EmitFinalPass(statements);
     }
 
-   private:
+private:
     bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements) {
         uint16_t pc = start_pc_;
         bool changed = false;
@@ -738,8 +783,11 @@ class MultiPassAssembler {
 
         // Inversion lookup table for 6502 branches
         static const std::unordered_map<std::string, std::string> inverted_branches = {
-            {"bne", "beq"}, {"beq", "bne"}, {"bcc", "bcs"}, {"bcs", "bcc"},
-            {"bvc", "bvs"}, {"bvs", "bvc"}, {"bmi", "bpl"}, {"bpl", "bmi"}};
+            {"bne", "beq"}, {"beq", "bne"},
+            {"bcc", "bcs"}, {"bcs", "bcc"},
+            {"bvc", "bvs"}, {"bvs", "bvc"},
+            {"bmi", "bpl"}, {"bpl", "bmi"}
+        };
 
         for (auto& stmt : statements) {
             if (!stmt) continue;
@@ -747,23 +795,27 @@ class MultiPassAssembler {
             if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
                 changed |= symbols_.Define(lbl->name, pc);
                 new_statements.push_back(std::move(stmt));
-            } else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
+            }
+            else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
                 if (org->address_expr) {
                     auto val = EvaluateExpr(org->address_expr.get(), symbols_);
                     if (val) pc = static_cast<uint16_t>(*val);
                 }
                 new_statements.push_back(std::move(stmt));
-            } else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
+            }
+            else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
                 if (equ->value_expr) {
                     auto val = EvaluateExpr(equ->value_expr.get(), symbols_);
                     if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
                 }
                 new_statements.push_back(std::move(stmt));
-            } else if (auto data = dynamic_cast<const DataStatement*>(stmt.get())) {
+            }
+            else if (auto data = dynamic_cast<const DataStatement*>(stmt.get())) {
                 uint16_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
                 pc += static_cast<uint16_t>(data->elements.size() * bytes_per_elem);
                 new_statements.push_back(std::move(stmt));
-            } else if (auto inst = dynamic_cast<InstructionStatement*>(stmt.get())) {
+            }
+            else if (auto inst = dynamic_cast<InstructionStatement*>(stmt.get())) {
                 const OpCodeInfo* info = FindOpCodeInfo(inst->mnemonic);
                 if (!info) {
                     new_statements.push_back(std::move(stmt));
@@ -772,6 +824,7 @@ class MultiPassAssembler {
 
                 auto mode_it = info->mode_to_opcode.find(inst->mode);
                 if (mode_it != info->mode_to_opcode.end()) {
+
                     if (inst->mode == RULE_TYPE::Op_Relative) {
                         auto val = EvaluateExpr(inst->operand.get(), symbols_);
                         if (val.has_value()) {
@@ -781,15 +834,15 @@ class MultiPassAssembler {
                             if (offset < -128 || offset > 127) {
                                 auto it = inverted_branches.find(inst->mnemonic);
                                 if (it != inverted_branches.end()) {
-                                    std::cout << "Warning: Branch out of range for '" << inst->mnemonic << "' at $"
-                                              << std::hex << pc << ". Expanding to trampoline JMP.\n"
-                                              << std::dec;
+                                    std::cout << "Warning: Branch out of range for '" << inst->mnemonic
+                                              << "' at $" << std::hex << pc
+                                              << ". Expanding to trampoline JMP.\n" << std::dec;
 
                                     // 1. Create the JMP statement FIRST by moving the original target expression
                                     auto jmp_inst = std::make_unique<InstructionStatement>(
-                                        "jmp", RULE_TYPE::Op_Absolute,
-                                        std::move(
-                                            inst->operand)  // Safely transfers the unique_ptr ownership to jmp_inst
+                                        "jmp",
+                                        RULE_TYPE::Op_Absolute,
+                                        std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
                                     );
 
                                     // 2. Modify the original statement in-place into the inverted branch
@@ -813,7 +866,8 @@ class MultiPassAssembler {
                     pc += GetInstructionLength(inst->mode);
                 }
                 new_statements.push_back(std::move(stmt));
-            } else {
+            }
+            else {
                 new_statements.push_back(std::move(stmt));
             }
         }
@@ -826,33 +880,33 @@ class MultiPassAssembler {
     std::string FormatOperand(RULE_TYPE mode, int64_t val) {
         uint16_t v = static_cast<uint16_t>(val);
         switch (mode) {
-            case RULE_TYPE::Op_Immediate:
-                return std::format("#${:02X}", v & 0xFF);
-            case RULE_TYPE::Op_ZeroPage:
-                return std::format("${:02X}", v & 0xFF);
-            case RULE_TYPE::Op_ZeroPageX:
-                return std::format("${:02X},X", v & 0xFF);
-            case RULE_TYPE::Op_ZeroPageY:
-                return std::format("${:02X},Y", v & 0xFF);
-            case RULE_TYPE::Op_Absolute:
-                return std::format("${:04X}", v);
-            case RULE_TYPE::Op_AbsoluteX:
-                return std::format("${:04X},X", v);
-            case RULE_TYPE::Op_AbsoluteY:
-                return std::format("${:04X},Y", v);
-            case RULE_TYPE::Op_Indirect:
-                return std::format("(${:04X})", v);
-            case RULE_TYPE::Op_IndirectX:
-                return std::format("(${:02X},X)", v & 0xFF);
-            case RULE_TYPE::Op_IndirectY:
-                return std::format("(${:02X}),Y", v & 0xFF);
-            case RULE_TYPE::Op_Relative:
-                return std::format("${:04X}", v);
-            case RULE_TYPE::Op_Accumulator:
-                return "A";
-            case RULE_TYPE::Op_Implied:
-            default:
-                return "";
+        case RULE_TYPE::Op_Immediate:
+            return std::format("#${:02X}", v & 0xFF);
+        case RULE_TYPE::Op_ZeroPage:
+            return std::format("${:02X}", v & 0xFF);
+        case RULE_TYPE::Op_ZeroPageX:
+            return std::format("${:02X},X", v & 0xFF);
+        case RULE_TYPE::Op_ZeroPageY:
+            return std::format("${:02X},Y", v & 0xFF);
+        case RULE_TYPE::Op_Absolute:
+            return std::format("${:04X}", v);
+        case RULE_TYPE::Op_AbsoluteX:
+            return std::format("${:04X},X", v);
+        case RULE_TYPE::Op_AbsoluteY:
+            return std::format("${:04X},Y", v);
+        case RULE_TYPE::Op_Indirect:
+            return std::format("(${:04X})", v);
+        case RULE_TYPE::Op_IndirectX:
+            return std::format("(${:02X},X)", v & 0xFF);
+        case RULE_TYPE::Op_IndirectY:
+            return std::format("(${:02X}),Y", v & 0xFF);
+        case RULE_TYPE::Op_Relative:
+            return std::format("${:04X}", v);
+        case RULE_TYPE::Op_Accumulator:
+            return "A";
+        case RULE_TYPE::Op_Implied:
+        default:
+            return "";
         }
     }
 
@@ -943,7 +997,7 @@ class MultiPassAssembler {
                     }
                 }
             }
-            // 5. Opcodes
+			// 5. Opcodes
             if (TokIs(TokenKind::Opcode)) {
                 PasmTokenizer::Token opcode_tok = ConsumeToken();
                 std::string mnemonic = opcode_tok.text;
@@ -961,19 +1015,19 @@ class MultiPassAssembler {
                 } else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
                     // Accumulator: LSR A
                     ConsumeToken();
-                    mode = RULE_TYPE::Op_Accumulator;  // Ensure you have this in your RULE_TYPE enum
+                    mode = RULE_TYPE::Op_Accumulator; // Ensure you have this in your RULE_TYPE enum
                 } else if (TokIs(TokenKind::LParen)) {
                     // Indirect modes
-                    ConsumeToken();  // Consume '('
+                    ConsumeToken(); // Consume '('
                     operand_expr = ParseExpression();
-
+                    
                     if (TokIs(TokenKind::Comma)) {
                         // Indexed Indirect: (expr, X)
-                        ConsumeToken();  // Consume ','
+                        ConsumeToken(); // Consume ','
                         if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
-                            ConsumeToken();  // Consume 'X'
+                            ConsumeToken(); // Consume 'X'
                             if (TokIs(TokenKind::RParen)) {
-                                ConsumeToken();  // Consume ')'
+                                ConsumeToken(); // Consume ')'
                                 mode = RULE_TYPE::Op_IndirectX;
                             } else {
                                 throw std::runtime_error("Expected ')' for Indirect X addressing");
@@ -982,12 +1036,12 @@ class MultiPassAssembler {
                             throw std::runtime_error("Expected 'X' for Indirect X addressing");
                         }
                     } else if (TokIs(TokenKind::RParen)) {
-                        ConsumeToken();  // Consume ')'
+                        ConsumeToken(); // Consume ')'
                         if (TokIs(TokenKind::Comma)) {
                             // Indirect Indexed: (expr), Y
-                            ConsumeToken();  // Consume ','
+                            ConsumeToken(); // Consume ','
                             if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
-                                ConsumeToken();  // Consume 'Y'
+                                ConsumeToken(); // Consume 'Y'
                                 mode = RULE_TYPE::Op_IndirectY;
                             } else {
                                 throw std::runtime_error("Expected 'Y' for Indirect Y addressing");
@@ -1006,10 +1060,10 @@ class MultiPassAssembler {
                         ConsumeToken();
                         if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
                             ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteX;  // (May be downgraded to ZeroPageX later)
+                            mode = RULE_TYPE::Op_AbsoluteX; // (May be downgraded to ZeroPageX later)
                         } else if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
                             ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteY;  // (May be downgraded to ZeroPageY later)
+                            mode = RULE_TYPE::Op_AbsoluteY; // (May be downgraded to ZeroPageY later)
                         } else {
                             throw std::runtime_error("Expected X or Y register after comma");
                         }
@@ -1018,11 +1072,14 @@ class MultiPassAssembler {
                     }
                 }
 
-                statements.push_back(std::make_unique<InstructionStatement>(mnemonic, mode, operand_expr.release()));
+                statements.push_back(std::make_unique<InstructionStatement>(
+                                         mnemonic, mode, operand_expr.release()
+                                     ));
                 continue;
             }
-        }
 
+        }
+		
         listing << "-------------------------------------------------------------------------------\n";
         listing << std::format("Emitted {} bytes.\n", binary_output.size());
 
@@ -1035,7 +1092,7 @@ std::string read_file_to_string(const std::string& path) {
     if (!file) throw std::runtime_error("Failed to open file: " + path);
 
     std::ostringstream ss;
-    ss << file.rdbuf();  // reads entire file
+    ss << file.rdbuf();          // reads entire file
     return ss.str();
 }
 
@@ -1043,27 +1100,29 @@ std::string read_file_to_string(const std::string& path) {
 // 6. Main Test Driver
 // ============================================================================
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     std::vector<std::string> files;
     auto arg = 1;
-    while (arg < argc) {
+    while(arg < argc) {
         if (argv[arg][0] != '-') {
             files.push_back(argv[arg]);
             arg++;
-        } else {
+        }
+        else {
             std::cout << "Unknown option " << argv[arg] << "\n";
             return -1;
         }
     }
     if (files.empty()) {
-        std::cout << "No input file specified.\n";
-        return 1;
+       std::cout << "No input file specified.\n";
+       return 1;
     }
 
     PasmTokenizer tokenizer;
 
     std::vector<PasmTokenizer::Token> tokens;
-    for (auto& file : files) {
+    for (auto& file: files) {
         auto source_code = read_file_to_string(file);
         auto filetokens = tokenizer.tokenize(source_code);
         tokens.insert(tokens.end(), filetokens.begin(), filetokens.end());
@@ -1074,12 +1133,9 @@ int main(int argc, char* argv[]) {
     auto line = 1;
     for (const auto& tok : tokens) {
         auto text = tok.text;
-        if ((text == "\n") || (text == "\r") || (text == "\r\n"))
-            text = "[EOL]";
-        else if (text == "\t")
-            text = "\\t";
-        else if (text == " ")
-            text = "' '";
+        if ((text == "\n") || (text == "\r") || (text == "\r\n")) text = "[EOL]";
+        else if (text == "\t") text = "\\t";
+        else if (text == " ") text = "' '";
 
         // Track whether we are inside a comment
         if (tok.id == static_cast<int>(TokenKind::Semicolon)) {
@@ -1091,7 +1147,7 @@ int main(int argc, char* argv[]) {
             in_comment = false;
             line++;
         }
-        if (in_comment) {
+        if (in_comment ) {
             continue;
         }
 
@@ -1099,15 +1155,18 @@ int main(int argc, char* argv[]) {
         std::cout << "Line [" << line << "] Token: text='" << text << "' id=" << tokmap[(TokenKind)tok.id] << "\n";
 #endif
         if (tok.id == static_cast<int>(TokenKind::Invalid)) {
+
             if (!in_comment) {
-                std::cerr << "Lexical Error at line " << tok.line << ", col " << tok.col << ": Unexpected character '"
-                          << text << "'\n";
+                std::cerr << "Lexical Error at line " << tok.line
+                    << ", col " << tok.col
+                    << ": Unexpected character '" << text << "'\n";
             }
             continue;
         }
     }
 
     try {
+
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         AssemblerParser parser(tokens);
         auto statements = parser.ParseProgram();
@@ -1115,9 +1174,9 @@ int main(int argc, char* argv[]) {
         MultiPassAssembler assembler(0xC000);
         assembler.Assemble(statements);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        std::cout << "Elapsed " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
-                  << " microseconds." << std::endl;
-    } catch (std::exception& ex) {
+        std::cout << "Elapsed " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds." << std::endl;
+    }
+    catch (std::exception& ex) {
         std::cerr << "Error " << ex.what() << "\n";
     }
     return 0;
