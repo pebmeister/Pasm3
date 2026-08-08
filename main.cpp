@@ -567,7 +567,7 @@ public:
 								break;
 							}
 							arg_idx *= 10;
-							arg_idx += body_tok.text[i] - '1';
+							arg_idx += body_tok.text[i] - '0';
 						}
                         
                         if (valid && arg_idx >= 0 && arg_idx < args.size()) {
