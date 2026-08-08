@@ -558,7 +558,7 @@ public:
                     // Look for positional identifiers like \1, \2, \3
                     // Note: If your PasmTokenizer splits '\' and '1' into two separate tokens, 
                     // you will need to check (body_tok is '\' && next token is a number) instead.
-					std::cout << "
+					std::cout << "token index " << i << "\n';
                     if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
 						auto valid = true;
 						int arg_idx = 0;
