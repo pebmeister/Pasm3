@@ -32,9 +32,9 @@ struct MacroDef {
     std::vector<PasmTokenizer::Token> body_tokens;
 };
 
-
 // Add this as a private member in your Parser class
 std::unordered_map<std::string, MacroDef> macros_;
+
 // ============================================================================
 // 1. Core Enums & Data Structures
 // ============================================================================
@@ -430,7 +430,7 @@ public:
 
             // check for a comment
             if (TokIs(TokenKind::Semicolon)) {
-
+				printTok("PROCESS comment  ", Tok);
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                     ConsumeToken();
                 }
@@ -439,13 +439,15 @@ public:
 
             // end of line
             if (TokIs(TokenKind::Newline)) {
-                ConsumeToken();
+            	printTok("PROCESS EOL  ", Tok);
+				ConsumeToken();
                 line++;
                 continue;
             }
 
             // 1. Symbol definition / EQU (e.g. SCREEN = $0400)
             if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
+				printTok("PROCESS Equate  ", Tok);
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
@@ -550,6 +552,9 @@ public:
 
 			// 4.5 Macro Expansion
 			if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
+
+				printTok("PROCESS Macro call ", Tok);
+
 				// 1. Save the start position of the macro call in the token stream
 				size_t start_idx = index_;
 
@@ -582,6 +587,7 @@ public:
 				}
 
 				if (TokIs(TokenKind::Newline)) {
+					line++;
 					ConsumeToken();
 				}
 
