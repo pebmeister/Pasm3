@@ -1037,14 +1037,14 @@ private:
             return "";
         }
     }
-
-    void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements) {
+	
+	void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements) {
         uint16_t pc = start_pc_;
         std::vector<uint8_t> binary_output;
         std::ostringstream listing;
 
         listing << "\n===============================================================================\n";
-        listing << "                                ASSEMBLY LISTING\n";
+        listing << "                               ASSEMBLY LISTING\n";
         listing << "===============================================================================\n";
         listing << "ADDR    BYTES          STATEMENT\n";
         listing << "-------------------------------------------------------------------------------\n";
@@ -1054,7 +1054,7 @@ private:
 
             // 1. Label Statements
             if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
-                listing << std::format("${:04X}                 {}\n", pc, lbl->name);
+                listing << std::format("${:04X}                {}\n", pc, lbl->name);
             }
             // 2. Org Directives (*= $XXXX)
             else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
@@ -1125,79 +1125,76 @@ private:
                     }
                 }
             }
-        else if (auto* inst_stmt = dynamic_cast<InstructionStatement*>(stmt.get())) {
-            
-            // 1. Look up the opcode byte from your dictionary
-            // (Assuming you have a helper function for this)
-            uint8_t opcode = GetOpcodeByte(inst_stmt->mnemonic, inst_stmt->mode);
-            std::vector<uint8_t> emitted_bytes = { opcode };
+            // 5. Instruction / Opcode Statement
+            else if (auto inst_stmt = dynamic_cast<const InstructionStatement*>(stmt.get())) {
+                
+                uint8_t opcode = GetOpcodeByte(inst_stmt->mnemonic, inst_stmt->mode);
+                std::vector<uint8_t> emitted_bytes = { opcode };
 
-            // 2. Evaluate the operand if the mode requires one
-            if (inst_stmt->operand_expr && inst_stmt->operand_expr->has_value()) {
-                int val = inst_stmt->operand_expr->Evaluate();
+                if (inst_stmt->operand_expr) {
+                    auto eval_result = EvaluateExpr(inst_stmt->operand_expr.get(), symbols_);
+                    
+                    // Wait check until the expression.has_value() is true
+                    if (eval_result.has_value()) { 
+                        int val = static_cast<int>(eval_result.value());
 
-                // Determine how many bytes to append based on the addressing mode
-                switch (inst_stmt->mode) {
-                    // 1-byte operand modes (2 bytes total)
-                    case RULE_TYPE::Op_Immediate:
-                    case RULE_TYPE::Op_ZeroPage:
-                    case RULE_TYPE::Op_ZeroPageX:
-                    case RULE_TYPE::Op_ZeroPageY:
-                    case RULE_TYPE::Op_IndirectX:
-                    case RULE_TYPE::Op_IndirectY:
-                        emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-                        break;
+                        switch (inst_stmt->mode) {
+                            // 1-byte operand modes (2 bytes total)
+                            case RULE_TYPE::Op_Immediate:
+                            case RULE_TYPE::Op_ZeroPage:
+                            case RULE_TYPE::Op_ZeroPageX:
+                            case RULE_TYPE::Op_ZeroPageY:
+                            case RULE_TYPE::Op_IndirectX:
+                            case RULE_TYPE::Op_IndirectY:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                break;
 
-                    // 2-byte operand modes (3 bytes total, little endian)
-                    case RULE_TYPE::Op_Absolute:
-                    case RULE_TYPE::Op_AbsoluteX:
-                    case RULE_TYPE::Op_AbsoluteY:
-                    case RULE_TYPE::Op_Indirect:
-                        emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-                        emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-                        break;
+                            // 2-byte operand modes (3 bytes total, little endian)
+                            case RULE_TYPE::Op_Absolute:
+                            case RULE_TYPE::Op_AbsoluteX:
+                            case RULE_TYPE::Op_AbsoluteY:
+                            case RULE_TYPE::Op_Indirect:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+                                break;
 
-                    // Relative mode (Branches) require PC-relative offset calculation
-                    case RULE_TYPE::Op_Relative: {
-                        int next_pc = pc + 2; // PC after this instruction is read
-                        int offset = val - next_pc;
-                        
-                        if (offset < -128 || offset > 127) {
-                            throw std::runtime_error(std::format("Branch out of range: offset is {}", offset));
+                            // Relative mode (Branches) require PC-relative offset calculation
+                            case RULE_TYPE::Op_Relative: {
+                                int next_pc = pc + 2; // PC after this instruction is read
+                                int offset = val - next_pc;
+                                
+                                if (offset < -128 || offset > 127) {
+                                    throw std::runtime_error(std::format("Branch out of range: offset is {}", offset));
+                                }
+                                emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
+                                break;
+                            }
+
+                            case RULE_TYPE::Op_Implied:
+                            case RULE_TYPE::Op_Accumulator:
+                                // No extra bytes
+                                break;
                         }
-                        emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
-                        break;
                     }
-
-                    case RULE_TYPE::Op_Implied:
-                    case RULE_TYPE::Op_Accumulator:
-                        // No extra bytes
-                        break;
                 }
+
+                // Write bytes to the final binary buffer
+                binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
+
+                // Format the hex dump for the listing (e.g., "A9 01    ")
+                std::string hex_dump;
+                for (uint8_t b : emitted_bytes) {
+                    hex_dump += std::format("{:02X} ", b);
+                }
+
+                // Append to listing file with C++20 strict alignment matching your Data format
+                listing << std::format("${:04X}  {:14} {}\n", pc, hex_dump, inst_stmt->source_text);
+
+                // Advance the program counter
+                pc += static_cast<uint16_t>(emitted_bytes.size());
             }
-
-            // 3. Write bytes to the final binary buffer
-            binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
-
-            // 4. Format the hex dump for the listing (e.g., "A9 01    ")
-            std::string hex_dump;
-            for (uint8_t b : emitted_bytes) {
-                hex_dump += std::format("{:02X} ", b);
-            }
-
-            // 5. Append to listing file with C++20 strict alignment
-            // {:04X} ensures 4-digit hex PC. 
-            // {:<9} ensures the hex dump column is exactly 9 characters wide, left-aligned.
-            listing.push_back(std::format("{:04X}  {:<9} {}", pc, hex_dump, inst_stmt->source_text));
-
-            // 6. Advance the program counter
-            pc += emitted_bytes.size();
-            continue;
-
-        // ---------------------------------------------------------
-
         }
-		
+        
         listing << "-------------------------------------------------------------------------------\n";
         listing << std::format("Emitted {} bytes.\n", binary_output.size());
 
