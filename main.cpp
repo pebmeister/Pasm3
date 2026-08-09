@@ -463,7 +463,7 @@ public:
                 ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
 				std::cout << "creating EquStatement [" << sym_name << "]\n";
-                statements.push_back(std::make_unique<EquStatement>(Sam_name, val_expr.release()));
+                statements.push_back(std::make_unique<EquStatement>(sym_name, val_expr.release()));
                 continue;
             }
 
