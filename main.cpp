@@ -237,7 +237,6 @@ public:
     }
 };
 
-
 inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols) {
     if (!node) return std::nullopt;
 
