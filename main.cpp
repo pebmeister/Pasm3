@@ -366,7 +366,7 @@ bool IsMacro(std::string name) const {
     return macros_.find(name) != macros_.end();
 }
 
-int prTok(std::string msg="AssemblerParser")
+int prTok(std::string msg="AssemblerParser") {
 	auto text = Tok.text;
 	auto id = Tok.id;
 	if (id == (int)TokenKind::Newline) text = "[\\n]";
