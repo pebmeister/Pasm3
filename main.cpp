@@ -549,7 +549,7 @@ public:
                         throw std::runtime_error("Expected .endm to close macro definition");
                     }
                     
-                    // Store in registry
+                    // Store in map
 					std::string lower_key(def.name);
     				std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
 					    [](unsigned char c) {
