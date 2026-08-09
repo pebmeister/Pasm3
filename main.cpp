@@ -645,10 +645,6 @@ public:
 					}
 				}
 
-				for (auto& exp: expanded_tokens) {
-					printTok("expansion tokens", exp);
-				}
-
 
 				// 3. Remove the original invocation tokens (testm 50,LOOP\n)
 				std::cout << "erasing " << start_idx << " to " << end_idx << "\n";
