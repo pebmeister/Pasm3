@@ -384,7 +384,7 @@ int prProcTok(std::string msg="") {
 	if (id == (int)TokenKind::Eof) text = "[EOF]";
 	if (id == (int)TokenKind::Invalid) text = "[INVALID]";
 		
-	std::cout << "PROCESS " << msg << " '" << text << "' [" << tokmap[(TokenKind)id] << "] << "\n"
+	std::cout << "PROCESS " << msg << " '" << text << "' [" << tokmap[(TokenKind)id] << "] << "\n";
 	return 0; 
 }
 public:
