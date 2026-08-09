@@ -16,3 +16,5 @@ enum RULE_TYPE {
     Op_Relative,
     Op_ZeroPageRelative
 };
+
+extern map<RULE_TYPE, std:string_view> rulemap;
