@@ -19,6 +19,7 @@
 #include <exception>
 #include <chrono>
 
+#define GEN_RULEMAP
 #include "ruletype.h"
 
 #define GEN_TOKMAP
