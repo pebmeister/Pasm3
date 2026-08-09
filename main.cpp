@@ -462,7 +462,8 @@ public:
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
-                statements.push_back(std::make_unique<EquStatement>(sym_name, val_expr.release()));
+				std::cout << "creating EquStatement [" << sym_name << "]\n";
+                statements.push_back(std::make_unique<EquStatement>(Sam_name, val_expr.release()));
                 continue;
             }
 
@@ -472,10 +473,10 @@ public:
 				ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
+				 std::cout << "creating OrgStatement\n";
                 statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
                 continue;
             }
-
    
 			// 3. Labels
             // Ensure we don't accidentally treat a macro invocation as a label
@@ -486,6 +487,7 @@ public:
                 if (!name.empty() && name.back() == ':')
                     name.pop_back();
                 Tok.id = static_cast<int>(TokenKind::Label);
+				std::cout << "creating LabelStatement [" << name << "]\n";
                 statements.push_back(std::make_unique<LabelStatement>(std::move(name)));
                 ConsumeToken();
                 continue;
@@ -504,6 +506,7 @@ public:
 
                 if (dir == ".org") {
                     auto addr_expr = ParseExpression();
+				     std::cout << "creating OrgStatement\n";
                     statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
                 }
                 else if (dir == ".byte" || dir == ".word") {
@@ -515,7 +518,7 @@ public:
                         auto expr = ParseExpression();
                         if (expr.isUsable()) elems.push_back(expr.release());
                     } while (TokIs(TokenKind::Comma));
-
+				     std::cout << "creating DataStatement\n";
                     statements.push_back(std::make_unique<DataStatement>(w, std::move(elems)));
                 }
                 
@@ -1180,9 +1183,6 @@ int main(int argc, char* argv[])
         // Track whether we are inside a comment
         if (tok.id == static_cast<int>(TokenKind::Semicolon)) {
             in_comment = true;
-#if DEBUG_TOKENS
-            std::cout << "Line [" << line << "] Token: text='" << text << "' id=" << tokmap[(TokenKind)tok.id] << "\n";
-#endif
         } else if (tok.id == static_cast<int>(TokenKind::Newline)) {
             in_comment = false;
             line++;
@@ -1190,10 +1190,6 @@ int main(int argc, char* argv[])
         if (in_comment ) {
             continue;
         }
-
-#if DEBUG_TOKENS
-        std::cout << "Line [" << line << "] Token: text='" << text << "' id=" << tokmap[(TokenKind)tok.id] << "\n";
-#endif
         if (tok.id == static_cast<int>(TokenKind::Invalid)) {
 
             if (!in_comment) {
