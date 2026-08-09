@@ -465,7 +465,7 @@ public:
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
-				std::cout << "creating EquStatement [" << sym_name << "]\n";
+				std::cout << "creating EquStatement [" << sym_name << "]\n\n";
                 statements.push_back(std::make_unique<EquStatement>(sym_name, val_expr.release()));
                 continue;
             }
@@ -476,7 +476,7 @@ public:
 				ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
-				 std::cout << "creating OrgStatement\n";
+				 std::cout << "creating OrgStatement\n\n";
                 statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
                 continue;
             }
@@ -490,7 +490,7 @@ public:
                 if (!name.empty() && name.back() == ':')
                     name.pop_back();
                 Tok.id = static_cast<int>(TokenKind::Label);
-				std::cout << "creating LabelStatement [" << name << "]\n";
+				std::cout << "creating LabelStatement [" << name << "]\n\n";
                 statements.push_back(std::make_unique<LabelStatement>(std::move(name)));
                 ConsumeToken();
                 continue;
@@ -509,7 +509,7 @@ public:
 
                 if (dir == ".org") {
                     auto addr_expr = ParseExpression();
-				     std::cout << "creating OrgStatement\n";
+				     std::cout << "creating OrgStatement\n\n";
                     statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
                 }
                 else if (dir == ".byte" || dir == ".word") {
@@ -521,7 +521,7 @@ public:
                         auto expr = ParseExpression();
                         if (expr.isUsable()) elems.push_back(expr.release());
                     } while (TokIs(TokenKind::Comma));
-				     std::cout << "creating DataStatement\n";
+				     std::cout << "creating DataStatement\n\n";
                     statements.push_back(std::make_unique<DataStatement>(w, std::move(elems)));
                 }
                 
@@ -558,7 +558,7 @@ public:
 					    [](unsigned char c) {
         					return static_cast<char>(std::tolower(c));
   					});
-                    std::cout << "saving macro " << lower_key << "\n";
+                    std::cout << "saving macro " << lower_key << "\n\n";
 					macros_[lower_key] = std::move(def);
                     
                     // Macro definitions emit no statements into the AST
