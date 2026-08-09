@@ -1122,7 +1122,6 @@ private:
                     }
                 }
             }
-        // ---------------------------------------------------------
         else if (auto* inst_stmt = dynamic_cast<InstructionStatement*>(stmt.get())) {
             
             // 1. Look up the opcode byte from your dictionary
@@ -1192,6 +1191,7 @@ private:
             pc += emitted_bytes.size();
             continue;
 
+        // ---------------------------------------------------------
 
         }
 		
