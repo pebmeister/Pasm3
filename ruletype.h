@@ -20,7 +20,7 @@ enum RULE_TYPE {
 extern std::map<RULE_TYPE, std::string_view> rulemap;
 
 #ifdef GEN_RULEMAP
-std::map<RULE_TYPE, std::string> rulemap = {
+std::map<RULE_TYPE, std::string_view> rulemap = {
     { Op_Implied, "Op_Implied" },
     { Op_Immediate, "Op_Immediate" },
     { Op_Absolute, "Op_Absolute" },
