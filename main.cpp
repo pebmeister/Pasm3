@@ -741,7 +741,7 @@ public:
 					}
 				}
 
-				std::cout << "creating InstructionStatement [" << mnemonic << "] mode [" << mode << "]\n";
+				std::cout << "creating InstructionStatement [" << mnemonic << "] mode [" << rulmap[mode] << "]\n";
 				
 				statements.push_back(std::make_unique<InstructionStatement>(
 					mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.release())
