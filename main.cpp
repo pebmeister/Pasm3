@@ -377,14 +377,14 @@ int prTok(std::string msg="AssemblerParser") {
 	return 0; 
 }
 
-int prProcTok(std::string msg="    *** Process Token") {
+int prProcTok(std::string msg="") {
 	auto text = Tok.text;
 	auto id = Tok.id;
 	if (id == (int)TokenKind::Newline) text = "[\\n]";
 	if (id == (int)TokenKind::Eof) text = "[EOF]";
 	if (id == (int)TokenKind::Invalid) text = "[INVALID]";
 		
-	std::cout << "****    PROCESS " << msg << " '" << text << "' [" << tokmap[(TokenKind)id] << "]    ****\n";
+	std::cout << "PROCESS " << msg << " '" << text << "' [" << tokmap[(TokenKind)id] << "] << "\n"
 	return 0; 
 }
 public:
