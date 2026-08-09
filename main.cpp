@@ -671,7 +671,7 @@ public:
 				ExprResult operand_expr;
 
 				if (TokIs(TokenKind::Hash)) {
-					printTok("Hash ", Tok);
+					prTok();
 
 					// Immediate: #expr
 					ConsumeToken();
