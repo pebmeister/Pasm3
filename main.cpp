@@ -432,6 +432,9 @@ public:
 
         auto line = 1;
 		bool display_tok = true;
+		if (display_tok) {
+			std::cout << "\n";
+		}
         while (!TokIs(TokenKind::Eof)) { 
 			
 			if (display_tok) {
