@@ -1145,9 +1145,10 @@ private:
 				auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
 				if (!info) {
 					throw std::runtime_error(
-					    std::format("Invalid mnemonic {}", inst_stmt->mnemonic)
+						std::format("Invalid mnemonic {}", inst_stmt->mnemonic)
 					);
 				}
+				
 				auto modeIt = info->mode_to_opcode.find(inst_stmt->mode);
 				if (modeIt == info->mode_to_opcode.end()) {
 					throw std::runtime_error(
@@ -1157,45 +1158,52 @@ private:
 						)
 					);
 				}
-				auto [opcode, _] = info->mode_to_opcode.at(inst_stmt->mode);
+				
+				// Re-use the iterator instead of doing another map lookup with .at()
+				auto [opcode, _] = modeIt->second;
 
 				std::vector<uint8_t> emitted_bytes = { opcode };
 				std::string operand_str; // Will hold the formatted operand (e.g., "#$32", "$C000")
 
 				if (inst_stmt->operand) {
 					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_);
-					if (eval_result.has_value()) {
-						int val = static_cast<int>(eval_result.value());
-						operand_str =  FormatOperand(inst_stmt->mode, val);
-						
-						switch (inst_stmt->mode) {
-											// Relative mode (Branches) require PC-relative offset calculation
-						if (inst_stmt->mode ==  RULE_TYPE::Op_Relative) {
-							int next_pc = pc + 2; // PC after this instruction is read
-							int offset = val - next_pc;
+					
+					// Catch unresolved symbols in the final pass
+					if (!eval_result.has_value()) {
+						throw std::runtime_error(
+							std::format("Unresolved symbol in operand for '{}' at ${:04X}", inst_stmt->mnemonic, pc)
+						);
+					}
+					
+					int val = static_cast<int>(eval_result.value());
+					operand_str = FormatOperand(inst_stmt->mode, val);
+					
+					// Relative mode (Branches) require PC-relative offset calculation
+					if (inst_stmt->mode == RULE_TYPE::Op_Relative) {
+						int next_pc = pc + 2; // PC after this instruction is read
+						int offset = val - next_pc;
 
-							if (offset < -128 || offset > 127) {
-								throw std::runtime_error(std::format("Branch out of range: offset is {}", offset));
-							}
-							emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
+						if (offset < -128 || offset > 127) {
+							throw std::runtime_error(std::format("Branch out of range: offset is {}", offset));
 						}
-						else {
-							auto sz = GetInstructionSize(inst_stmt->mode);
-							switch (sz) {
-								case 2:
-									emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-									break;
-	
-								case 3:
-									emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-									emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-									break;
-	
-								default:
-									break;
-							}
-							break;
+						emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
+					}
+					else {
+						auto sz = GetInstructionSize(inst_stmt->mode);
+						switch (sz) {
+							case 2:
+								emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+								break;
+
+							case 3:
+								emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+								emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+								break;
+
+							default:
+								break;
 						}
+						// The stray break; that was killing your loop has been removed from here
 					}
 				}
 
@@ -1317,3 +1325,4 @@ int main(int argc, char* argv[])
 	}
 	return 0;
 }
+
