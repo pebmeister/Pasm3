@@ -1128,13 +1128,12 @@ private:
             // 5. Instruction / Opcode Statement
             else if (auto inst_stmt = dynamic_cast<const InstructionStatement*>(stmt.get())) {
 
-				auto const info = FindOpCodeInfo(inst_stmt->mnemonic);
+				auto const *info = FindOpCodeInfo(inst_stmt->mnemonic);
 				if (!info) {
 					throw std::runtime_error(std::format("Inavlid mnemonic {}", inst_stmt->mnemonic));
 				}
-				
-
-                uint8_t opcode = GetOpcodeByte(inst_stmt->mnemonic, inst_stmt->mode);
+				uint8_t opcode =  info->mode_to_opcode[inst_stmt->mode];
+                // uint8_t opcode = GetOpcodeByte(inst_stmt->mnemonic, inst_stmt->mode);
                 std::vector<uint8_t> emitted_bytes = { opcode };
 
                 if (inst_stmt->operand) {
