@@ -929,9 +929,9 @@ private:
 				auto mode_it = info->mode_to_opcode.find(inst->mode);
 				if (mode_it != info->mode_to_opcode.end()) {
 
-					if (inst->mode == RULE_TYPE::Op_Relative) {
-						auto val = EvaluateExpr(inst->operand.get(), symbols_);
-						if (val.has_value()) {
+					auto val = EvaluateExpr(inst->operand.get(), symbols_);
+					if (val.has_value()) {
+						if (inst->mode == RULE_TYPE::Op_Relative) {
 							auto evaluated = val.value();
 							int64_t offset = evaluated - (pc + 2);
 
@@ -939,9 +939,8 @@ private:
 								auto it = inverted_branches.find(inst->mnemonic);
 								if (it != inverted_branches.end()) {
 									std::cout << "Warning: Branch out of range for '" << inst->mnemonic
-									          << "' at $" << std::hex << pc
-									          << ". Expanding to trampoline JMP.\n" << std::dec;
-
+									          << "' at $" << std::hex << pc;
+			
 									// 1. Create the JMP statement FIRST by moving the original target expression
 									auto jmp_inst = std::make_unique<InstructionStatement>(
 									                    "jmp",
@@ -966,7 +965,46 @@ private:
 								}
 							}
 						}
+						else { // range check and optimize for page zero
+							if (val < 0 || val > 0xFFFF) {
+								throw std::runtime_error(
+									std::format("Out of range range {}", inst->mnemonic)
+								);
+							}
+							RULE_TYPE want_type = inst->mode;
+							if (val <= 0xFF) {
+								if (inst->mode == Op_Absolute) want_type = Op_ZeroPage;
+								else if (inst->mode == Op_AbsoluteX) want_type = Op_ZeroPageX;
+								else if (inst->mode == Op_AbsoluteY) want_type = Op_ZeroPageY;
+								
+								if (want_type != inst->mode) {
+									mode_it = info->mode_to_opcode.find(want_type);
+									if (mode_it != info->mode_to_opcode.end()) {
+										inst->mode = want_type;
+									}
+								}								
+							}
+							else {
+								if (inst->mode == Op_ZeroPage) want_type = Op_Absolute;
+								else if (inst->mode == Op_ZeroPageX) want_type = Op_AbsoluteX;
+								else if (inst->mode == Op_ZeroPageY) want_type = Op_AbsoluteY;
+								
+								if (want_type != inst->mode) {
+									mode_it = info->mode_to_opcode.find(want_type);
+									if (mode_it != info->mode_to_opcode.end()) {
+										inst->mode = want_type;
+									}
+									else {
+										throw std::runtime_error(
+											std::format("Out of range range {}", inst->mnemonic)
+										);
+									}
+								}								
+							}
+						}
+						
 					}
+				
 					pc += GetInstructionSize(inst->mode);
 				}
 				new_statements.push_back(std::move(stmt));
@@ -1102,8 +1140,6 @@ private:
 				}
 			}
 			// 5. Instruction / Opcode Statement
-
-			// 5. Instruction / Opcode Statement
 			else if (auto inst_stmt = dynamic_cast<const InstructionStatement*>(stmt.get())) {
 
 				auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
@@ -1113,8 +1149,17 @@ private:
 					    std::format("Invalid mnemonic {}", inst_stmt->mnemonic)
 					);
 				}
-
+				auto modeIt = info->mode_to_opcode.find(inst_stmt->mode);
+				if (modeIt == info->mode_to_opcode.end()) {
+					throw std::runtime_error(
+						std::format(
+							"Invalid addressing mode for mnemonic '{}'",
+							inst_stmt->mnemonic
+						)
+					);
+				}
 				auto [opcode, _] = info->mode_to_opcode.at(inst_stmt->mode);
+
 				std::vector<uint8_t> emitted_bytes = { opcode };
 				std::string operand_str; // Will hold the formatted operand (e.g., "#$32", "$C000")
 
@@ -1310,7 +1355,7 @@ int main(int argc, char* argv[])
 		MultiPassAssembler assembler(0xC000);
 		assembler.Assemble(statements);
 		std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-		std::cout << "Elapsed " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds." << std::endl;
+		std::cout << "Elapsed " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000000.0 << " seconds." << std::endl;
 	}
 	catch (std::exception& ex) {
 		std::cerr << "Error " << ex.what() << "\n";
