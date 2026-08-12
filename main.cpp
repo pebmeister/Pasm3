@@ -1143,7 +1143,6 @@ private:
 			else if (auto inst_stmt = dynamic_cast<const InstructionStatement*>(stmt.get())) {
 
 				auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
-
 				if (!info) {
 					throw std::runtime_error(
 					    std::format("Invalid mnemonic {}", inst_stmt->mnemonic)
@@ -1165,52 +1164,13 @@ private:
 
 				if (inst_stmt->operand) {
 					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_);
-
 					if (eval_result.has_value()) {
 						int val = static_cast<int>(eval_result.value());
 						operand_str =  FormatOperand(inst_stmt->mode, val);
 						
 						switch (inst_stmt->mode) {
-						// 1-byte operand modes (2 bytes total)
-						case RULE_TYPE::Op_Immediate:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							break;
-						case RULE_TYPE::Op_ZeroPage:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							break;
-						case RULE_TYPE::Op_ZeroPageX:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							break;
-						case RULE_TYPE::Op_ZeroPageY:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							break;
-						case RULE_TYPE::Op_IndirectX:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							break;
-						case RULE_TYPE::Op_IndirectY:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							break;
-
-						// 2-byte operand modes (3 bytes total, little endian)
-						case RULE_TYPE::Op_Absolute:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-							break;
-						case RULE_TYPE::Op_AbsoluteX:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-							break;
-						case RULE_TYPE::Op_AbsoluteY:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-							break;
-						case RULE_TYPE::Op_Indirect:
-							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-							break;
-
-						// Relative mode (Branches) require PC-relative offset calculation
-						case RULE_TYPE::Op_Relative: {
+											// Relative mode (Branches) require PC-relative offset calculation
+						if (inst_stmt->mode ==  RULE_TYPE::Op_Relative) {
 							int next_pc = pc + 2; // PC after this instruction is read
 							int offset = val - next_pc;
 
@@ -1218,18 +1178,25 @@ private:
 								throw std::runtime_error(std::format("Branch out of range: offset is {}", offset));
 							}
 							emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
-							break;
 						}
-
-						case RULE_TYPE::Op_Implied:
-							break;
-						case RULE_TYPE::Op_Accumulator:
+						else {
+							auto sz = GetInstructionSize(inst_stmt->mode);
+							switch (sz) {
+								case 2:
+									emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+									break;
+	
+								case 3:
+									emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+									emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+									break;
+	
+								default:
+									break;
+							}
 							break;
 						}
 					}
-				} else if (inst_stmt->mode == RULE_TYPE::Op_Accumulator) {
-					// Safety check in case the AST does not use an operand node for the 'A' mode
-					operand_str = "A";
 				}
 
 				// Write bytes to the final binary buffer
