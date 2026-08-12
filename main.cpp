@@ -433,7 +433,7 @@ public:
 		std::vector<std::unique_ptr<Statement>> statements;
 
 		auto line = 1;
-		bool display_tok = true;
+		bool display_tok = false;
 		if (display_tok) {
 			std::cout << "\n";
 		}
@@ -446,7 +446,6 @@ public:
 
 			// check for a comment
 			if (TokIs(TokenKind::Semicolon)) {
-				prProcTok();
 				while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
 					ConsumeToken();
 				}
@@ -455,7 +454,6 @@ public:
 
 			// end of line
 			if (TokIs(TokenKind::Newline)) {
-				prProcTok();
 				ConsumeToken();
 				line++;
 				continue;
@@ -463,22 +461,18 @@ public:
 
 			// 1. Symbol definition / EQU (e.g. SCREEN = $0400)
 			if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
-				prProcTok();
 				std::string sym_name = ConsumeToken().text;
 				ConsumeToken(); // consume '='
 				auto val_expr = ParseExpression();
-				std::cout << "creating EquStatement [" << sym_name << "]\n\n";
 				statements.push_back(std::make_unique<EquStatement>(sym_name, val_expr.release()));
 				continue;
 			}
 
 			// 2. PC Assignment (e.g., * = $C000)
 			if (TokIs(TokenKind::Star) && TokAheadIs(TokenKind::Equal)) {
-				prProcTok();
 				ConsumeToken(); // consume '*'
 				ConsumeToken(); // consume '='
 				auto addr_expr = ParseExpression();
-				std::cout << "creating OrgStatement\n\n";
 				statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
 				continue;
 			}
@@ -486,13 +480,10 @@ public:
 			// 3. Labels
 			// Ensure we don't accidentally treat a macro invocation as a label
 			if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text))) {
-				prProcTok();
-
 				std::string name = Tok.text;
 				if (!name.empty() && name.back() == ':')
 					name.pop_back();
 				Tok.id = static_cast<int>(TokenKind::Label);
-				std::cout << "creating LabelStatement [" << name << "]\n\n";
 				statements.push_back(std::make_unique<LabelStatement>(std::move(name)));
 				ConsumeToken();
 				continue;
@@ -500,7 +491,6 @@ public:
 
 			// 4. Directives (.org, .byte, .word)
 			if (TokIs(TokenKind::Directive)) {
-				prProcTok();
 
 				PasmTokenizer::Token dir_tok = ConsumeToken();
 				std::string dir = dir_tok.text;
@@ -511,7 +501,6 @@ public:
 
 				if (dir == ".org") {
 					auto addr_expr = ParseExpression();
-					std::cout << "creating OrgStatement\n\n";
 					statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
 				}
 				else if (dir == ".byte" || dir == ".word") {
@@ -523,7 +512,6 @@ public:
 						auto expr = ParseExpression();
 						if (expr.isUsable()) elems.push_back(expr.release());
 					} while (TokIs(TokenKind::Comma));
-					std::cout << "creating DataStatement\n\n";
 					statements.push_back(std::make_unique<DataStatement>(w, std::move(elems)));
 				}
 
@@ -560,7 +548,6 @@ public:
 					[](unsigned char c) {
 						return static_cast<char>(std::tolower(c));
 					});
-					std::cout << "saving macro " << lower_key << "\n\n";
 					macros_[lower_key] = std::move(def);
 
 					// Macro definitions emit no statements into the AST
@@ -572,15 +559,10 @@ public:
 			// 4.5 Macro Expansion
 			if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
 
-				prProcTok();
-
 				// 1. Save the start position of the macro call in the token stream
 				size_t start_idx = index_;
 
 				std::string mac_name = ConsumeToken().text;
-
-				std::cout << "\n\nexpanding macro " << mac_name << "\n\n";
-				std::cout << "index " << start_idx << "\n";
 
 				std::string lower_key = mac_name;
 				std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
@@ -657,11 +639,9 @@ public:
 
 
 				// 3. Remove the original invocation tokens (testm 50,LOOP\n)
-				std::cout << "erasing " << start_idx << " to " << end_idx << "\n";
 				tokens_.erase(tokens_.begin() + start_idx, tokens_.begin() + end_idx);
 
 				// 4. Insert expanded tokens into the exact spot of the macro call
-				std::cout << "inserting " << start_idx << "\n";
 				tokens_.insert(tokens_.begin() + start_idx, expanded_tokens.begin(), expanded_tokens.end());
 
 				// 5. Reset index_ and Tok back to start_idx to process the injected tokens
@@ -673,16 +653,12 @@ public:
 			// 5. Opcodes
 			if (TokIs(TokenKind::Opcode)) {
 
-				prProcTok();
-
 				PasmTokenizer::Token opcode_tok = ConsumeToken();
 				std::string mnemonic = opcode_tok.text;
 				RULE_TYPE mode = RULE_TYPE::Op_Implied;
 				ExprResult operand_expr;
 
 				if (TokIs(TokenKind::Hash)) {
-					prTok();
-
 					// Immediate: #expr
 					ConsumeToken();
 					mode = RULE_TYPE::Op_Immediate;
@@ -750,7 +726,6 @@ public:
 					}
 				}
 
-				std::cout << "creating InstructionStatement [" << mnemonic << "] mode [" << rulemap[mode] << "]\n\n";
 				statements.push_back(std::make_unique<InstructionStatement>(
 				                         mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.release())
 				                     ));
