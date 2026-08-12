@@ -1112,7 +1112,7 @@ private:
                 for (size_t i = 0; i < data_bytes.size(); i += max_bytes_per_line) {
                     size_t chunk_size = std::min(max_bytes_per_line, data_bytes.size() - i);
                     uint16_t chunk_pc = static_cast<uint16_t>(current_pc + i);
-
+ 
                     std::string hex_str;
                     for (size_t b = 0; b < chunk_size; ++b) {
                         hex_str += std::format("{:02X} ", data_bytes[i + b]);
@@ -1131,8 +1131,8 @@ private:
                 uint8_t opcode = GetOpcodeByte(inst_stmt->mnemonic, inst_stmt->mode);
                 std::vector<uint8_t> emitted_bytes = { opcode };
 
-                if (inst_stmt->operand_expr) {
-                    auto eval_result = EvaluateExpr(inst_stmt->operand_expr.get(), symbols_);
+                if (inst_stmt->operand) {
+                    auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_);
                     
                     // Wait check until the expression.has_value() is true
                     if (eval_result.has_value()) { 
@@ -1188,7 +1188,7 @@ private:
                 }
 
                 // Append to listing file with C++20 strict alignment matching your Data format
-                listing << std::format("${:04X}  {:14} {}\n", pc, hex_dump, inst_stmt->source_text);
+                 listing << std::format("${:04X}  {:14} {}\n", pc, hex_dump, inst_stmt->mnemonic);
 
                 // Advance the program counter
                 pc += static_cast<uint16_t>(emitted_bytes.size());
