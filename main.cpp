@@ -931,15 +931,15 @@ private:
 
 					auto val = EvaluateExpr(inst->operand.get(), symbols_);
 					if (val.has_value()) {
+						auto evaluated = val.value();
 						if (inst->mode == RULE_TYPE::Op_Relative) {
-							auto evaluated = val.value();
 							int64_t offset = evaluated - (pc + 2);
 
 							if (offset < -128 || offset > 127) {
 								auto it = inverted_branches.find(inst->mnemonic);
 								if (it != inverted_branches.end()) {
 									std::cout << "Warning: Branch out of range for '" << inst->mnemonic
-									          << "' at $" << std::hex << pc;
+									          << "' at $" << std::hex << pc << "\n";
 			
 									// 1. Create the JMP statement FIRST by moving the original target expression
 									auto jmp_inst = std::make_unique<InstructionStatement>(
@@ -966,13 +966,13 @@ private:
 							}
 						}
 						else { // range check and optimize for page zero
-							if (val < 0 || val > 0xFFFF) {
+							if (evaluated < 0 || evaluated > 0xFFFF) {
 								throw std::runtime_error(
-									std::format("Out of range range {}", inst->mnemonic)
+									std::format("Operand out of range for '{}'  at ${:04X}", inst->mnemonic, pc)
 								);
 							}
 							RULE_TYPE want_type = inst->mode;
-							if (val <= 0xFF) {
+							if (evaluated <= 0xFF) {
 								if (inst->mode == Op_Absolute) want_type = Op_ZeroPage;
 								else if (inst->mode == Op_AbsoluteX) want_type = Op_ZeroPageX;
 								else if (inst->mode == Op_AbsoluteY) want_type = Op_ZeroPageY;
@@ -996,10 +996,10 @@ private:
 									}
 									else {
 										throw std::runtime_error(
-											std::format("Out of range range {}", inst->mnemonic)
+											std::format("Operand out of range for '{}'  at ${:04X}", inst->mnemonic, pc)
 										);
-									}
-								}								
+									}		
+								}
 							}
 						}
 						
@@ -1168,54 +1168,45 @@ private:
 
 					if (eval_result.has_value()) {
 						int val = static_cast<int>(eval_result.value());
-
+						operand_str =  FormatOperand(inst_stmt->mode, val);
+						
 						switch (inst_stmt->mode) {
 						// 1-byte operand modes (2 bytes total)
 						case RULE_TYPE::Op_Immediate:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							operand_str = std::format("#${:02X}", val & 0xFF);
 							break;
 						case RULE_TYPE::Op_ZeroPage:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							operand_str = std::format("${:02X}", val & 0xFF);
 							break;
 						case RULE_TYPE::Op_ZeroPageX:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							operand_str = std::format("${:02X},X", val & 0xFF);
 							break;
 						case RULE_TYPE::Op_ZeroPageY:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							operand_str = std::format("${:02X},Y", val & 0xFF);
 							break;
 						case RULE_TYPE::Op_IndirectX:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							operand_str = std::format("(${:02X},X)", val & 0xFF);
 							break;
 						case RULE_TYPE::Op_IndirectY:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-							operand_str = std::format("(${:02X}),Y", val & 0xFF);
 							break;
 
 						// 2-byte operand modes (3 bytes total, little endian)
 						case RULE_TYPE::Op_Absolute:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
 							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-							operand_str = std::format("${:04X}", val & 0xFFFF);
 							break;
 						case RULE_TYPE::Op_AbsoluteX:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
 							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-							operand_str = std::format("${:04X},X", val & 0xFFFF);
 							break;
 						case RULE_TYPE::Op_AbsoluteY:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
 							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-							operand_str = std::format("${:04X},Y", val & 0xFFFF);
 							break;
 						case RULE_TYPE::Op_Indirect:
 							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
 							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-							operand_str = std::format("(${:04X})", val & 0xFFFF);
 							break;
 
 						// Relative mode (Branches) require PC-relative offset calculation
@@ -1227,15 +1218,12 @@ private:
 								throw std::runtime_error(std::format("Branch out of range: offset is {}", offset));
 							}
 							emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
-							// Output the evaluated absolute target address to the listing for readability
-							operand_str = std::format("${:04X}", val & 0xFFFF);
 							break;
 						}
 
 						case RULE_TYPE::Op_Implied:
 							break;
 						case RULE_TYPE::Op_Accumulator:
-							operand_str = "A";
 							break;
 						}
 					}
