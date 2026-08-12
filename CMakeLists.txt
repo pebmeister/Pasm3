@@ -6,24 +6,53 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ------------------------------------------------------------------------------
+# Optimization
+# ------------------------------------------------------------------------------
+
+# Optimize all Release builds for maximum speed.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options($<$<CONFIG:Release>:-O3>)
+elseif(MSVC)
+    add_compile_options($<$<CONFIG:Release>:/O2>)
+endif()
+
+# Enable link-time optimization where supported.
+include(CheckIPOSupported)
+
+check_ipo_supported(
+    RESULT ipo_supported
+    OUTPUT ipo_error
+    LANGUAGES CXX
+)
+
+if(ipo_supported)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+else()
+    message(WARNING "IPO/LTO not supported: ${ipo_error}")
+endif()
+
+# ------------------------------------------------------------------------------
 # 1. Build the Lexer Generator Tool
 # ------------------------------------------------------------------------------
+
 add_executable(buildlexor
     buildlexor/main.cpp
     buildlexor/RegexEngine.h
     tokenkind.h
 )
 
-# Optional: Organize header inclusion inside buildlexor source
 target_include_directories(buildlexor PRIVATE
-buildlexor
-"${CMAKE_CURRENT_SOURCE_DIR}"
+    buildlexor
+    "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 # ------------------------------------------------------------------------------
 # 2. Custom Command & Target to Generate PasmTokenizer.hpp
 # ------------------------------------------------------------------------------
-set(GENERATED_TOKENIZER_HEADER "${CMAKE_CURRENT_BINARY_DIR}/PasmTokenizer.hpp")
+
+set(GENERATED_TOKENIZER_HEADER
+    "${CMAKE_CURRENT_BINARY_DIR}/PasmTokenizer.hpp"
+)
 
 add_custom_command(
     OUTPUT "${GENERATED_TOKENIZER_HEADER}"
@@ -34,12 +63,15 @@ add_custom_command(
     VERBATIM
 )
 
-# Create a custom target so CMake explicitly manages the dependency step
-add_custom_target(generate_lexer DEPENDS "${GENERATED_TOKENIZER_HEADER}")
+add_custom_target(
+    generate_lexer
+    DEPENDS "${GENERATED_TOKENIZER_HEADER}"
+)
 
 # ------------------------------------------------------------------------------
 # 3. Build Main Executable
 # ------------------------------------------------------------------------------
+
 add_executable(pasm_parser
     main.cpp
     opcodedict.cpp
@@ -50,12 +82,10 @@ add_executable(pasm_parser
     "${GENERATED_TOKENIZER_HEADER}"
 )
 
-# Ensure the generated header is found during compilation
-target_include_directories(pasm_parser 
-    PRIVATE 
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_CURRENT_BINARY_DIR}"
+target_include_directories(pasm_parser
+    PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
-# Force the lexer generator target to execute before compiling main sources
 add_dependencies(pasm_parser generate_lexer)
