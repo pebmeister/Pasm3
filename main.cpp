@@ -1,5 +1,8 @@
 // Written by Paul Baxter
 
+
+// 617 506 0669 mom
+// 
 #include <iostream>
 #include <memory>
 #include <string>
@@ -1123,44 +1126,75 @@ private:
                 }
             }
             // 5. Instruction / Opcode Statement
+
+// 5. Instruction / Opcode Statement
             else if (auto inst_stmt = dynamic_cast<const InstructionStatement*>(stmt.get())) {
 
-				auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
+                auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
 
-				if (!info) {
-					throw std::runtime_error(
-						std::format("Invalid mnemonic {}", inst_stmt->mnemonic)
-					);
-				}
+                if (!info) {
+                    throw std::runtime_error(
+                        std::format("Invalid mnemonic {}", inst_stmt->mnemonic)
+                    );
+                }
 
-				auto [opcode, _] = info->mode_to_opcode.at(inst_stmt->mode);
+                auto [opcode, _] = info->mode_to_opcode.at(inst_stmt->mode);
                 std::vector<uint8_t> emitted_bytes = { opcode };
+                std::string operand_str; // Will hold the formatted operand (e.g., "#$32", "$C000")
 
                 if (inst_stmt->operand) {
                     auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_);
                     
-                    // Wait check until the expression.has_value() is true
                     if (eval_result.has_value()) { 
                         int val = static_cast<int>(eval_result.value());
 
                         switch (inst_stmt->mode) {
                             // 1-byte operand modes (2 bytes total)
                             case RULE_TYPE::Op_Immediate:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                operand_str = std::format("#${:02X}", val & 0xFF);
+                                break;
                             case RULE_TYPE::Op_ZeroPage:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                operand_str = std::format("${:02X}", val & 0xFF);
+                                break;
                             case RULE_TYPE::Op_ZeroPageX:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                operand_str = std::format("${:02X},X", val & 0xFF);
+                                break;
                             case RULE_TYPE::Op_ZeroPageY:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                operand_str = std::format("${:02X},Y", val & 0xFF);
+                                break;
                             case RULE_TYPE::Op_IndirectX:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                operand_str = std::format("(${:02X},X)", val & 0xFF);
+                                break;
                             case RULE_TYPE::Op_IndirectY:
                                 emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                operand_str = std::format("(${:02X}),Y", val & 0xFF);
                                 break;
 
                             // 2-byte operand modes (3 bytes total, little endian)
                             case RULE_TYPE::Op_Absolute:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+                                operand_str = std::format("${:04X}", val & 0xFFFF);
+                                break;
                             case RULE_TYPE::Op_AbsoluteX:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+                                operand_str = std::format("${:04X},X", val & 0xFFFF);
+                                break;
                             case RULE_TYPE::Op_AbsoluteY:
+                                emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+                                emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+                                operand_str = std::format("${:04X},Y", val & 0xFFFF);
+                                break;
                             case RULE_TYPE::Op_Indirect:
                                 emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
                                 emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+                                operand_str = std::format("(${:04X})", val & 0xFFFF);
                                 break;
 
                             // Relative mode (Branches) require PC-relative offset calculation
@@ -1172,15 +1206,21 @@ private:
                                     throw std::runtime_error(std::format("Branch out of range: offset is {}", offset));
                                 }
                                 emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
+                                // Output the evaluated absolute target address to the listing for readability
+                                operand_str = std::format("${:04X}", val & 0xFFFF); 
                                 break;
                             }
 
                             case RULE_TYPE::Op_Implied:
+                                break;
                             case RULE_TYPE::Op_Accumulator:
-                                // No extra bytes
+                                operand_str = "A";
                                 break;
                         }
                     }
+                } else if (inst_stmt->mode == RULE_TYPE::Op_Accumulator) {
+                    // Safety check in case the AST does not use an operand node for the 'A' mode
+                    operand_str = "A";
                 }
 
                 // Write bytes to the final binary buffer
@@ -1192,12 +1232,19 @@ private:
                     hex_dump += std::format("{:02X} ", b);
                 }
 
+                // Append the operand text to the mnemonic if it exists
+                std::string full_instruction = inst_stmt->mnemonic;
+                if (!operand_str.empty()) {
+                    full_instruction += " " + operand_str;
+                }
+
                 // Append to listing file with C++20 strict alignment matching your Data format
-                 listing << std::format("${:04X}  {:14} {}\n", pc, hex_dump, inst_stmt->mnemonic);
+                listing << std::format("${:04X}  {:14} {}\n", pc, hex_dump, full_instruction);
 
                 // Advance the program counter
                 pc += static_cast<uint16_t>(emitted_bytes.size());
             }
+
         }
         
         listing << "-------------------------------------------------------------------------------\n";
