@@ -627,7 +627,6 @@ public:
 					}
 				}
 
-
 				// 3. Remove the original invocation tokens (testm 50,LOOP\n)
 				tokens_.erase(tokens_.begin() + start_idx, tokens_.begin() + end_idx);
 
