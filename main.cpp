@@ -88,8 +88,8 @@ struct MacroDef {
 	std::vector<PasmTokenizer::Token> body_tokens;
 };
 
-SourceManager src_mgr;
-PasmTokenizer tokenizer;
+static SourceManager src_mgr;
+static PasmTokenizer tokenizer;
 
 // Add this as a private member in the Parser class
 std::unordered_map<std::string, MacroDef> macros_;
@@ -263,6 +263,14 @@ struct CaseInsensitiveEqual {
 		       );
 	}
 };
+
+std::string GetMangledSymbol(const std::string& symbol, const std::string& parent_scope) {
+    if (symbol.starts_with('@')) {
+        // If a local label appears before any global label, fall back to raw name
+        return parent_scope.empty() ? symbol : parent_scope + symbol;
+    }
+    return symbol;
+}
 
 class SymbolTable {
 	// Map with custom Key, Value, Hash, and KeyEqual types
@@ -483,7 +491,7 @@ public:
 			ConsumeToken();
 		}
 	}
-
+	
 	std::vector<std::unique_ptr<Statement>> ParseProgram() {
 		std::vector<std::unique_ptr<Statement>> statements;
 
@@ -492,6 +500,7 @@ public:
 		if (display_tok) {
 			std::cout << "\n";
 		}
+		SkipWs();
 		while (!TokIs(TokenKind::Eof)) {
 			
 			line = Tok.line;
@@ -613,14 +622,16 @@ public:
 
 				// Inside ParseProgram() or your directive handler:
 				else if (dir == ".include" || dir == ".inc") {
-					ConsumeToken(); // consume directive
-					
-					if (!TokIs(TokenKind::Identifier)) {
+										
+					if (!TokIs(TokenKind::StringLiteral)) {
 						throw std::runtime_error("Expected string filename after .include");
 					}
 					
 					std::string inc_filename = Tok.text; // e.g. "constants.inc"
 					ConsumeToken(); // consume filename string
+					
+					inc_filename.erase(0, 1);
+					inc_filename.erase(inc_filename.size() - 1);
 
 					// 1. Tokenize the included file using SourceManager
 					auto inc_tokens = LoadAndTokenizeFile(inc_filename, src_mgr, tokenizer);
@@ -636,8 +647,15 @@ public:
 
 					continue;
 				}				
-				
-				std::cout << "unknown directive\n";
+				else if (dir == ".print") {
+					// Todo: turn print on and off
+					while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
+						ConsumeToken();
+					}
+				}
+				else {
+					std::cout << "Warning Unknown directive '" << dir << "'  File: " << src_mgr.GetFileName(dir_tok.file) << " Line: " << dir_tok.line << "\n";
+				}
 				
 				continue;
 			}
