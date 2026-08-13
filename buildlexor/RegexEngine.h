@@ -790,7 +790,8 @@ public:
 		ss << "        std::string text;\n";
 		ss << "        size_t position;\n";
 		ss << "        size_t line;\n";
-		ss << "        size_t col;\n\n";
+		ss << "        size_t col;\n";
+		ss << "        int file;\n\n";
  
 	    ss << "        [[nodiscard]] bool is(int k) const {return id == k;}\n";
 	    ss << "        [[nodiscard]] bool isNot(int k) const {return id != k;}\n";
@@ -798,7 +799,7 @@ public:
 	    ss << "        [[nodiscard]] bool isNot(std::string_view s) const {return s != text;}\n";
 		ss << "    };\n\n";
 
-		ss << "    static std::vector<Token> tokenize(const std::string& input) {\n";
+		ss << "    static std::vector<Token> tokenize(const std::string& input, int file) {\n";
 		ss << "        std::vector<Token> tokens;\n";
 		ss << "        size_t pos = 0;\n";
 		ss << "        size_t current_line = 1;\n";
@@ -827,7 +828,7 @@ public:
 
 		ss << "            if (last_accept_state > 0) {\n";
 		ss << "                std::string lexeme = input.substr(start_pos, last_accept_pos - start_pos);\n";
-		ss << "                tokens.push_back({accept_table[last_accept_state], lexeme, start_pos, current_line, current_column});\n";
+		ss << "                tokens.push_back({accept_table[last_accept_state], lexeme, start_pos, current_line, current_column, file});\n";
 		ss << "                pos = last_accept_pos;\n";
 		ss << "                \n";
 		ss << "                // Advance line/column state based on the matched lexeme\n";
