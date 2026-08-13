@@ -2,7 +2,7 @@
 ; PASM3 Comprehensive Test File
 ; ==============================================================================
 
-    .macro TestM
+    .macro Testm
     nop
     lda #\1
     sta \2
@@ -57,6 +57,6 @@ POINTERS:
     .word SCREEN_RAM + $1000 
     .word (SCREEN_RAM * 2) & $FFFF
 
-    testm 50,LOOP
+    testm 50, Loop
 
 	

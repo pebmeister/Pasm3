@@ -28,12 +28,70 @@
 #include "opcodedict.h"
 #include "PasmTokenizer.hpp"
 
+std::string read_file_to_string(const std::string& path);
+
+
+struct SourceManager {
+    std::vector<std::string> files;          // Global registry: index = fileid
+    std::vector<std::string> include_stack;  // Active include chain
+
+	// Safe lookup helper
+    std::string GetFileName(int fileid) const {
+        if (fileid >= 0 && fileid < static_cast<int>(files.size())) {
+            return files[fileid];
+        }
+        return "<unknown>";
+
+    }
+    // Gets existing fileid or registers a new file
+    int GetOrRegisterFile(const std::string& filepath) {
+        for (int i = 0; i < static_cast<int>(files.size()); ++i) {
+            if (files[i] == filepath) return i;
+        }
+        files.push_back(filepath);
+        return static_cast<int>(files.size() - 1);
+    }
+
+    // Push file onto stack with circular dependency check
+    void PushInclude(const std::string& filepath) {
+        if (std::find(include_stack.begin(), include_stack.end(), filepath) != include_stack.end()) {
+            throw std::runtime_error("Circular include detected: " + filepath);
+        }
+        include_stack.push_back(filepath);
+    }
+
+    // Pop file when done tokenizing/parsing
+    void PopInclude() {
+        if (!include_stack.empty()) {
+            include_stack.pop_back();
+        }
+    }
+};
+
+std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
+    const std::string& filepath, 
+    SourceManager& src_mgr, 
+    PasmTokenizer& tokenizer
+) {
+    src_mgr.PushInclude(filepath);
+    int fileid = src_mgr.GetOrRegisterFile(filepath);
+
+    std::string source_code = read_file_to_string(filepath);
+    auto filetokens = tokenizer.tokenize(source_code, fileid);
+
+    src_mgr.PopInclude();
+    return filetokens;
+}
+
 struct MacroDef {
 	std::string name;
 	std::vector<PasmTokenizer::Token> body_tokens;
 };
 
-// Add this as a private member in your Parser class
+SourceManager src_mgr;
+PasmTokenizer tokenizer;
+
+// Add this as a private member in the Parser class
 std::unordered_map<std::string, MacroDef> macros_;
 
 // ============================================================================
@@ -310,12 +368,18 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 // ============================================================================
 
 struct Statement {
-	virtual ~Statement() = default;
+    virtual ~Statement() = default;
+    
+    int file{0};
+    int line{0};
+
+    Statement(int file, int line) 
+        : file(file), line(line) {}
 };
 
 struct LabelStatement : Statement {
 	std::string name;
-	explicit LabelStatement(std::string name) : name(std::move(name)) {}
+	explicit LabelStatement(int file, int line, std::string name) : Statement(file, line), name(std::move(name)) {}
 };
 
 struct InstructionStatement : Statement {
@@ -325,19 +389,20 @@ struct InstructionStatement : Statement {
 	std::unique_ptr<ExprNode> operand{nullptr};
 	std::vector<uint8_t> bytes;
 
-	InstructionStatement(std::string m, RULE_TYPE mode, std::unique_ptr<ExprNode> op)
-		: mnemonic(std::move(m)), mode(mode), operand(std::move(op)) {}
+	InstructionStatement(int file, int line, std::string m, RULE_TYPE mode, std::unique_ptr<ExprNode> op)
+		: Statement(file, line), mnemonic(std::move(m)), mode(mode), operand(std::move(op)) {}
 };
+
 struct OrgStatement : Statement {
 	std::unique_ptr<ExprNode> address_expr;
-	explicit OrgStatement(std::unique_ptr<ExprNode> expr) : address_expr(std::move(expr)) {}
+	explicit OrgStatement(int file, int line, std::unique_ptr<ExprNode> expr) : Statement(file, line), address_expr(std::move(expr)) {}
 };
 
 struct EquStatement : Statement {
 	std::string name;
 	std::unique_ptr<ExprNode> value_expr;
-	EquStatement(std::string n, std::unique_ptr<ExprNode> expr)
-		: name(std::move(n)), value_expr(std::move(expr)) {}
+	EquStatement(int file, int line, std::string n, std::unique_ptr<ExprNode> expr)
+		: Statement(file, line), name(std::move(n)), value_expr(std::move(expr)) {}
 };
 
 enum class DataWidth { Byte, Word };
@@ -346,8 +411,8 @@ struct DataStatement : Statement {
 	DataWidth width{DataWidth::Byte};
 	std::vector<std::unique_ptr<ExprNode>> elements;
 
-	DataStatement(DataWidth w, std::vector<std::unique_ptr<ExprNode>> elems)
-		: width(w), elements(std::move(elems)) {}
+	DataStatement(int file, int line, DataWidth w, std::vector<std::unique_ptr<ExprNode>> elems)
+		: Statement(file, line), width(w), elements(std::move(elems)) {}
 };
 
 // ============================================================================
@@ -375,7 +440,7 @@ private:
 		if (id == (int)TokenKind::Eof) text = "[EOF]";
 		if (id == (int)TokenKind::Invalid) text = "[INVALID]";
 
-		std::cout << msg << " '" << text << "' [" << tokmap[(TokenKind)id] << "]\n";
+		std::cout << msg << " '" << text << "' [" << tokmap[(TokenKind)id] << "]  :::[" << src_mgr.GetFileName(Tok.file) << " line " << Tok.line << " col " << Tok.col << "]\n";
 		return 0;
 	}
 
@@ -428,6 +493,8 @@ public:
 			std::cout << "\n";
 		}
 		while (!TokIs(TokenKind::Eof)) {
+			
+			line = Tok.line;
 
 			if (display_tok) {
 				std::cout << "index = " << index_;
@@ -454,7 +521,7 @@ public:
 				std::string sym_name = ConsumeToken().text;
 				ConsumeToken(); // consume '='
 				auto val_expr = ParseExpression();
-				statements.push_back(std::make_unique<EquStatement>(sym_name, val_expr.release()));
+				statements.push_back(std::make_unique<EquStatement>(Tok.file, Tok.line, sym_name, val_expr.release()));
 				continue;
 			}
 
@@ -463,7 +530,7 @@ public:
 				ConsumeToken(); // consume '*'
 				ConsumeToken(); // consume '='
 				auto addr_expr = ParseExpression();
-				statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
+				statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.release()));
 				continue;
 			}
 
@@ -474,7 +541,7 @@ public:
 				if (!name.empty() && name.back() == ':')
 					name.pop_back();
 				Tok.id = static_cast<int>(TokenKind::Label);
-				statements.push_back(std::make_unique<LabelStatement>(std::move(name)));
+				statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(name)));
 				ConsumeToken();
 				continue;
 			}
@@ -491,7 +558,7 @@ public:
 
 				if (dir == ".org") {
 					auto addr_expr = ParseExpression();
-					statements.push_back(std::make_unique<OrgStatement>(addr_expr.release()));
+					statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.release()));
 				}
 				else if (dir == ".byte" || dir == ".word") {
 					DataWidth w = (dir == ".byte") ? DataWidth::Byte : DataWidth::Word;
@@ -502,13 +569,13 @@ public:
 						auto expr = ParseExpression();
 						if (expr.isUsable()) elems.push_back(expr.release());
 					} while (TokIs(TokenKind::Comma));
-					statements.push_back(std::make_unique<DataStatement>(w, std::move(elems)));
+					statements.push_back(std::make_unique<DataStatement>(Tok.file, Tok.line, w, std::move(elems)));
 				}
 
 				else if (dir == ".macro") {
 					PasmTokenizer::Token name_tok = ConsumeToken();
 					if (!name_tok.is(static_cast<int>(TokenKind::Identifier))) {
-						throw std::runtime_error(".macro expected name");
+						throw std::runtime_error(std::format(".macro expected name File: {} Line: {}",  src_mgr.GetFileName(name_tok.file), name_tok.line));
 					}
 
 					// skip to EOL
@@ -529,9 +596,8 @@ public:
 					}
 
 					if (TokIs(TokenKind::Eof)) {
-						throw std::runtime_error("Expected .endm to close macro definition");
+						throw std::runtime_error(std::format("Expected .endm to close macro definition File: {} Line: {}", src_mgr.GetFileName(name_tok.file), name_tok.line));
 					}
-
 					// Store in map
 					std::string lower_key(def.name);
 					std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
@@ -543,11 +609,43 @@ public:
 					// Macro definitions emit no statements into the AST
 					continue;
 				}
+
+
+				// Inside ParseProgram() or your directive handler:
+				else if (dir == ".include" || dir == ".inc") {
+					ConsumeToken(); // consume directive
+					
+					if (!TokIs(TokenKind::Identifier)) {
+						throw std::runtime_error("Expected string filename after .include");
+					}
+					
+					std::string inc_filename = Tok.text; // e.g. "constants.inc"
+					ConsumeToken(); // consume filename string
+
+					// 1. Tokenize the included file using SourceManager
+					auto inc_tokens = LoadAndTokenizeFile(inc_filename, src_mgr, tokenizer);
+
+					// 2. Recursively parse the included tokens into AST statements
+					AssemblerParser parser(inc_tokens);
+					auto inc_statements = parser.ParseProgram();
+
+					// 3. Insert the included statements directly inline
+					for (auto& stmt : inc_statements) {
+						statements.push_back(std::move(stmt));
+					}
+
+					continue;
+				}				
+				
+				std::cout << "unknown directive\n";
+				
 				continue;
 			}
 
 			// 4.5 Macro Expansion
 			if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
+				
+				auto mac_call_tok = Tok;
 
 				// 1. Save the start position of the macro call in the token stream
 				size_t start_idx = index_;
@@ -580,7 +678,6 @@ public:
 				}
 
 				if (TokIs(TokenKind::Newline)) {
-					line++;
 					ConsumeToken();
 				}
 
@@ -613,17 +710,23 @@ public:
 
 							if (arg_idx >= 0 && arg_idx < static_cast<int>(args.size())) {
 								for (auto a : args[arg_idx]) {
+									a.file = Tok.file;
+									a.line = Tok.line;
 									expanded_tokens.push_back(a);
 								}
 								substituted = true;
 							} else {
-								throw std::runtime_error("Macro call missing argument for positional parameter " + body_tok.text);
+								throw std::runtime_error( std::format("Macro call missing argument for positional parameter {} File: {} Line: {}",  
+									body_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
 							}
 						}
 					}
 
 					if (!substituted) {
-						expanded_tokens.push_back(body_tok);
+						auto expTok = body_tok;
+						expTok.file = Tok.file;
+						expTok.line = Tok.line;
+						expanded_tokens.push_back(expTok);
 					}
 				}
 
@@ -673,10 +776,10 @@ public:
 								ConsumeToken(); // Consume ')'
 								mode = RULE_TYPE::Op_IndirectX;
 							} else {
-								throw std::runtime_error("Expected ')' for Indirect X addressing");
+								throw std::runtime_error(std::format("Expected ')' for Indirect X addressing File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
 							}
 						} else {
-							throw std::runtime_error("Expected 'X' for Indirect X addressing");
+							throw std::runtime_error(std::format("Expected 'X' for Indirect X addressing File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
 						}
 					} else if (TokIs(TokenKind::RParen)) {
 						ConsumeToken(); // Consume ')'
@@ -687,14 +790,14 @@ public:
 								ConsumeToken(); // Consume 'Y'
 								mode = RULE_TYPE::Op_IndirectY;
 							} else {
-								throw std::runtime_error("Expected 'Y' for Indirect Y addressing");
+								throw std::runtime_error(std::format("Expected 'Y' for Indirect Y addressing File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
 							}
 						} else {
 							// Standard Indirect: (expr) - used by JMP
 							mode = RULE_TYPE::Op_Indirect;
 						}
 					} else {
-						throw std::runtime_error("Malformed indirect addressing mode");
+						throw std::runtime_error(std::format("Malformed indirect addressing mode File: {} Line {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
 					}
 				} else {
 					// Absolute, Absolute X/Y, Relative, or Zero-Page
@@ -708,7 +811,7 @@ public:
 							ConsumeToken();
 							mode = RULE_TYPE::Op_AbsoluteY;
 						} else {
-							throw std::runtime_error("Expected X or Y register after comma");
+							throw std::runtime_error(std::format("Expected X or Y register after comma File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
 						}
 					} else {
 						mode = DeduceMemoryMode(mnemonic);
@@ -716,11 +819,11 @@ public:
 				}
 
 				statements.push_back(std::make_unique<InstructionStatement>(
-				                         mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.release())
+				                         opcode_tok.file, opcode_tok.line, mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.release())
 				                     ));
 				continue;
 			}
-			std::cout << "Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << "\n";
+			std::cout << "Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << " File: " << src_mgr.GetFileName(Tok.file) << " Line: " << Tok.line << "\n";
 			ConsumeToken();
 		}
 
@@ -928,10 +1031,12 @@ private:
 								auto it = inverted_branches.find(inst->mnemonic);
 								if (it != inverted_branches.end()) {
 									std::cout << "Warning: Branch out of range for '" << inst->mnemonic
-									          << "' at $" << std::hex << pc << "\n";
+									          << "' at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
 			
 									// 1. Create the JMP statement FIRST by moving the original target expression
 									auto jmp_inst = std::make_unique<InstructionStatement>(
+														stmt->file,
+														stmt->line,
 									                    "jmp",
 									                    RULE_TYPE::Op_Absolute,
 									                    std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
@@ -1236,39 +1341,9 @@ std::string read_file_to_string(const std::string& path) {
 	return ss.str();
 }
 
-// ============================================================================
-// 6. Main Test Driver
-// ============================================================================
-
-int main(int argc, char* argv[])
+void validate_tokens(std::vector<PasmTokenizer::Token> tokens)
 {
-	std::vector<std::string> files;
-	auto arg = 1;
-	while(arg < argc) {
-		if (argv[arg][0] != '-') {
-			files.push_back(argv[arg]);
-			arg++;
-		}
-		else {
-			std::cout << "Unknown option " << argv[arg] << "\n";
-			return -1;
-		}
-	}
-	if (files.empty()) {
-		std::cout << "No input file specified.\n";
-		return 1;
-	}
-
-	PasmTokenizer tokenizer;
-
-	std::vector<PasmTokenizer::Token> tokens;
-	for (auto& file: files) {
-		auto source_code = read_file_to_string(file);
-		auto filetokens = tokenizer.tokenize(source_code);
-		tokens.insert(tokens.end(), filetokens.begin(), filetokens.end());
-	}
-
-	// Process tokens
+	// Walk though tokens
 	bool in_comment = false;
 	auto line = 1;
 	for (const auto& tok : tokens) {
@@ -1297,7 +1372,41 @@ int main(int argc, char* argv[])
 			continue;
 		}
 	}
+}
 
+// ============================================================================
+// 6. Main Test Driver
+// ============================================================================
+
+int main(int argc, char* argv[])
+{
+	std::vector<std::string>input_filenames;
+	auto arg = 1;
+	while(arg < argc) {
+		if (argv[arg][0] != '-') {
+			input_filenames.push_back(argv[arg]);
+			arg++;
+		}
+		else {
+			std::cout << "Unknown option " << argv[arg] << "\n";
+			return -1;
+		}
+	}
+	if (input_filenames.empty()) {
+		std::cout << "No input file specified.\n";
+		return 1;
+	}
+
+
+	std::vector<PasmTokenizer::Token> tokens;
+
+	for (const auto& root_file : input_filenames) {
+        auto file_tokens = LoadAndTokenizeFile(root_file, src_mgr, tokenizer);
+        tokens.insert(tokens.end(), file_tokens.begin(), file_tokens.end());
+    }
+
+	validate_tokens(tokens);
+	
 	try {
 
 		std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
