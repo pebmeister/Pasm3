@@ -1051,7 +1051,7 @@ private:
 				auto name = lbl->name;
 
 				if (IsRelativeLabel(name)) {
-					size_t lbl_id = stmt->file * $10000 + stmt->line;
+					size_t lbl_id = stmt->file * 0x10000 + stmt->line;
 					auto found = false;
 					std::cout << "search anon lbl\n";
 					
