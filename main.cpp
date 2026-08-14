@@ -1051,15 +1051,27 @@ private:
 				auto name = lbl->name;
 
 				if (IsRelativeLabel(name)) {
-					size_t lbl_id = stmt->line * 256 + stmt->file;
-					std::cout << "adding anon label "<< name << " id " << lbl_id << "\n";
+					size_t lbl_id = stmt->file * $10000 + stmt->line;
+					auto found = false;
+					for (auto& lbl: anonymous_labels) {
+						if (lbl.statement_id == lbl_id) {
+							found = true;
+							if (lbl.address != pc) {
+								std::cout << "updating address to," << pc << "\n";
+								lbl.address = pc;
+							}
+						}
+					}
+					if (!found) {
+						std::cout << "adding anon label "<< name << " id " << lbl_id << "\n";
 					
-					// Record anonymous target
-					anonymous_labels.push_back({
-						.type = name[0],
-						.address = pc,
-						.statement_id = lbl_id
-					});
+						// Record anonymous target
+						anonymous_labels.push_back({
+							.type = name[0],
+							.address = pc,
+							.statement_id = lbl_id
+						});
+					}
 				}
 				else if (name[0] == '@') {
 					symbols_.Define(GetMangledSymbol(lbl->name, parent_scope), pc);
