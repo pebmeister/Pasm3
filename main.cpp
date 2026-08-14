@@ -572,7 +572,7 @@ public:
             // 3.5 Cheap Labels
 			if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
 				Tok.id = static_cast<int>(TokenKind::Label);
-				statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(Tok.Text)));
+				statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(Tok.text)));
 				ConsumeToken();
 				continue;
 			}
