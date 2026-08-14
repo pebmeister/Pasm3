@@ -929,6 +929,7 @@ private:
 
 		if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
 			std::cout << "found anon branch " << Tok.text << "\n";
+			ConsumeToken();
 			return ExprResult(std::make_unique<NumberExpr>(0xC100));
 		}
 
