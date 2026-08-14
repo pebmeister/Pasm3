@@ -1047,6 +1047,8 @@ private:
 				auto name = lbl->name;
 
 				if (IsRelativeLabel(name)) {
+					std::cout << "adding anon label "<< name << "\n";
+					
 					// Record anonymous target
 					anonymous_labels.push_back({
 						.type = name[0],
