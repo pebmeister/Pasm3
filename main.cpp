@@ -1053,12 +1053,16 @@ private:
 				if (IsRelativeLabel(name)) {
 					size_t lbl_id = stmt->file * $10000 + stmt->line;
 					auto found = false;
+					std::cout << "search anon lbl\n";
+					
 					for (auto& lbl: anonymous_labels) {
+						std::cout << "id " << lbl.statement_id << "\n";
 						if (lbl.statement_id == lbl_id) {
 							found = true;
 							if (lbl.address != pc) {
-								std::cout << "updating address to," << pc << "\n";
+								std::cout << "updating address to " << pc << "\n";
 								lbl.address = pc;
+								break;
 							}
 						}
 					}
