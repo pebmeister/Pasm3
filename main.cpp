@@ -86,6 +86,7 @@ std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
 struct MacroDef {
 	std::string name;
 	std::vector<PasmTokenizer::Token> body_tokens;
+	int times_called = 0;
 };
 
 static SourceManager src_mgr;
@@ -282,7 +283,7 @@ class SymbolTable {
 	    > symbols_;
 
 public:
-	bool Define(const std::string& name, uint16_t val) {
+	bool Define(const std::string& name, uint16_t val) {		
 		auto it = symbols_.find(name);
 		if (it == symbols_.end()) {
 			symbols_[name] = val;
@@ -303,20 +304,24 @@ public:
 	}
 };
 
-inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols) {
+inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols, const std::string& parent_scope ) {
 	if (!node) return std::nullopt;
 
 	if (auto num = dynamic_cast<const NumberExpr*>(node)) return num->value;
 
 	if (auto sym = dynamic_cast<const SymbolExpr*>(node)) {
-		auto val = symbols.Lookup(sym->name);
+		auto name = sym->name;
+		if (sym->name[0] == '@') {
+			name = GetMangledSymbol(sym->name, parent_scope);
+		}
+		auto val = symbols.Lookup(name);
 		if (val) return static_cast<int64_t>(*val);
 		return std::nullopt;
 	}
 
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
 		if (!un->operand) return std::nullopt;
-		auto val = EvaluateExpr(un->operand.get(), symbols);
+		auto val = EvaluateExpr(un->operand.get(), symbols, parent_scope);
 		if (!val) return std::nullopt;
 		switch ((TokenKind)un->op) {
 		case TokenKind::Minus:
@@ -338,8 +343,8 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 
 	if (auto bin = dynamic_cast<const BinaryExpr*>(node)) {
 		if (!bin->lhs || !bin->rhs) return std::nullopt;
-		auto lhs = EvaluateExpr(bin->lhs.get(), symbols);
-		auto rhs = EvaluateExpr(bin->rhs.get(), symbols);
+		auto lhs = EvaluateExpr(bin->lhs.get(), symbols, parent_scope);
+		auto rhs = EvaluateExpr(bin->rhs.get(), symbols, parent_scope);
 		if (!lhs || !rhs) return std::nullopt;
 
 		switch ((TokenKind)bin->op) {
@@ -504,9 +509,7 @@ public:
 		while (!TokIs(TokenKind::Eof)) {
 			
 			line = Tok.line;
-
 			if (display_tok) {
-				std::cout << "index = " << index_;
 				prTok();
 			}
 
@@ -521,7 +524,6 @@ public:
 			// end of line
 			if (TokIs(TokenKind::Newline)) {
 				ConsumeToken();
-				line++;
 				continue;
 			}
 
@@ -596,6 +598,7 @@ public:
 
 					MacroDef def;
 					def.name = name_tok.text;
+					def.times_called = 0;
 
 					// Slurp all tokens until .endm directive is reached
 					auto slurp = ConsumeToken();
@@ -676,7 +679,8 @@ public:
 					return static_cast<char>(std::tolower(c));
 				});
 
-				const MacroDef& mac = macros_[lower_key];
+				MacroDef& mac = macros_[lower_key];
+				mac.times_called++;
 
 				// Parse the arguments passed to the macro call
 				std::vector<std::vector<PasmTokenizer::Token>> args;
@@ -710,33 +714,42 @@ public:
 					bool substituted = false;
 
 					// Look for positional identifiers like \1, \2, \10
-					if (body_tok.text.size() >= 2 && body_tok.text[0] == '\\') {
-						auto valid = true;
-						int arg_idx = 0;
+					if (body_tok.text.size() >= 2) {
+						
+						if (body_tok.text[0] == '\\') {
+							auto valid = true;
+							int arg_idx = 0;
 
-						for (size_t j = 1; j < body_tok.text.size(); ++j) {
-							if (!std::isdigit(body_tok.text[j])) {
-								valid = false;
-								break;
-							}
-							arg_idx *= 10;
-							arg_idx += body_tok.text[j] - '0';
-						}
-
-						if (valid) {
-							arg_idx -= 1;
-
-							if (arg_idx >= 0 && arg_idx < static_cast<int>(args.size())) {
-								for (auto a : args[arg_idx]) {
-									a.file = Tok.file;
-									a.line = Tok.line;
-									expanded_tokens.push_back(a);
+							for (size_t j = 1; j < body_tok.text.size(); ++j) {
+								if (!std::isdigit(body_tok.text[j])) {
+									valid = false;
+									break;
 								}
-								substituted = true;
-							} else {
-								throw std::runtime_error( std::format("Macro call missing argument for positional parameter {} File: {} Line: {}",  
-									body_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+								arg_idx *= 10;
+								arg_idx += body_tok.text[j] - '0';
 							}
+
+							if (valid) {
+								arg_idx -= 1;
+
+								if (arg_idx >= 0 && arg_idx < static_cast<int>(args.size())) {
+									for (auto a : args[arg_idx]) {
+										a.file = Tok.file;
+										a.line = Tok.line;
+										expanded_tokens.push_back(a);
+									}
+									substituted = true;
+								} else {
+									throw std::runtime_error( std::format("Macro call missing argument for positional parameter {} File: {} Line: {}",  
+										body_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+								}
+							}
+						}
+						else if (body_tok.text[0] == '@') {
+							auto newlab = std::move(body_tok);
+							newlab.text += std::to_string(mac.times_called);
+							expanded_tokens.push_back(newlab);
+							substituted = true;
 						}
 					}
 
@@ -1002,24 +1015,33 @@ private:
 			{"bvc", "bvs"}, {"bvs", "bvc"},
 			{"bmi", "bpl"}, {"bpl", "bmi"}
 		};
+		
+		std::string parent_scope="";
 
 		for (auto& stmt : statements) {
 			if (!stmt) continue;
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
-				changed |= symbols_.Define(lbl->name, pc);
+				auto name = lbl->name;
+				if (name[0] == '@') {
+					symbols_.Define(GetMangledSymbol(lbl->name, parent_scope), pc);
+				}
+				else {				
+					parent_scope = name;
+					changed |= symbols_.Define(lbl->name, pc);					
+				}
 				new_statements.push_back(std::move(stmt));
 			}
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
-					auto val = EvaluateExpr(org->address_expr.get(), symbols_);
+					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope);
 					if (val) pc = static_cast<uint16_t>(*val);
 				}
 				new_statements.push_back(std::move(stmt));
 			}
 			else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
 				if (equ->value_expr) {
-					auto val = EvaluateExpr(equ->value_expr.get(), symbols_);
+					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope);
 					if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
 				}
 				new_statements.push_back(std::move(stmt));
@@ -1039,7 +1061,7 @@ private:
 				auto mode_it = info->mode_to_opcode.find(inst->mode);
 				if (mode_it != info->mode_to_opcode.end()) {
 
-					auto val = EvaluateExpr(inst->operand.get(), symbols_);
+					auto val = EvaluateExpr(inst->operand.get(), symbols_, parent_scope);
 					if (val.has_value()) {
 						auto evaluated = val.value();
 						if (inst->mode == RULE_TYPE::Op_Relative) {
@@ -1165,9 +1187,11 @@ private:
 	}
 
 	void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements) {
+		
 		uint16_t pc = start_pc_;
 		std::vector<uint8_t> binary_output;
 		std::ostringstream listing;
+		std::string parent_scope="";
 
 		listing << "\n===============================================================================\n";
 		listing << "                               ASSEMBLY LISTING\n";
@@ -1181,11 +1205,14 @@ private:
 			// 1. Label Statements
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				listing << std::format("${:04X}                {}\n", pc, lbl->name);
+				if (lbl->name[0] != '@') {
+					parent_scope = lbl->name;		
+				}
 			}
 			// 2. Org Directives (*= $XXXX)
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
-					auto val = EvaluateExpr(org->address_expr.get(), symbols_);
+					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope);
 					if (val) pc = static_cast<uint16_t>(*val);
 				}
 				listing << std::format("       {:14} *= ${:04X}\n", "", pc);
@@ -1194,7 +1221,7 @@ private:
 			else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
 				uint16_t v = 0;
 				if (equ->value_expr) {
-					auto val = EvaluateExpr(equ->value_expr.get(), symbols_);
+					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope);
 					v = val ? static_cast<uint16_t>(*val) : 0;
 				}
 				listing << std::format("${:04X}  {:14} {} = ${:04X}\n", v, "", equ->name, v);
@@ -1207,7 +1234,7 @@ private:
 
 				for (const auto& expr : data->elements) {
 					if (!expr) continue;
-					auto val = EvaluateExpr(expr.get(), symbols_);
+					auto val = EvaluateExpr(expr.get(), symbols_, parent_scope);
 					int64_t v = val.value_or(0);
 
 					if (data->width == DataWidth::Byte) {
@@ -1278,12 +1305,16 @@ private:
 				std::string operand_str; // Will hold the formatted operand (e.g., "#$32", "$C000")
 
 				if (inst_stmt->operand) {
-					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_);
+					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_, parent_scope);
 					
 					// Catch unresolved symbols in the final pass
+	
+
 					if (!eval_result.has_value()) {
-						throw std::runtime_error(
-							std::format("Unresolved symbol in operand for '{}' at ${:04X}", inst_stmt->mnemonic, pc)
+						std::cout << listing.str();
+
+					throw std::runtime_error(
+							std::format("Unresolved symbol in operand for '{}' at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line)
 						);
 					}
 					
@@ -1391,6 +1422,8 @@ void validate_tokens(std::vector<PasmTokenizer::Token> tokens)
 		}
 	}
 }
+
+
 
 // ============================================================================
 // 6. Main Test Driver
