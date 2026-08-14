@@ -30,7 +30,6 @@
 
 std::string read_file_to_string(const std::string& path);
 
-
 struct SourceManager {
     std::vector<std::string> files;          // Global registry: index = fileid
     std::vector<std::string> include_stack;  // Active include chain
@@ -89,11 +88,16 @@ struct MacroDef {
 	int times_called = 0;
 };
 
-static SourceManager src_mgr;
-static PasmTokenizer tokenizer;
+struct AnonymousLabel {
+    char type;             // '-' or '+'
+    uint16_t address;      // PC address in memory
+    size_t statement_id;   // Sequential statement/AST index for relative position
+};
 
-// Add this as a private member in the Parser class
+SourceManager src_mgr;
+PasmTokenizer tokenizer;
 std::unordered_map<std::string, MacroDef> macros_;
+std::vector<AnonymousLabel> anonymous_labels;
 
 // ============================================================================
 // 1. Core Enums & Data Structures
@@ -264,6 +268,14 @@ struct CaseInsensitiveEqual {
 		       );
 	}
 };
+
+// Helper to check if a label string is a cheap relative label
+bool IsRelativeLabel(const std::string& name) {
+    if (name.empty()) return false;
+    char c = name[0];
+    if (c != '-' && c != '+') return false;
+    return name.find_first_not_of(c) == std::string::npos;
+}
 
 std::string GetMangledSymbol(const std::string& symbol, const std::string& parent_scope) {
     if (symbol.starts_with('@')) {
@@ -1018,12 +1030,23 @@ private:
 		
 		std::string parent_scope="";
 
+		size_t stmt_id = 0;
 		for (auto& stmt : statements) {
+			stmt_id++;
 			if (!stmt) continue;
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				auto name = lbl->name;
-				if (name[0] == '@') {
+
+				if (IsRelativeLabel(name)) {
+					// Record anonymous target
+					anonymous_labels.push_back({
+						.type = name[0],
+						.address = pc,
+						.statement_id = stmt_id
+					});
+				}
+				else if (name[0] == '@') {
 					symbols_.Define(GetMangledSymbol(lbl->name, parent_scope), pc);
 				}
 				else {				
@@ -1423,8 +1446,6 @@ void validate_tokens(std::vector<PasmTokenizer::Token> tokens)
 	}
 }
 
-
-
 // ============================================================================
 // 6. Main Test Driver
 // ============================================================================
@@ -1447,7 +1468,6 @@ int main(int argc, char* argv[])
 		std::cout << "No input file specified.\n";
 		return 1;
 	}
-
 
 	std::vector<PasmTokenizer::Token> tokens;
 
