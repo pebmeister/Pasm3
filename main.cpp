@@ -927,23 +927,24 @@ private:
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
 		}
 
+		if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
+			std::cout << "found anon branch " << Tok.text << "\n";
+			return ExprResult(std::make_unique<NumberExpr>(0xC100));
+		}
+
 		if (TokIs(TokenKind::LParen)) {
 			ConsumeToken();
 			ExprResult expr = ParseExpression(0);
 			if (TokIs(TokenKind::RParen)) ConsumeToken();
 			return expr;
 		}
-
+		
 		if (IsUnaryPrefix(Tok.id)) {
 			PasmTokenizer::Token op_tok = ConsumeToken();
 			ExprResult operand = ParseExpression(50);
 			return ExprResult(std::make_unique<UnaryExpr>(op_tok.id, operand.release()));
 		}
 
-		if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
-			std::cout << "found anon branch " << Tok.text << "\n";
-			return ExprResult(std::make_unique<NumberExpr>(0xC100));
-		}
 		return ExprResult::Error();
 	}
 
