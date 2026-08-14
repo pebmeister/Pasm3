@@ -1044,16 +1044,15 @@ private:
 		
 		std::string parent_scope="";
 
-		size_t stmt_id = 0;
 		for (auto& stmt : statements) {
-			stmt_id++;
 			if (!stmt) continue;
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				auto name = lbl->name;
 
 				if (IsRelativeLabel(name)) {
-					std::cout << "adding anon label "<< name << " id " << stmt_id << "\n";
+					size_t lbl_id = stmt->line * 256 + stmt->file;
+					std::cout << "adding anon label "<< name << " id " << lbl_id << "\n";
 					
 					// Record anonymous target
 					anonymous_labels.push_back({
