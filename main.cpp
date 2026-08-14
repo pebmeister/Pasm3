@@ -1058,7 +1058,7 @@ private:
 					anonymous_labels.push_back({
 						.type = name[0],
 						.address = pc,
-						.statement_id = stmt_id
+						.statement_id = lbl_id
 					});
 				}
 				else if (name[0] == '@') {
