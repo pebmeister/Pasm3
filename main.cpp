@@ -513,7 +513,7 @@ public:
 		std::vector<std::unique_ptr<Statement>> statements;
 
 		auto line = 1;
-		bool display_tok = false;
+		bool display_tok = true;
 		if (display_tok) {
 			std::cout << "\n";
 		}
@@ -568,7 +568,15 @@ public:
 				ConsumeToken();
 				continue;
 			}
-
+			
+            // 3.5 Cheap Labels
+			if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
+				Tok.id = static_cast<int>(TokenKind::Label);
+				statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(name)));
+				ConsumeToken();
+				continue;
+			}
+			
 			// 4. Directives (.org, .byte, .word)
 			if (TokIs(TokenKind::Directive)) {
 
