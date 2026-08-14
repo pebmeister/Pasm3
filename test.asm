@@ -27,7 +27,10 @@ START:
     sei                    ; Implied mode (testing lowercase)
     lda #SYS_COLOR         ; Immediate mode with symbol
     sta BORDER_COL         ; Absolute mode with symbol
-    
+
+-
+    bpl -
+
     ; 4. Unary Prefix Expressions (< for Low Byte, > for High Byte)
     lda #<MESSAGE          ; Forward reference + Unary Low Byte
     ldx #>MESSAGE          ; Forward reference + Unary High Byte
