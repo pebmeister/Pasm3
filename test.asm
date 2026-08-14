@@ -3,9 +3,11 @@
 ; ==============================================================================
 
     .macro Testm
+@batman
     nop
     lda #\1
     sta \2
+	bne @batman
     .endm
     
     
@@ -57,6 +59,6 @@ POINTERS:
     .word SCREEN_RAM + $1000 
     .word (SCREEN_RAM * 2) & $FFFF
 
+@cow
     testm 50, Loop
-
-	
+	testm 50, @cow

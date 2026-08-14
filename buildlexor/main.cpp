@@ -14,7 +14,7 @@ compiler.addRules({
     { "[ \\t]*", static_cast<int>(Ws)},
     { "[;]", static_cast<int>(Semicolon)},
     { "[\\\\][1-9]+", static_cast<int>(MacroArg)},
-    { "[a-z_][a-z0-9_]*[:]?", static_cast<int>(Identifier), true},
+    { "[@]?[a-z_][a-z0-9_]*[:]?", static_cast<int>(Identifier), true},
     { "[\\.][a-z_][a-z0-9_]*", static_cast<int>(Directive), true},
     { "[0-9]+", static_cast<int>(Number)},
     { "[$][0-9|A-F]+", static_cast<int>(Number)},
