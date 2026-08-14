@@ -1067,7 +1067,7 @@ private:
 						}
 					}
 					if (!found) {
-						std::cout << "adding anon label "<< name << " id " << lbl_id << "\n";
+						std::cout << "adding anon label "<< name << " id " << lbl_id << " pc " << pc << "\n";
 					
 						// Record anonymous target
 						anonymous_labels.push_back({
