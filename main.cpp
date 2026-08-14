@@ -940,6 +940,10 @@ private:
 			return ExprResult(std::make_unique<UnaryExpr>(op_tok.id, operand.release()));
 		}
 
+		if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
+			std::cout << "found anon branch " << Tok.text << "\n";
+			return ExprResult(std::make_unique<NumberExpr>(0xC100));
+		}
 		return ExprResult::Error();
 	}
 
@@ -1047,7 +1051,7 @@ private:
 				auto name = lbl->name;
 
 				if (IsRelativeLabel(name)) {
-					std::cout << "adding anon label "<< name << "\n";
+					std::cout << "adding anon label "<< name << " id " << stmt_id << "\n";
 					
 					// Record anonymous target
 					anonymous_labels.push_back({
