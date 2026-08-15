@@ -244,7 +244,7 @@ struct CaseInsensitiveHash {
 	using is_transparent = void;
 
 	std::size_t operator()(std::string_view sv) const {
-		std::size_t hash = 14695981039346656037ULL; // FNV-1a offset basis
+		std::size_t hash = static_cast<std::size_t>(14695981039346656037ULL); // FNV-1a offset basis
 		for (char c : sv) {
 			auto uc = static_cast<unsigned char>(c);
 			hash ^= static_cast<std::size_t>(std::tolower(uc));
@@ -513,7 +513,7 @@ public:
 		std::vector<std::unique_ptr<Statement>> statements;
 
 		auto line = 1;
-		bool display_tok = true;
+		bool display_tok = false;
 		if (display_tok) {
 			std::cout << "\n";
 		}
@@ -882,7 +882,9 @@ public:
 	}
 
 private:
-	ExprResult ParseExpression(int min_prec = 0) {
+	int address = 0;
+	ExprResult ParseExpression(int min_prec = 0, int pc = 0) {
+		address = pc;
 		ExprResult lhs = ParsePrefixExpression();
 		if (lhs.isInvalid()) return lhs;
 
@@ -928,9 +930,27 @@ private:
 		}
 
 		if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
-			std::cout << "found anon branch " << Tok.text << "\n";
-			ConsumeToken();
-			return ExprResult(std::make_unique<NumberExpr>(0xC00D));
+			auto findcount = 0;
+			auto tk = static_cast<TokenKind>(Tok.id);			
+			while (TokAheadIs(tk, findcount + 1)) {
+				findcount ++;
+			}
+			if (
+					findcount > 1 ||
+					TokAheadIs(TokenKind::Newline, findcount + 1) || 
+					TokAheadIs(TokenKind::Eof, findcount + 1) || 
+					TokAheadIs(TokenKind::Semicolon, findcount + 1)) {
+
+				++findcount;
+				std::cout << "anon jump\n";
+				for (auto i = 0; i < findcount; ++i) {
+					ConsumeToken();
+				}
+				
+				auto startpc = address;
+				
+				return ExprResult(std::make_unique<NumberExpr>(0xC00D));
+			}
 		}
 
 		if (TokIs(TokenKind::LParen)) {
@@ -1026,6 +1046,9 @@ public:
 
 		EmitFinalPass(statements);
 	}
+	
+	
+std::map<size_t, size_t> anon_idmap;
 
 private:
 	bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements) {
@@ -1049,32 +1072,24 @@ private:
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				auto name = lbl->name;
-
 				if (IsRelativeLabel(name)) {
 					size_t lbl_id = stmt->file * 0x10000 + stmt->line;
-					auto found = false;
-					std::cout << "search anon lbl\n";
-					
-					for (auto& lbl: anonymous_labels) {
-						std::cout << "id " << lbl.statement_id << "\n";
-						if (lbl.statement_id == lbl_id) {
-							found = true;
-							if (lbl.address != pc) {
-								std::cout << "updating address to " << pc << "\n";
-								lbl.address = pc;
-								break;
-							}
-						}
-					}
-					if (!found) {
-						std::cout << "adding anon label "<< name << " id " << lbl_id << " pc " << pc << "\n";
-					
-						// Record anonymous target
+					auto it = anon_idmap.find(lbl_id);
+					if (it == anon_idmap.end()) {
 						anonymous_labels.push_back({
 							.type = name[0],
 							.address = pc,
 							.statement_id = lbl_id
 						});
+						anon_idmap[lbl_id] = anonymous_labels.size() -1;
+						changed = true;
+					}
+					else {
+						auto index = it->second;
+						if (anonymous_labels[index].address != pc) {
+							anonymous_labels[index].address = pc;
+							changed = true;
+						}
 					}
 				}
 				else if (name[0] == '@') {
