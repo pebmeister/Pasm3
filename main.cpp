@@ -171,7 +171,10 @@ struct SymbolExpr : ExprNode {
 };
 
 struct AnonLblExpr : ExprNode {
-}
+    bool forward;
+    int count
+    explicit AnonLblExpr(bool f, int c) : forward(f), count(c) {}
+};
 
 struct UnaryExpr : ExprNode {
 	int op;
@@ -328,8 +331,10 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 		return std::nullopt;
 	}
 
+    if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
+       
+    }
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
-        std::cout << "I am un\n";
 
 		if (!un->operand) return std::nullopt;
 		auto val = EvaluateExpr(un->operand.get(), symbols, parent_scope);
@@ -947,6 +952,12 @@ private:
 			PasmTokenizer::Token t = ConsumeToken();
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
 		}
+
+		auto anon_count = GetRelativeLabelCount();
+		if (anon_count.has_value()) {
+			return ExprResult(std::make_unique<AnonLblExpr>(Tok.id == 
+					static_cast<int>(TokenKind::Plus), anon_count.value()));
+        }
 
 		if (TokIs(TokenKind::LParen)) {
 			ConsumeToken();
