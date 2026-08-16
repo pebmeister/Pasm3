@@ -949,7 +949,7 @@ private:
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
 		}
 
-        auto lbl_count = GetRelativeLabelCount()'
+        auto lbl_count = GetRelativeLabelCount();
 	    if (value.has_value()) {
 			return ExprResult(std::make_unique<AnonLblExpr>(Tok.id, lbl_count.value(), address));
         }
