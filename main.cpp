@@ -1087,14 +1087,14 @@ private:
 				auto name = lbl->name;
 				if (name[0] == '+' || name[0] == '-' ) {
 					std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
-					auto it = anon_idmap.find(lbl_id);
+					auto it = anon_idmap.find(stmt_id);
 					if (it == anon_idmap.end()) {
 						anonymous_labels.push_back({
 							.type = name[0],
 							.address = pc,
 							.statement_id = stmt_id
 						});
-						anon_idmap[lbl_id] = anonymous_labels.size() -1;
+						anon_idmap[stmt_id] = anonymous_labels.size() -1;
 						changed = true;
 					}
 					else {
