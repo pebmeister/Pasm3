@@ -1061,7 +1061,7 @@ public:
 	}
 	
 	
-std::map<size_t, size_t> anon_idmap;
+std::map<std::pair<int, sizet>, size_t> anon_idmap;
 
 private:
 	bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements) {
@@ -1086,13 +1086,13 @@ private:
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				auto name = lbl->name;
 				if (name[0] == '+' || name[0] == '-' ) {
-					size_t lbl_id = stmt->file * 0x10000 + stmt->line;
+					std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
 					auto it = anon_idmap.find(lbl_id);
 					if (it == anon_idmap.end()) {
 						anonymous_labels.push_back({
 							.type = name[0],
 							.address = pc,
-							.statement_id = lbl_id
+							.statement_id = stmt_id
 						});
 						anon_idmap[lbl_id] = anonymous_labels.size() -1;
 						changed = true;
