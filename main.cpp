@@ -518,17 +518,22 @@ public:
         prTok();
 
         if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
+        std::cout << "got at least 1\n";
+
         auto count = 0;
         auto tk = static_cast<TokenKind>(Tok.id);
     	while (TokAheadIs(tk, count + 1)) {
+            std::cout << "found 1 more\n";
             count++;
     	}
+       
         if (count > 0) { // this is actually 0 based
     		return count +1;
     	}
         if (TokAheadIs(TokenKind::Eof, 1) || 
             TokAheadIs(TokenKind::Newline, 1) || 
             TokAheadIs(TokenKind::Semicolon, 1)) {
+             std::cout << "we are returning a value!!\n";
             return 1;
         }
         return std::nullopt;
