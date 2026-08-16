@@ -962,8 +962,10 @@ private:
 
 		auto anon_count = GetRelativeLabelCount();
 		if (anon_count.has_value()) {
-			return ExprResult(std::make_unique<AnonLblExpr>(Tok.id == 
-					static_cast<int>(TokenKind::Plus), anon_count.value()));
+           auto foward = Tok.id == static_cast<int>(TokenKind::Plus);
+           auto count = anon_count.value();
+          std::cout <"foward " << foward << " count " << count << "\n";
+		   return ExprResult(std::make_unique<AnonLblExpr>(foward, count));
         }
 
 		if (TokIs(TokenKind::LParen)) {
