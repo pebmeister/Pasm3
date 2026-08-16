@@ -170,6 +170,9 @@ struct SymbolExpr : ExprNode {
 	explicit SymbolExpr(std::string n) : name(std::move(n)) {}
 };
 
+struct AnonLblExpr : ExprNode {
+}
+
 struct UnaryExpr : ExprNode {
 	int op;
 	std::unique_ptr<ExprNode> operand;
