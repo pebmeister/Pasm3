@@ -1061,7 +1061,7 @@ public:
 	}
 	
 	
-std::map<std::pair<int, sizet>, size_t> anon_idmap;
+std::map<std::pair<int, size_t>, size_t> anon_idmap;
 
 private:
 	bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements) {
