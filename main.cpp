@@ -950,7 +950,7 @@ private:
 		}
 
 	    if (GetRelativeLableCount().has_value()) {
-			return ExprResult(std::make_unique<NumberExpr>($c000));
+			return ExprResult(std::make_unique<NumberExpr>(0xc000));
         }
 
 		if (TokIs(TokenKind::LParen)) {
