@@ -504,7 +504,7 @@ public:
 	
     // Helper to check if relative label
     std::optional<int> GetRelativeLabelCount() {
-        if (!TokIs(TokenKind::Plus) && (!TokIs(TokenKind::Minus)) return std::nullopt;
+        if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
         auto count = 0;
         auto tk = static_cast<TokenKind>(Tok.id);
     	while (TokAheadIs(tk, count + 1) {
@@ -513,7 +513,7 @@ public:
         if (count > 0) { // this is actually 0 based
     		return count +1;
     	}
-        if (TokAheadIs(TokenKind::Eof, 1) || TokAhead(TokenKind::Newline, 1) || (TokenKind::Semicolon, 1)) {
+        if (TokAheadIs(TokenKind::Eof, 1) || TokAhead(TokenKind::Newline, 1) || TokenKind::Semicolon, 1)) {
             return 1;
         }
         return std::nullopt;
