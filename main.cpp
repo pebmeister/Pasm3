@@ -91,7 +91,7 @@ struct MacroDef {
 struct AnonymousLabel {
     char type;             // '-' or '+'
     uint16_t address;      // PC address in memory
-    size_t statement_id;   // Sequential statement/AST index for relative position
+    std::pair<int, size> statement_id;   // Sequential statement/AST index for relative position
 };
 
 SourceManager src_mgr;
@@ -269,12 +269,21 @@ struct CaseInsensitiveEqual {
 	}
 };
 
-// Helper to check if a label string is a cheap relative label
-bool IsRelativeLabel(const std::string& name) {
-    if (name.empty()) return false;
-    char c = name[0];
-    if (c != '-' && c != '+') return false;
-    return name.find_first_not_of(c) == std::string::npos;
+// Helper to check if relative label
+std::optional GetRelativeLabelCount() {
+    if (!TokIs(TokenKind::Plus) && (!TokIs(TokenKind::Minus)) return std::nullopt;
+    auto count = 0;
+    auto tk = static_cast<TokenKind>(Tok.id);
+	while (TokAheadIs(tk, count + 1) {
+        count++;
+	}
+    if (count > 0) { // this is actually 0 based
+		return count +1;
+	}
+    if (TokAheadIs(TokenKind::Eof, 1) || TokAhead(TokenKind::Newline, 1) || (TokenKind::Semicolon, 1)) {
+        return 1;
+    }
+    return std::nullopt;
 }
 
 std::string GetMangledSymbol(const std::string& symbol, const std::string& parent_scope) {
@@ -569,8 +578,8 @@ public:
 				continue;
 			}
 			
-            // 3.5 Cheap Labels
-			if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
+            // 3.5 Relative Labels
+			if (TokIs(TokenKind::Minus) || TokIs(TokenKind::Plus)) {
 				Tok.id = static_cast<int>(TokenKind::Label);
 				statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(Tok.text)));
 				ConsumeToken();
@@ -630,6 +639,7 @@ public:
 					if (TokIs(TokenKind::Eof)) {
 						throw std::runtime_error(std::format("Expected .endm to close macro definition File: {} Line: {}", src_mgr.GetFileName(name_tok.file), name_tok.line));
 					}
+
 					// Store in map
 					std::string lower_key(def.name);
 					std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
