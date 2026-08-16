@@ -949,7 +949,7 @@ private:
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
 		}
 
-	    if (GetRelativeLableCount().has_value()) {
+	    if (GetRelativeLabelCount().has_value()) {
 			return ExprResult(std::make_unique<NumberExpr>(0xc000));
         }
 
