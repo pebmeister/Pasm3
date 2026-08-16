@@ -507,7 +507,7 @@ public:
         if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
         auto count = 0;
         auto tk = static_cast<TokenKind>(Tok.id);
-    	while (TokAheadIs(tk, count + 1) {
+    	while (TokAheadIs(tk, count + 1)) {
             count++;
     	}
         if (count > 0) { // this is actually 0 based
