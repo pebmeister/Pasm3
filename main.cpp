@@ -172,7 +172,7 @@ struct SymbolExpr : ExprNode {
 
 struct AnonLblExpr : ExprNode {
     bool forward;
-    int count
+    int count;
     explicit AnonLblExpr(bool f, int c) : forward(f), count(c) {}
 };
 
