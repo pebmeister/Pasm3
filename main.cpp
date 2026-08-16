@@ -317,9 +317,6 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 
 	if (auto sym = dynamic_cast<const SymbolExpr*>(node)) {
 		auto name = sym->name;
-		if (name[0] == '-') {
-			std::cout << "damn dude/n";
-		}
 		if (sym->name[0] == '@') {
 			name = GetMangledSymbol(sym->name, parent_scope);
 		}
@@ -329,6 +326,8 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 	}
 
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
+        std::cout << "I am un\n";
+
 		if (!un->operand) return std::nullopt;
 		auto val = EvaluateExpr(un->operand.get(), symbols, parent_scope);
 		if (!val) return std::nullopt;
