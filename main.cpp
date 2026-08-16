@@ -175,7 +175,8 @@ struct AnonLblExpr: ExprNode {
   int count;
   int pc;
   explicit AnonLblExpr(int k, int c, int p) : kind(k), count(c), pc(p) {}
-}
+};
+
 struct UnaryExpr : ExprNode {
 	int op;
 	std::unique_ptr<ExprNode> operand;
