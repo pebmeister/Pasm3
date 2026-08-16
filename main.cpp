@@ -903,7 +903,7 @@ public:
 
 private:
 	int address = 0;
-	ExprResult ParseExpression(int min_prec = 0, int pc = 0) {
+	ExprResult ParseExpression(int min_prec = 0, int pc = 0xc020) {
 		address = pc;
 		ExprResult lhs = ParsePrefixExpression();
 		if (lhs.isInvalid()) return lhs;
@@ -949,8 +949,9 @@ private:
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
 		}
 
-	    if (GetRelativeLabelCount().has_value()) {
-			return ExprResult(std::make_unique<NumberExpr>(0xc000));
+        auto lbl_count = GetRelativeLabelCount()'
+	    if (value.has_value()) {
+			return ExprResult(std::make_unique<AnonLblExpr>(Tok.id, lbl_count.value(), address));
         }
 
 		if (TokIs(TokenKind::LParen)) {
