@@ -269,22 +269,6 @@ struct CaseInsensitiveEqual {
 	}
 };
 
-// Helper to check if relative label
-std::optional<int> GetRelativeLabelCount() {
-    if (!TokIs(TokenKind::Plus) && (!TokIs(TokenKind::Minus)) return std::nullopt;
-    auto count = 0;
-    auto tk = static_cast<TokenKind>(Tok.id);
-	while (TokAheadIs(tk, count + 1) {
-        count++;
-	}
-    if (count > 0) { // this is actually 0 based
-		return count +1;
-	}
-    if (TokAheadIs(TokenKind::Eof, 1) || TokAhead(TokenKind::Newline, 1) || (TokenKind::Semicolon, 1)) {
-        return 1;
-    }
-    return std::nullopt;
-}
 
 std::string GetMangledSymbol(const std::string& symbol, const std::string& parent_scope) {
     if (symbol.starts_with('@')) {
@@ -518,6 +502,23 @@ public:
 		}
 	}
 	
+    // Helper to check if relative label
+    std::optional<int> GetRelativeLabelCount() {
+        if (!TokIs(TokenKind::Plus) && (!TokIs(TokenKind::Minus)) return std::nullopt;
+        auto count = 0;
+        auto tk = static_cast<TokenKind>(Tok.id);
+    	while (TokAheadIs(tk, count + 1) {
+            count++;
+    	}
+        if (count > 0) { // this is actually 0 based
+    		return count +1;
+    	}
+        if (TokAheadIs(TokenKind::Eof, 1) || TokAhead(TokenKind::Newline, 1) || (TokenKind::Semicolon, 1)) {
+            return 1;
+        }
+        return std::nullopt;
+    }
+    
 	std::vector<std::unique_ptr<Statement>> ParseProgram() {
 		std::vector<std::unique_ptr<Statement>> statements;
 
