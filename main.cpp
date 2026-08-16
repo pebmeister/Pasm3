@@ -333,9 +333,6 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 
     if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
        std::cout << "hey im an anon lable expression\n";
-       for (auto i=0; i < anon->count; ++i) {
-          ConsumeToken();
-       }
        return 0xC000;
     }
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
@@ -969,6 +966,9 @@ private:
            auto foward = Tok.id == static_cast<int>(TokenKind::Plus);
            auto count = anon_count.value();
           std::cout << "foward " << foward << " count " << count << "\n";
+          for (auto i=0; i < count; ++i) {
+             ConsumeToken();
+           }
 		   return ExprResult(std::make_unique<AnonLblExpr>(foward, count));
         }
 
