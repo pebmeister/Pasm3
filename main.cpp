@@ -949,6 +949,10 @@ private:
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
 		}
 
+	    if (GetRelativeLableCount().has_value() {
+			return ExprResult(std::make_unique<NumberExpr>($c000));
+        }
+
 		if (TokIs(TokenKind::LParen)) {
 			ConsumeToken();
 			ExprResult expr = ParseExpression(0);
