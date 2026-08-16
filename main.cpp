@@ -1083,7 +1083,7 @@ private:
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				auto name = lbl->name;
-				if (IsRelativeLabel(name)) {
+				if (name[0] == '+' || name[0] == '-' ) {
 					size_t lbl_id = stmt->file * 0x10000 + stmt->line;
 					auto it = anon_idmap.find(lbl_id);
 					if (it == anon_idmap.end()) {
