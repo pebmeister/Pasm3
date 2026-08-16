@@ -170,19 +170,13 @@ struct SymbolExpr : ExprNode {
 	explicit SymbolExpr(std::string n) : name(std::move(n)) {}
 };
 
-struct AnonLblExpr: ExprNode {
-  int kind;
-  int count;
-  int pc;
-  explicit AnonLblExpr(int k, int c, int p) : kind(k), count(c), pc(p) {}
-};
-
 struct UnaryExpr : ExprNode {
 	int op;
 	std::unique_ptr<ExprNode> operand;
 	UnaryExpr(int op, std::unique_ptr<ExprNode> rhs)
 		: op(op), operand(std::move(rhs)) {}
 };
+
 
 struct BinaryExpr : ExprNode {
 	int op;
@@ -323,6 +317,9 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 
 	if (auto sym = dynamic_cast<const SymbolExpr*>(node)) {
 		auto name = sym->name;
+		if (name[0] == '-') {
+			std::cout << "damn dude/n";
+		}
 		if (sym->name[0] == '@') {
 			name = GetMangledSymbol(sym->name, parent_scope);
 		}
@@ -948,11 +945,6 @@ private:
 			PasmTokenizer::Token t = ConsumeToken();
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
 		}
-
-        auto lbl_count = GetRelativeLabelCount();
-	    if (lbl_count.has_value()) {
-			return ExprResult(std::make_unique<AnonLblExpr>(Tok.id, lbl_count.value(), address));
-        }
 
 		if (TokIs(TokenKind::LParen)) {
 			ConsumeToken();
