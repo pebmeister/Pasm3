@@ -333,6 +333,10 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 
     if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
        std::cout << "hey im an anon lable expression\n";
+       for (auto i=0; i < anon->count; ++i) {
+          ConsumeToken();
+       }
+       return 0xC000;
     }
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
 
