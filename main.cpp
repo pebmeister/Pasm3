@@ -170,6 +170,12 @@ struct SymbolExpr : ExprNode {
 	explicit SymbolExpr(std::string n) : name(std::move(n)) {}
 };
 
+struct AnonLblExpr: ExprNode {
+  int kind;
+  int count;
+  int pc;
+  explicit AnonLblExpr(int k, int c, int p) : kind(k), count(c), pc(p) {}
+}
 struct UnaryExpr : ExprNode {
 	int op;
 	std::unique_ptr<ExprNode> operand;
@@ -940,30 +946,6 @@ private:
 		if (TokIs(TokenKind::Identifier)) {
 			PasmTokenizer::Token t = ConsumeToken();
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
-		}
-
-		if (TokIs(TokenKind::Plus) || TokIs(TokenKind::Minus)) {
-			auto findcount = 0;
-			auto tk = static_cast<TokenKind>(Tok.id);			
-			while (TokAheadIs(tk, findcount + 1)) {
-				findcount ++;
-			}
-			if (
-					findcount > 1 ||
-					TokAheadIs(TokenKind::Newline, findcount + 1) || 
-					TokAheadIs(TokenKind::Eof, findcount + 1) || 
-					TokAheadIs(TokenKind::Semicolon, findcount + 1)) {
-
-				++findcount;
-				std::cout << "anon jump\n";
-				for (auto i = 0; i < findcount; ++i) {
-					ConsumeToken();
-				}
-				
-				auto startpc = address;
-				
-				return ExprResult(std::make_unique<NumberExpr>(0xC00D));
-			}
 		}
 
 		if (TokIs(TokenKind::LParen)) {
