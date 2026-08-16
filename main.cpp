@@ -964,7 +964,7 @@ private:
 		if (anon_count.has_value()) {
            auto foward = Tok.id == static_cast<int>(TokenKind::Plus);
            auto count = anon_count.value();
-          std::cout <"foward " << foward << " count " << count << "\n";
+          std::cout << "foward " << foward << " count " << count << "\n";
 		   return ExprResult(std::make_unique<AnonLblExpr>(foward, count));
         }
 
