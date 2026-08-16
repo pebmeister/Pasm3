@@ -515,6 +515,8 @@ public:
 	
     // Helper to check if relative label
     std::optional<int> GetRelativeLabelCount() {
+        prTok();
+
         if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
         auto count = 0;
         auto tk = static_cast<TokenKind>(Tok.id);
