@@ -332,7 +332,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 	}
 
     if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
-       
+       std::cout << "hey im an anon lable expression\n";
     }
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
 
