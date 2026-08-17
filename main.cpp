@@ -40,8 +40,8 @@ struct SourceManager {
             return files[fileid];
         }
         return "<unknown>";
-
     }
+
     // Gets existing fileid or registers a new file
     int GetOrRegisterFile(const std::string& filepath) {
         for (int i = 0; i < static_cast<int>(files.size()); ++i) {
@@ -89,7 +89,7 @@ struct MacroDef {
 };
 
 struct AnonymousLabel {
-    char type;             // '-' or '+'
+    int type;             // '-' or '+'
     uint16_t address;      // PC address in memory
     std::pair<int, size_t> statement_id;   // Sequential statement/AST index for relative position
 };
@@ -276,7 +276,6 @@ struct CaseInsensitiveEqual {
 	}
 };
 
-
 std::string GetMangledSymbol(const std::string& symbol, const std::string& parent_scope) {
     if (symbol.starts_with('@')) {
         // If a local label appears before any global label, fall back to raw name
@@ -332,7 +331,6 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 	}
 
     if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
-       std::cout << "hey im an anon lable expression\n";
        return 0xC000;
     }
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
@@ -463,7 +461,7 @@ private:
 		return macros_.find(name) != macros_.end();
 	}
 
-	int prTok(std::string msg=" AssemblerParser ") {
+	int prTok(std::string msg="") {
 		auto text = Tok.text;
 		auto id = Tok.id;
 		if (id == (int)TokenKind::Newline) text = "[\\n]";
@@ -491,13 +489,15 @@ public:
 		return Tok.is(static_cast<int>(kind));
 	}
 
-	[[nodiscard]] bool TokAheadIs(TokenKind kind, int n = 1) const {
+	[[nodiscard]] bool TokAheadIs(TokenKind kind, int n = 1, bool skipwhite = true) const {
 		auto temp_index = index_;
 		auto count = 0;
 		while (temp_index + 1 < tokens_.size()) {
-			if (tokens_[temp_index + 1].is(static_cast<int>(TokenKind::Ws))) {
-				temp_index++;
-				continue;
+			if (skipwhite) {
+			    if (tokens_[temp_index + 1].is(static_cast<int>(TokenKind::Ws))) {
+				    temp_index++;
+				    continue;
+			    }
 			}
 			count++;
 			if (count == n) {
@@ -516,27 +516,22 @@ public:
 	
     // Helper to check if relative label
     std::optional<int> GetRelativeLabelCount() {
-        prTok();
 
         if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
-        std::cout << "got at least 1\n";
 
-        auto count = 0;
+        auto count = 1;
         auto tk = static_cast<TokenKind>(Tok.id);
-    	while (TokAheadIs(tk, count + 1)) {
-            std::cout << "found 1 more\n";
+    	while (TokAheadIs(tk, count, false) { // search without skipwhite dpcr
             count++;
     	}
        
-        if (count > 0) { // this is actually 0 based
-    		return count +1;
-    	}
-        if (TokAheadIs(TokenKind::Eof, 1) || 
+        if (count > 1) || 
+			((TokAheadIs(TokenKind::Eof, 1) || 
             TokAheadIs(TokenKind::Newline, 1) || 
-            TokAheadIs(TokenKind::Semicolon, 1)) {
-             std::cout << "we are returning a value!!\n";
-            return 1;
+            TokAheadIs(TokenKind::Semicolon, 1))) {
+            return count;
         }
+		
         return std::nullopt;
     }
     
@@ -914,9 +909,7 @@ public:
 	}
 
 private:
-	int address = 0;
-	ExprResult ParseExpression(int min_prec = 0, int pc = 0xc020) {
-		address = pc;
+	ExprResult ParseExpression(int min_prec = 0) {
 		ExprResult lhs = ParsePrefixExpression();
 		if (lhs.isInvalid()) return lhs;
 
@@ -965,9 +958,8 @@ private:
 		if (anon_count.has_value()) {
            auto foward = Tok.id == static_cast<int>(TokenKind::Plus);
            auto count = anon_count.value();
-          std::cout << "foward " << foward << " count " << count << "\n";
-          for (auto i=0; i < count; ++i) {
-             ConsumeToken();
+           for (auto i=0; i < count; ++i) {
+                ConsumeToken();
            }
 		   return ExprResult(std::make_unique<AnonLblExpr>(foward, count));
         }
