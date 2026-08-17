@@ -99,6 +99,69 @@ PasmTokenizer tokenizer;
 std::unordered_map<std::string, MacroDef> macros_;
 std::vector<AnonymousLabel> anonymous_labels;
 
+std::optional<int> FindAnonLabel(bool forward, int count, uint16_t pc) {
+	auto sz = anonymous_labels.Size();
+	if (sz == 0) {
+		return std::nullopt;
+	}
+
+	// 1. Binary search to find the first label strictly AFTER the current pc.
+	size_t lo = 0;
+	size_t hi = sz;
+
+	while (lo < hi) {
+		size_t mid = lo + (hi - lo) / 2; // Corrected midpoint calculation
+		if (anonymous_labels[mid].address <= pc) {
+			lo = mid + 1;
+		} else {
+			hi = mid;
+		}
+	}
+
+	// 'lo' is now the index of the first anonymous label after the current PC.
+	size_t start_index = lo; 
+	int found_count = 0;
+
+	// 2. Scan in the requested direction
+	if (forward) {
+		// Searching forward: start from 'start_index' and scan to the end
+		while (start_index < sz) {
+			auto& lbl = anonymous_labels[start_index];
+			
+			if (lbl.type == '+') {
+				found_count++;
+				if (found_count == count) {
+					return lbl.address;
+				}
+			}
+			start_index++; // Moved outside the if-statement to prevent infinite loops!
+		}
+	} 
+	else {
+		// Searching backward: start from 'start_index - 1' and scan down to 0
+		if (start_index == 0) {
+			return std::nullopt; // No labels exist before the PC
+		}
+		
+		size_t back_index = start_index - 1;
+		
+		while (true) {
+			auto& lbl = anonymous_labels[back_index];
+			
+			if (lbl.type == '-') {
+				found_count++;
+				if (found_count == count) {
+					return lbl.address;
+				}
+			}
+			
+			if (back_index == 0) break; // Reached the beginning
+			back_index--;
+		}
+	}
+
+	return std::nullopt;
+}
 // ============================================================================
 // 1. Core Enums & Data Structures
 // ============================================================================
@@ -314,7 +377,7 @@ public:
 	}
 };
 
-inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols, const std::string& parent_scope ) {
+inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols, const std::string& parent_scope, uint16_t pc ) {
 	if (!node) return std::nullopt;
 
 	if (auto num = dynamic_cast<const NumberExpr*>(node)) return num->value;
@@ -330,8 +393,9 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 	}
 
     if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
-       return 0xC000;
+       return FindAnonLabel(anon->foward, anon->count, pc);
     }
+
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
 
 		if (!un->operand) return std::nullopt;
@@ -1113,14 +1177,14 @@ private:
 			}
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
-					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope, pc);
 					if (val) pc = static_cast<uint16_t>(*val);
 				}
 				new_statements.push_back(std::move(stmt));
 			}
 			else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
 				if (equ->value_expr) {
-					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope, pc);
 					if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
 				}
 				new_statements.push_back(std::move(stmt));
@@ -1140,7 +1204,7 @@ private:
 				auto mode_it = info->mode_to_opcode.find(inst->mode);
 				if (mode_it != info->mode_to_opcode.end()) {
 
-					auto val = EvaluateExpr(inst->operand.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(inst->operand.get(), symbols_, parent_scope, pc);
 					if (val.has_value()) {
 						auto evaluated = val.value();
 						if (inst->mode == RULE_TYPE::Op_Relative) {
