@@ -100,7 +100,7 @@ std::unordered_map<std::string, MacroDef> macros_;
 std::vector<AnonymousLabel> anonymous_labels;
 
 std::optional<int> FindAnonLabel(bool forward, int count, uint16_t pc) {
-	auto sz = anonymous_labels.Size();
+	auto sz = anonymous_labels.size();
 	if (sz == 0) {
 		return std::nullopt;
 	}
@@ -393,13 +393,13 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 	}
 
     if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
-       return FindAnonLabel(anon->foward, anon->count, pc);
+       return FindAnonLabel(anon->forward, anon->count, pc);
     }
 
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
 
 		if (!un->operand) return std::nullopt;
-		auto val = EvaluateExpr(un->operand.get(), symbols, parent_scope);
+		auto val = EvaluateExpr(un->operand.get(), symbols, parent_scope, pc);
 		if (!val) return std::nullopt;
 		switch ((TokenKind)un->op) {
 		case TokenKind::Minus:
@@ -421,8 +421,8 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 
 	if (auto bin = dynamic_cast<const BinaryExpr*>(node)) {
 		if (!bin->lhs || !bin->rhs) return std::nullopt;
-		auto lhs = EvaluateExpr(bin->lhs.get(), symbols, parent_scope);
-		auto rhs = EvaluateExpr(bin->rhs.get(), symbols, parent_scope);
+		auto lhs = EvaluateExpr(bin->lhs.get(), symbols, parent_scope, pc);
+		auto rhs = EvaluateExpr(bin->rhs.get(), symbols, parent_scope, pc);
 		if (!lhs || !rhs) return std::nullopt;
 
 		switch ((TokenKind)bin->op) {
@@ -1355,7 +1355,7 @@ private:
 			// 2. Org Directives (*= $XXXX)
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
-					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope, pc);
 					if (val) pc = static_cast<uint16_t>(*val);
 				}
 				listing << std::format("       {:14} *= ${:04X}\n", "", pc);
@@ -1364,7 +1364,7 @@ private:
 			else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
 				uint16_t v = 0;
 				if (equ->value_expr) {
-					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope, pc);
 					v = val ? static_cast<uint16_t>(*val) : 0;
 				}
 				listing << std::format("${:04X}  {:14} {} = ${:04X}\n", v, "", equ->name, v);
@@ -1377,7 +1377,7 @@ private:
 
 				for (const auto& expr : data->elements) {
 					if (!expr) continue;
-					auto val = EvaluateExpr(expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(expr.get(), symbols_, parent_scope, pc);
 					int64_t v = val.value_or(0);
 
 					if (data->width == DataWidth::Byte) {
@@ -1448,7 +1448,7 @@ private:
 				std::string operand_str; // Will hold the formatted operand (e.g., "#$32", "$C000")
 
 				if (inst_stmt->operand) {
-					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_, parent_scope);
+					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_, parent_scope, pc);
 					
 					// Catch unresolved symbols in the final pass
 	
