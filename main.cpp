@@ -89,7 +89,7 @@ struct MacroDef {
 };
 
 struct AnonymousLabel {
-    int type;             // '-' or '+'
+    char type;             // '-' or '+'
     uint16_t address;      // PC address in memory
     std::pair<int, size_t> statement_id;   // Sequential statement/AST index for relative position
 };
@@ -182,7 +182,6 @@ struct UnaryExpr : ExprNode {
 	UnaryExpr(int op, std::unique_ptr<ExprNode> rhs)
 		: op(op), operand(std::move(rhs)) {}
 };
-
 
 struct BinaryExpr : ExprNode {
 	int op;
