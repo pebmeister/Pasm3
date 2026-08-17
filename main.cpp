@@ -520,7 +520,7 @@ public:
 
         auto count = 1;
         auto tk = static_cast<TokenKind>(Tok.id);
-    	while (TokAheadIs(tk, count, false) { // search without skipwhite dpcr
+    	while (TokAheadIs(tk, count, false)) { // search without skipwhite dpcr
             count++;
     	}
        
