@@ -62,6 +62,7 @@ POINTERS:
     ; .word testing binary arithmetic and precedence
     .word SCREEN_RAM + $1000 
     .word (SCREEN_RAM * 2) & $FFFF
+.print on
 
 @cow
     testm 50, Loop

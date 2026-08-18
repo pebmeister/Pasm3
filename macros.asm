@@ -1,3 +1,4 @@
+		.print push
         .print off
 
 ;********************************************
@@ -1512,5 +1513,4 @@
 @exit
         .endm
 
-        .print on
- 
+        .print pop 
