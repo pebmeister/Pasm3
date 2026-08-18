@@ -30,7 +30,6 @@
 
 std::string read_file_to_string(const std::string& path);
 
-
 struct SourceManager {
     std::vector<std::string> files;          // Global registry: index = fileid
     std::vector<std::string> include_stack;  // Active include chain
@@ -41,8 +40,8 @@ struct SourceManager {
             return files[fileid];
         }
         return "<unknown>";
-
     }
+
     // Gets existing fileid or registers a new file
     int GetOrRegisterFile(const std::string& filepath) {
         for (int i = 0; i < static_cast<int>(files.size()); ++i) {
@@ -89,12 +88,80 @@ struct MacroDef {
 	int times_called = 0;
 };
 
-static SourceManager src_mgr;
-static PasmTokenizer tokenizer;
+struct AnonymousLabel {
+    char type;             // '-' or '+'
+    uint16_t address;      // PC address in memory
+    std::pair<int, size_t> statement_id;   // Sequential statement/AST index for relative position
+};
 
-// Add this as a private member in the Parser class
+SourceManager src_mgr;
+PasmTokenizer tokenizer;
 std::unordered_map<std::string, MacroDef> macros_;
+std::vector<AnonymousLabel> anonymous_labels;
 
+std::optional<int> FindAnonLabel(bool forward, int count, uint16_t pc) {
+	auto sz = anonymous_labels.size();
+	if (sz == 0) {
+		return std::nullopt;
+	}
+
+	// 1. Binary search to find the first label strictly AFTER the current pc.
+	size_t lo = 0;
+	size_t hi = sz;
+
+	while (lo < hi) {
+		size_t mid = lo + (hi - lo) / 2; // Corrected midpoint calculation
+		if (anonymous_labels[mid].address <= pc) {
+			lo = mid + 1;
+		} else {
+			hi = mid;
+		}
+	}
+
+	// 'lo' is now the index of the first anonymous label after the current PC.
+	size_t start_index = lo; 
+	int found_count = 0;
+
+	// 2. Scan in the requested direction
+	if (forward) {
+		// Searching forward: start from 'start_index' and scan to the end
+		while (start_index < sz) {
+			auto& lbl = anonymous_labels[start_index];
+			
+			if (lbl.type == '+') {
+				found_count++;
+				if (found_count == count) {
+					return lbl.address;
+				}
+			}
+			start_index++; // Moved outside the if-statement to prevent infinite loops!
+		}
+	} 
+	else {
+		// Searching backward: start from 'start_index - 1' and scan down to 0
+		if (start_index == 0) {
+			return std::nullopt; // No labels exist before the PC
+		}
+		
+		size_t back_index = start_index - 1;
+		
+		while (true) {
+			auto& lbl = anonymous_labels[back_index];
+			
+			if (lbl.type == '-') {
+				found_count++;
+				if (found_count == count) {
+					return lbl.address;
+				}
+			}
+			
+			if (back_index == 0) break; // Reached the beginning
+			back_index--;
+		}
+	}
+
+	return std::nullopt;
+}
 // ============================================================================
 // 1. Core Enums & Data Structures
 // ============================================================================
@@ -164,6 +231,12 @@ struct NumberExpr : ExprNode {
 struct SymbolExpr : ExprNode {
 	std::string name;
 	explicit SymbolExpr(std::string n) : name(std::move(n)) {}
+};
+
+struct AnonLblExpr : ExprNode {
+    bool forward;
+    int count;
+    explicit AnonLblExpr(bool f, int c) : forward(f), count(c) {}
 };
 
 struct UnaryExpr : ExprNode {
@@ -240,7 +313,7 @@ struct CaseInsensitiveHash {
 	using is_transparent = void;
 
 	std::size_t operator()(std::string_view sv) const {
-		std::size_t hash = 14695981039346656037ULL; // FNV-1a offset basis
+		std::size_t hash = static_cast<std::size_t>(14695981039346656037ULL); // FNV-1a offset basis
 		for (char c : sv) {
 			auto uc = static_cast<unsigned char>(c);
 			hash ^= static_cast<std::size_t>(std::tolower(uc));
@@ -304,7 +377,7 @@ public:
 	}
 };
 
-inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols, const std::string& parent_scope ) {
+inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols, const std::string& parent_scope, uint16_t pc ) {
 	if (!node) return std::nullopt;
 
 	if (auto num = dynamic_cast<const NumberExpr*>(node)) return num->value;
@@ -319,9 +392,14 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 		return std::nullopt;
 	}
 
+    if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
+       return FindAnonLabel(anon->forward, anon->count, pc);
+    }
+
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
+
 		if (!un->operand) return std::nullopt;
-		auto val = EvaluateExpr(un->operand.get(), symbols, parent_scope);
+		auto val = EvaluateExpr(un->operand.get(), symbols, parent_scope, pc);
 		if (!val) return std::nullopt;
 		switch ((TokenKind)un->op) {
 		case TokenKind::Minus:
@@ -343,8 +421,8 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 
 	if (auto bin = dynamic_cast<const BinaryExpr*>(node)) {
 		if (!bin->lhs || !bin->rhs) return std::nullopt;
-		auto lhs = EvaluateExpr(bin->lhs.get(), symbols, parent_scope);
-		auto rhs = EvaluateExpr(bin->rhs.get(), symbols, parent_scope);
+		auto lhs = EvaluateExpr(bin->lhs.get(), symbols, parent_scope, pc);
+		auto rhs = EvaluateExpr(bin->rhs.get(), symbols, parent_scope, pc);
 		if (!lhs || !rhs) return std::nullopt;
 
 		switch ((TokenKind)bin->op) {
@@ -446,7 +524,7 @@ private:
 		return macros_.find(name) != macros_.end();
 	}
 
-	int prTok(std::string msg=" AssemblerParser ") {
+	int prTok(std::string msg="") {
 		auto text = Tok.text;
 		auto id = Tok.id;
 		if (id == (int)TokenKind::Newline) text = "[\\n]";
@@ -474,13 +552,15 @@ public:
 		return Tok.is(static_cast<int>(kind));
 	}
 
-	[[nodiscard]] bool TokAheadIs(TokenKind kind, int n = 1) const {
+	[[nodiscard]] bool TokAheadIs(TokenKind kind, int n = 1, bool skipwhite = true) const {
 		auto temp_index = index_;
 		auto count = 0;
 		while (temp_index + 1 < tokens_.size()) {
-			if (tokens_[temp_index + 1].is(static_cast<int>(TokenKind::Ws))) {
-				temp_index++;
-				continue;
+			if (skipwhite) {
+			    if (tokens_[temp_index + 1].is(static_cast<int>(TokenKind::Ws))) {
+				    temp_index++;
+				    continue;
+			    }
 			}
 			count++;
 			if (count == n) {
@@ -497,6 +577,27 @@ public:
 		}
 	}
 	
+    // Helper to check if relative label
+    std::optional<int> GetRelativeLabelCount() {
+
+        if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
+
+        auto count = 1;
+        auto tk = static_cast<TokenKind>(Tok.id);
+    	while (TokAheadIs(tk, count, false)) { // search without skipwhite dpcr
+            count++;
+    	}
+       
+        if ((count > 1) || 
+		    (TokAheadIs(TokenKind::Eof, 1) || 
+            TokAheadIs(TokenKind::Newline, 1) || 
+            TokAheadIs(TokenKind::Semicolon, 1))) {
+            return count;
+        }
+		
+        return std::nullopt;
+    }
+    
 	std::vector<std::unique_ptr<Statement>> ParseProgram() {
 		std::vector<std::unique_ptr<Statement>> statements;
 
@@ -556,7 +657,15 @@ public:
 				ConsumeToken();
 				continue;
 			}
-
+			
+            // 3.5 Relative Labels
+			if (TokIs(TokenKind::Minus) || TokIs(TokenKind::Plus)) {
+				Tok.id = static_cast<int>(TokenKind::Label);
+				statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(Tok.text)));
+				ConsumeToken();
+				continue;
+			}
+			
 			// 4. Directives (.org, .byte, .word)
 			if (TokIs(TokenKind::Directive)) {
 
@@ -610,6 +719,7 @@ public:
 					if (TokIs(TokenKind::Eof)) {
 						throw std::runtime_error(std::format("Expected .endm to close macro definition File: {} Line: {}", src_mgr.GetFileName(name_tok.file), name_tok.line));
 					}
+
 					// Store in map
 					std::string lower_key(def.name);
 					std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
@@ -907,13 +1017,23 @@ private:
 			return ExprResult(std::make_unique<SymbolExpr>(t.text));
 		}
 
+		auto anon_count = GetRelativeLabelCount();
+		if (anon_count.has_value()) {
+           auto foward = Tok.id == static_cast<int>(TokenKind::Plus);
+           auto count = anon_count.value();
+           for (auto i=0; i < count; ++i) {
+                ConsumeToken();
+           }
+		   return ExprResult(std::make_unique<AnonLblExpr>(foward, count));
+        }
+
 		if (TokIs(TokenKind::LParen)) {
 			ConsumeToken();
 			ExprResult expr = ParseExpression(0);
 			if (TokIs(TokenKind::RParen)) ConsumeToken();
 			return expr;
 		}
-
+		
 		if (IsUnaryPrefix(Tok.id)) {
 			PasmTokenizer::Token op_tok = ConsumeToken();
 			ExprResult operand = ParseExpression(50);
@@ -1000,6 +1120,9 @@ public:
 
 		EmitFinalPass(statements);
 	}
+	
+	
+std::map<std::pair<int, size_t>, size_t> anon_idmap;
 
 private:
 	bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements) {
@@ -1023,7 +1146,27 @@ private:
 
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				auto name = lbl->name;
-				if (name[0] == '@') {
+				if (name[0] == '+' || name[0] == '-' ) {
+					std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
+					auto it = anon_idmap.find(stmt_id);
+					if (it == anon_idmap.end()) {
+						anonymous_labels.push_back({
+							.type = name[0],
+							.address = pc,
+							.statement_id = stmt_id
+						});
+						anon_idmap[stmt_id] = anonymous_labels.size() -1;
+						changed = true;
+					}
+					else {
+						auto index = it->second;
+						if (anonymous_labels[index].address != pc) {
+							anonymous_labels[index].address = pc;
+							changed = true;
+						}
+					}
+				}
+				else if (name[0] == '@') {
 					symbols_.Define(GetMangledSymbol(lbl->name, parent_scope), pc);
 				}
 				else {				
@@ -1034,14 +1177,14 @@ private:
 			}
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
-					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope, pc);
 					if (val) pc = static_cast<uint16_t>(*val);
 				}
 				new_statements.push_back(std::move(stmt));
 			}
 			else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
 				if (equ->value_expr) {
-					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope, pc);
 					if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
 				}
 				new_statements.push_back(std::move(stmt));
@@ -1061,7 +1204,7 @@ private:
 				auto mode_it = info->mode_to_opcode.find(inst->mode);
 				if (mode_it != info->mode_to_opcode.end()) {
 
-					auto val = EvaluateExpr(inst->operand.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(inst->operand.get(), symbols_, parent_scope, pc);
 					if (val.has_value()) {
 						auto evaluated = val.value();
 						if (inst->mode == RULE_TYPE::Op_Relative) {
@@ -1212,7 +1355,7 @@ private:
 			// 2. Org Directives (*= $XXXX)
 			else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 				if (org->address_expr) {
-					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope, pc);
 					if (val) pc = static_cast<uint16_t>(*val);
 				}
 				listing << std::format("       {:14} *= ${:04X}\n", "", pc);
@@ -1221,7 +1364,7 @@ private:
 			else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
 				uint16_t v = 0;
 				if (equ->value_expr) {
-					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope, pc);
 					v = val ? static_cast<uint16_t>(*val) : 0;
 				}
 				listing << std::format("${:04X}  {:14} {} = ${:04X}\n", v, "", equ->name, v);
@@ -1234,7 +1377,7 @@ private:
 
 				for (const auto& expr : data->elements) {
 					if (!expr) continue;
-					auto val = EvaluateExpr(expr.get(), symbols_, parent_scope);
+					auto val = EvaluateExpr(expr.get(), symbols_, parent_scope, pc);
 					int64_t v = val.value_or(0);
 
 					if (data->width == DataWidth::Byte) {
@@ -1305,7 +1448,7 @@ private:
 				std::string operand_str; // Will hold the formatted operand (e.g., "#$32", "$C000")
 
 				if (inst_stmt->operand) {
-					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_, parent_scope);
+					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_, parent_scope, pc);
 					
 					// Catch unresolved symbols in the final pass
 	
@@ -1423,8 +1566,6 @@ void validate_tokens(std::vector<PasmTokenizer::Token> tokens)
 	}
 }
 
-
-
 // ============================================================================
 // 6. Main Test Driver
 // ============================================================================
@@ -1447,7 +1588,6 @@ int main(int argc, char* argv[])
 		std::cout << "No input file specified.\n";
 		return 1;
 	}
-
 
 	std::vector<PasmTokenizer::Token> tokens;
 
