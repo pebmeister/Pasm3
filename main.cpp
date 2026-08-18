@@ -31,55 +31,55 @@
 std::string read_file_to_string(const std::string& path);
 
 struct SourceManager {
-    std::vector<std::string> files;          // Global registry: index = fileid
-    std::vector<std::string> include_stack;  // Active include chain
+	std::vector<std::string> files;          // Global registry: index = fileid
+	std::vector<std::string> include_stack;  // Active include chain
 
 	// Safe lookup helper
-    std::string GetFileName(int fileid) const {
-        if (fileid >= 0 && fileid < static_cast<int>(files.size())) {
-            return files[fileid];
-        }
-        return "<unknown>";
-    }
+	std::string GetFileName(int fileid) const {
+		if (fileid >= 0 && fileid < static_cast<int>(files.size())) {
+			return files[fileid];
+		}
+		return "<unknown>";
+	}
 
-    // Gets existing fileid or registers a new file
-    int GetOrRegisterFile(const std::string& filepath) {
-        for (int i = 0; i < static_cast<int>(files.size()); ++i) {
-            if (files[i] == filepath) return i;
-        }
-        files.push_back(filepath);
-        return static_cast<int>(files.size() - 1);
-    }
+	// Gets existing fileid or registers a new file
+	int GetOrRegisterFile(const std::string& filepath) {
+		for (int i = 0; i < static_cast<int>(files.size()); ++i) {
+			if (files[i] == filepath) return i;
+		}
+		files.push_back(filepath);
+		return static_cast<int>(files.size() - 1);
+	}
 
-    // Push file onto stack with circular dependency check
-    void PushInclude(const std::string& filepath) {
-        if (std::find(include_stack.begin(), include_stack.end(), filepath) != include_stack.end()) {
-            throw std::runtime_error("Circular include detected: " + filepath);
-        }
-        include_stack.push_back(filepath);
-    }
+	// Push file onto stack with circular dependency check
+	void PushInclude(const std::string& filepath) {
+		if (std::find(include_stack.begin(), include_stack.end(), filepath) != include_stack.end()) {
+			throw std::runtime_error("Circular include detected: " + filepath);
+		}
+		include_stack.push_back(filepath);
+	}
 
-    // Pop file when done tokenizing/parsing
-    void PopInclude() {
-        if (!include_stack.empty()) {
-            include_stack.pop_back();
-        }
-    }
+	// Pop file when done tokenizing/parsing
+	void PopInclude() {
+		if (!include_stack.empty()) {
+			include_stack.pop_back();
+		}
+	}
 };
 
 std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
-    const std::string& filepath, 
-    SourceManager& src_mgr, 
+    const std::string& filepath,
+    SourceManager& src_mgr,
     PasmTokenizer& tokenizer
 ) {
-    src_mgr.PushInclude(filepath);
-    int fileid = src_mgr.GetOrRegisterFile(filepath);
+	src_mgr.PushInclude(filepath);
+	int fileid = src_mgr.GetOrRegisterFile(filepath);
 
-    std::string source_code = read_file_to_string(filepath);
-    auto filetokens = tokenizer.tokenize(source_code, fileid);
+	std::string source_code = read_file_to_string(filepath);
+	auto filetokens = tokenizer.tokenize(source_code, fileid);
 
-    src_mgr.PopInclude();
-    return filetokens;
+	src_mgr.PopInclude();
+	return filetokens;
 }
 
 struct MacroDef {
@@ -89,9 +89,9 @@ struct MacroDef {
 };
 
 struct AnonymousLabel {
-    char type;             // '-' or '+'
-    uint16_t address;      // PC address in memory
-    std::pair<int, size_t> statement_id;   // Sequential statement/AST index for relative position
+	char type;             // '-' or '+'
+	uint16_t address;      // PC address in memory
+	std::pair<int, size_t> statement_id;   // Sequential statement/AST index for relative position
 };
 
 SourceManager src_mgr;
@@ -119,7 +119,7 @@ std::optional<int> FindAnonLabel(bool forward, int count, uint16_t pc) {
 	}
 
 	// 'lo' is now the index of the first anonymous label after the current PC.
-	size_t start_index = lo; 
+	size_t start_index = lo;
 	int found_count = 0;
 
 	// 2. Scan in the requested direction
@@ -127,7 +127,7 @@ std::optional<int> FindAnonLabel(bool forward, int count, uint16_t pc) {
 		// Searching forward: start from 'start_index' and scan to the end
 		while (start_index < sz) {
 			auto& lbl = anonymous_labels[start_index];
-			
+
 			if (lbl.type == '+') {
 				found_count++;
 				if (found_count == count) {
@@ -136,25 +136,25 @@ std::optional<int> FindAnonLabel(bool forward, int count, uint16_t pc) {
 			}
 			start_index++; // Moved outside the if-statement to prevent infinite loops!
 		}
-	} 
+	}
 	else {
 		// Searching backward: start from 'start_index - 1' and scan down to 0
 		if (start_index == 0) {
 			return std::nullopt; // No labels exist before the PC
 		}
-		
+
 		size_t back_index = start_index - 1;
-		
+
 		while (true) {
 			auto& lbl = anonymous_labels[back_index];
-			
+
 			if (lbl.type == '-') {
 				found_count++;
 				if (found_count == count) {
 					return lbl.address;
 				}
 			}
-			
+
 			if (back_index == 0) break; // Reached the beginning
 			back_index--;
 		}
@@ -234,9 +234,9 @@ struct SymbolExpr : ExprNode {
 };
 
 struct AnonLblExpr : ExprNode {
-    bool forward;
-    int count;
-    explicit AnonLblExpr(bool f, int c) : forward(f), count(c) {}
+	bool forward;
+	int count;
+	explicit AnonLblExpr(bool f, int c) : forward(f), count(c) {}
 };
 
 struct UnaryExpr : ExprNode {
@@ -339,11 +339,11 @@ struct CaseInsensitiveEqual {
 };
 
 std::string GetMangledSymbol(const std::string& symbol, const std::string& parent_scope) {
-    if (symbol.starts_with('@')) {
-        // If a local label appears before any global label, fall back to raw name
-        return parent_scope.empty() ? symbol : parent_scope + symbol;
-    }
-    return symbol;
+	if (symbol.starts_with('@')) {
+		// If a local label appears before any global label, fall back to raw name
+		return parent_scope.empty() ? symbol : parent_scope + symbol;
+	}
+	return symbol;
 }
 
 class SymbolTable {
@@ -356,7 +356,7 @@ class SymbolTable {
 	    > symbols_;
 
 public:
-	bool Define(const std::string& name, uint16_t val) {		
+	bool Define(const std::string& name, uint16_t val) {
 		auto it = symbols_.find(name);
 		if (it == symbols_.end()) {
 			symbols_[name] = val;
@@ -392,9 +392,9 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 		return std::nullopt;
 	}
 
-    if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
-       return FindAnonLabel(anon->forward, anon->count, pc);
-    }
+	if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
+		return FindAnonLabel(anon->forward, anon->count, pc);
+	}
 
 	if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
 
@@ -459,13 +459,13 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 // ============================================================================
 
 struct Statement {
-    virtual ~Statement() = default;
-    
-    int file{0};
-    int line{0};
+	virtual ~Statement() = default;
 
-    Statement(int file, int line) 
-        : file(file), line(line) {}
+	int file{0};
+	int line{0};
+
+	Statement(int file, int line)
+		: file(file), line(line) {}
 };
 
 struct LabelStatement : Statement {
@@ -505,6 +505,12 @@ struct DataStatement : Statement {
 	DataStatement(int file, int line, DataWidth w, std::vector<std::unique_ptr<ExprNode>> elems)
 		: Statement(file, line), width(w), elements(std::move(elems)) {}
 };
+
+struct PrintStatement : Statement {
+	bool on;
+	explicit PrintStatement(int file, int line, bool on) : Statement(file, line), on(std::move(on)) {}
+};
+
 
 // ============================================================================
 // 4. Parser (Token Stream -> IR Statements)
@@ -557,10 +563,10 @@ public:
 		auto count = 0;
 		while (temp_index + 1 < tokens_.size()) {
 			if (skipwhite) {
-			    if (tokens_[temp_index + 1].is(static_cast<int>(TokenKind::Ws))) {
-				    temp_index++;
-				    continue;
-			    }
+				if (tokens_[temp_index + 1].is(static_cast<int>(TokenKind::Ws))) {
+					temp_index++;
+					continue;
+				}
 			}
 			count++;
 			if (count == n) {
@@ -576,40 +582,38 @@ public:
 			ConsumeToken();
 		}
 	}
-	
-    // Helper to check if relative label
-    std::optional<int> GetRelativeLabelCount() {
 
-        if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
+	// Helper to check if relative label
+	std::optional<int> GetRelativeLabelCount() {
 
-        auto count = 1;
-        auto tk = static_cast<TokenKind>(Tok.id);
-    	while (TokAheadIs(tk, count, false)) { // search without skipwhite dpcr
-            count++;
-    	}
-       
-        if ((count > 1) || 
-		    (TokAheadIs(TokenKind::Eof, 1) || 
-            TokAheadIs(TokenKind::Newline, 1) || 
-            TokAheadIs(TokenKind::Semicolon, 1))) {
-            return count;
-        }
-		
-        return std::nullopt;
-    }
-    
+		if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
+
+		auto count = 1;
+		auto tk = static_cast<TokenKind>(Tok.id);
+		while (TokAheadIs(tk, count, false)) { // search without skipwhite dpcr
+			count++;
+		}
+
+		if ((count > 1) ||
+		        (TokAheadIs(TokenKind::Eof, 1) ||
+		         TokAheadIs(TokenKind::Newline, 1) ||
+		         TokAheadIs(TokenKind::Semicolon, 1))) {
+			return count;
+		}
+
+		return std::nullopt;
+	}
+
 	std::vector<std::unique_ptr<Statement>> ParseProgram() {
 		std::vector<std::unique_ptr<Statement>> statements;
 
-		auto line = 1;
 		bool display_tok = false;
 		if (display_tok) {
 			std::cout << "\n";
 		}
 		SkipWs();
 		while (!TokIs(TokenKind::Eof)) {
-			
-			line = Tok.line;
+
 			if (display_tok) {
 				prTok();
 			}
@@ -657,15 +661,15 @@ public:
 				ConsumeToken();
 				continue;
 			}
-			
-            // 3.5 Relative Labels
+
+			// 3.5 Relative Labels
 			if (TokIs(TokenKind::Minus) || TokIs(TokenKind::Plus)) {
 				Tok.id = static_cast<int>(TokenKind::Label);
 				statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(Tok.text)));
 				ConsumeToken();
 				continue;
 			}
-			
+
 			// 4. Directives (.org, .byte, .word)
 			if (TokIs(TokenKind::Directive)) {
 
@@ -735,14 +739,14 @@ public:
 
 				// Inside ParseProgram() or your directive handler:
 				else if (dir == ".include" || dir == ".inc") {
-										
+
 					if (!TokIs(TokenKind::StringLiteral)) {
 						throw std::runtime_error("Expected string filename after .include");
 					}
-					
+
 					std::string inc_filename = Tok.text; // e.g. "constants.inc"
 					ConsumeToken(); // consume filename string
-					
+
 					inc_filename.erase(0, 1);
 					inc_filename.erase(inc_filename.size() - 1);
 
@@ -759,7 +763,7 @@ public:
 					}
 
 					continue;
-				}				
+				}
 				else if (dir == ".print") {
 					// Todo: turn print on and off
 					while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
@@ -769,13 +773,13 @@ public:
 				else {
 					std::cout << "Warning Unknown directive '" << dir << "'  File: " << src_mgr.GetFileName(dir_tok.file) << " Line: " << dir_tok.line << "\n";
 				}
-				
+
 				continue;
 			}
 
 			// 4.5 Macro Expansion
 			if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
-				
+
 				auto mac_call_tok = Tok;
 
 				// 1. Save the start position of the macro call in the token stream
@@ -825,7 +829,7 @@ public:
 
 					// Look for positional identifiers like \1, \2, \10
 					if (body_tok.text.size() >= 2) {
-						
+
 						if (body_tok.text[0] == '\\') {
 							auto valid = true;
 							int arg_idx = 0;
@@ -850,8 +854,8 @@ public:
 									}
 									substituted = true;
 								} else {
-									throw std::runtime_error( std::format("Macro call missing argument for positional parameter {} File: {} Line: {}",  
-										body_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+									throw std::runtime_error( std::format("Macro call missing argument for positional parameter {} File: {} Line: {}",
+									                                      body_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
 								}
 							}
 						}
@@ -1019,13 +1023,13 @@ private:
 
 		auto anon_count = GetRelativeLabelCount();
 		if (anon_count.has_value()) {
-           auto foward = Tok.id == static_cast<int>(TokenKind::Plus);
-           auto count = anon_count.value();
-           for (auto i=0; i < count; ++i) {
-                ConsumeToken();
-           }
-		   return ExprResult(std::make_unique<AnonLblExpr>(foward, count));
-        }
+			auto foward = Tok.id == static_cast<int>(TokenKind::Plus);
+			auto count = anon_count.value();
+			for (auto i=0; i < count; ++i) {
+				ConsumeToken();
+			}
+			return ExprResult(std::make_unique<AnonLblExpr>(foward, count));
+		}
 
 		if (TokIs(TokenKind::LParen)) {
 			ConsumeToken();
@@ -1033,7 +1037,7 @@ private:
 			if (TokIs(TokenKind::RParen)) ConsumeToken();
 			return expr;
 		}
-		
+
 		if (IsUnaryPrefix(Tok.id)) {
 			PasmTokenizer::Token op_tok = ConsumeToken();
 			ExprResult operand = ParseExpression(50);
@@ -1120,9 +1124,9 @@ public:
 
 		EmitFinalPass(statements);
 	}
-	
-	
-std::map<std::pair<int, size_t>, size_t> anon_idmap;
+
+
+	std::map<std::pair<int, size_t>, size_t> anon_idmap;
 
 private:
 	bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements) {
@@ -1138,7 +1142,7 @@ private:
 			{"bvc", "bvs"}, {"bvs", "bvc"},
 			{"bmi", "bpl"}, {"bpl", "bmi"}
 		};
-		
+
 		std::string parent_scope="";
 
 		for (auto& stmt : statements) {
@@ -1169,9 +1173,9 @@ private:
 				else if (name[0] == '@') {
 					symbols_.Define(GetMangledSymbol(lbl->name, parent_scope), pc);
 				}
-				else {				
+				else {
 					parent_scope = name;
-					changed |= symbols_.Define(lbl->name, pc);					
+					changed |= symbols_.Define(lbl->name, pc);
 				}
 				new_statements.push_back(std::move(stmt));
 			}
@@ -1215,11 +1219,11 @@ private:
 								if (it != inverted_branches.end()) {
 									std::cout << "Warning: Branch out of range for '" << inst->mnemonic
 									          << "' at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
-			
+
 									// 1. Create the JMP statement FIRST by moving the original target expression
 									auto jmp_inst = std::make_unique<InstructionStatement>(
-														stmt->file,
-														stmt->line,
+									                    stmt->file,
+									                    stmt->line,
 									                    "jmp",
 									                    RULE_TYPE::Op_Absolute,
 									                    std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
@@ -1245,7 +1249,7 @@ private:
 						else { // range check and optimize for page zero
 							if (evaluated < 0 || evaluated > 0xFFFF) {
 								throw std::runtime_error(
-									std::format("Operand out of range for '{}'  at ${:04X}", inst->mnemonic, pc)
+								    std::format("Operand out of range for '{}'  at ${:04X}", inst->mnemonic, pc)
 								);
 							}
 							RULE_TYPE want_type = inst->mode;
@@ -1253,19 +1257,19 @@ private:
 								if (inst->mode == Op_Absolute) want_type = Op_ZeroPage;
 								else if (inst->mode == Op_AbsoluteX) want_type = Op_ZeroPageX;
 								else if (inst->mode == Op_AbsoluteY) want_type = Op_ZeroPageY;
-								
+
 								if (want_type != inst->mode) {
 									mode_it = info->mode_to_opcode.find(want_type);
 									if (mode_it != info->mode_to_opcode.end()) {
 										inst->mode = want_type;
 									}
-								}								
+								}
 							}
 							else {
 								if (inst->mode == Op_ZeroPage) want_type = Op_Absolute;
 								else if (inst->mode == Op_ZeroPageX) want_type = Op_AbsoluteX;
 								else if (inst->mode == Op_ZeroPageY) want_type = Op_AbsoluteY;
-								
+
 								if (want_type != inst->mode) {
 									mode_it = info->mode_to_opcode.find(want_type);
 									if (mode_it != info->mode_to_opcode.end()) {
@@ -1273,15 +1277,15 @@ private:
 									}
 									else {
 										throw std::runtime_error(
-											std::format("Operand out of range for '{}'  at ${:04X}", inst->mnemonic, pc)
+										    std::format("Operand out of range for '{}'  at ${:04X}", inst->mnemonic, pc)
 										);
-									}		
+									}
 								}
 							}
 						}
-						
+
 					}
-				
+
 					pc += GetInstructionSize(inst->mode);
 				}
 				new_statements.push_back(std::move(stmt));
@@ -1330,7 +1334,7 @@ private:
 	}
 
 	void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements) {
-		
+
 		uint16_t pc = start_pc_;
 		std::vector<uint8_t> binary_output;
 		std::ostringstream listing;
@@ -1349,7 +1353,7 @@ private:
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 				listing << std::format("${:04X}                {}\n", pc, lbl->name);
 				if (lbl->name[0] != '@') {
-					parent_scope = lbl->name;		
+					parent_scope = lbl->name;
 				}
 			}
 			// 2. Org Directives (*= $XXXX)
@@ -1427,20 +1431,20 @@ private:
 				auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
 				if (!info) {
 					throw std::runtime_error(
-						std::format("Invalid mnemonic {}", inst_stmt->mnemonic)
+					    std::format("Invalid mnemonic {}", inst_stmt->mnemonic)
 					);
 				}
-				
+
 				auto modeIt = info->mode_to_opcode.find(inst_stmt->mode);
 				if (modeIt == info->mode_to_opcode.end()) {
 					throw std::runtime_error(
-						std::format(
-							"Invalid addressing mode for mnemonic '{}'",
-							inst_stmt->mnemonic
-						)
+					    std::format(
+					        "Invalid addressing mode for mnemonic '{}'",
+					        inst_stmt->mnemonic
+					    )
 					);
 				}
-				
+
 				// Re-use the iterator instead of doing another map lookup with .at()
 				auto [opcode, _] = modeIt->second;
 
@@ -1449,21 +1453,21 @@ private:
 
 				if (inst_stmt->operand) {
 					auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_, parent_scope, pc);
-					
+
 					// Catch unresolved symbols in the final pass
-	
+
 
 					if (!eval_result.has_value()) {
 						std::cout << listing.str();
 
-					throw std::runtime_error(
-							std::format("Unresolved symbol in operand for '{}' at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line)
+						throw std::runtime_error(
+						    std::format("Unresolved symbol in operand for '{}' at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line)
 						);
 					}
-					
+
 					int val = static_cast<int>(eval_result.value());
 					operand_str = FormatOperand(inst_stmt->mode, val);
-					
+
 					// Relative mode (Branches) require PC-relative offset calculation
 					if (inst_stmt->mode == RULE_TYPE::Op_Relative) {
 						int next_pc = pc + 2; // PC after this instruction is read
@@ -1477,17 +1481,17 @@ private:
 					else {
 						auto sz = GetInstructionSize(inst_stmt->mode);
 						switch (sz) {
-							case 2:
-								emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-								break;
+						case 2:
+							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+							break;
 
-							case 3:
-								emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-								emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-								break;
+						case 3:
+							emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
+							emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+							break;
 
-							default:
-								break;
+						default:
+							break;
 						}
 						// The stray break; that was killing your loop has been removed from here
 					}
@@ -1537,7 +1541,6 @@ void validate_tokens(std::vector<PasmTokenizer::Token> tokens)
 {
 	// Walk though tokens
 	bool in_comment = false;
-	auto line = 1;
 	for (const auto& tok : tokens) {
 		auto text = tok.text;
 		if ((text == "\n") || (text == "\r") || (text == "\r\n")) text = "[EOL]";
@@ -1549,7 +1552,6 @@ void validate_tokens(std::vector<PasmTokenizer::Token> tokens)
 			in_comment = true;
 		} else if (tok.id == static_cast<int>(TokenKind::Newline)) {
 			in_comment = false;
-			line++;
 		}
 		if (in_comment ) {
 			continue;
@@ -1592,12 +1594,12 @@ int main(int argc, char* argv[])
 	std::vector<PasmTokenizer::Token> tokens;
 
 	for (const auto& root_file : input_filenames) {
-        auto file_tokens = LoadAndTokenizeFile(root_file, src_mgr, tokenizer);
-        tokens.insert(tokens.end(), file_tokens.begin(), file_tokens.end());
-    }
+		auto file_tokens = LoadAndTokenizeFile(root_file, src_mgr, tokenizer);
+		tokens.insert(tokens.end(), file_tokens.begin(), file_tokens.end());
+	}
 
 	validate_tokens(tokens);
-	
+
 	try {
 
 		std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -1614,4 +1616,3 @@ int main(int argc, char* argv[])
 	}
 	return 0;
 }
-
