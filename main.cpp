@@ -765,11 +765,14 @@ public:
 					continue;
 				}
 				else if (dir == ".print") {
-					// Todo: turn print on and off
-					while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
-						ConsumeToken();
+					
+					if (!TokIs(TokenKind::Identifier) || Tok.text.size() < 2) {
+						throw std::runtime_error("Expected Identifier after .print");
 					}
+					statements.push_back(std::make_unique<PrintStatement>(Tok.file, Tok.line, (Tok.text[1] == 'N' || Tok.text[1] == 'n')));		
+					ConsumeToken();					
 				}
+
 				else {
 					std::cout << "Warning Unknown directive '" << dir << "'  File: " << src_mgr.GetFileName(dir_tok.file) << " Line: " << dir_tok.line << "\n";
 				}
@@ -1346,8 +1349,11 @@ private:
 		listing << "ADDR    BYTES          STATEMENT\n";
 		listing << "-------------------------------------------------------------------------------\n";
 
+		auto printstate = true;
+
 		for (const auto& stmt : statements) {
-			if (!stmt) continue;
+			if (!stmt) continue;			
+			
 
 			// 1. Label Statements
 			if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
@@ -1362,7 +1368,9 @@ private:
 					auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope, pc);
 					if (val) pc = static_cast<uint16_t>(*val);
 				}
-				listing << std::format("       {:14} *= ${:04X}\n", "", pc);
+				
+				if (printstate)
+					listing << std::format("       {:14} *= ${:04X}\n", "", pc);
 			}
 			// 3. Equate Directives (NAME = $VAL)
 			else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
@@ -1371,7 +1379,8 @@ private:
 					auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope, pc);
 					v = val ? static_cast<uint16_t>(*val) : 0;
 				}
-				listing << std::format("${:04X}  {:14} {} = ${:04X}\n", v, "", equ->name, v);
+				if (printstate)
+					listing << std::format("${:04X}  {:14} {} = ${:04X}\n", v, "", equ->name, v);
 			}
 			// 4. Data Directives (.byte / .word)
 			else if (auto data = dynamic_cast<const DataStatement*>(stmt.get())) {
@@ -1419,9 +1428,11 @@ private:
 					}
 
 					if (i == 0) {
-						listing << std::format("${:04X}  {:14} {}\n", chunk_pc, hex_str, full_stmt);
+						if (printstate)
+								listing << std::format("${:04X}  {:14} {}\n", chunk_pc, hex_str, full_stmt);
 					} else {
-						listing << std::format("${:04X}  {:14}\n", chunk_pc, hex_str);
+						if (printstate)
+								listing << std::format("${:04X}  {:14}\n", chunk_pc, hex_str);
 					}
 				}
 			}
@@ -1493,7 +1504,6 @@ private:
 						default:
 							break;
 						}
-						// The stray break; that was killing your loop has been removed from here
 					}
 				}
 
@@ -1513,10 +1523,14 @@ private:
 				}
 
 				// Append to listing file with C++20 strict alignment matching your Data format
-				listing << std::format("${:04X}  {:14} {}\n", pc, hex_dump, full_instruction);
+				if (printstate)
+					listing << std::format("${:04X}  {:14} {}\n", pc, hex_dump, full_instruction);
 
 				// Advance the program counter
 				pc += static_cast<uint16_t>(emitted_bytes.size());
+			}
+			else if (auto prn = dynamic_cast<const PrintStatement*>(stmt.get())) {
+				printstate = prn->on;
 			}
 
 		}

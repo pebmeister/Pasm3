@@ -6,17 +6,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ------------------------------------------------------------------------------
-# Optimization
+# Optimization & Compiler Flags
 # ------------------------------------------------------------------------------
 
-# Optimize all Release builds for maximum speed.
+# Optimize Release builds for maximum speed
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options($<$<CONFIG:Release>:-O3 -Wall>)
+    add_compile_options(
+        $<$<CONFIG:Release>:-O3>
+        $<$<CONFIG:Release>:-Wall>
+    )
 elseif(MSVC)
-    add_compile_options($<$<CONFIG:Release>:/O2 /W4>)
+    add_compile_options(
+        $<$<CONFIG:Release>:/O2>
+        $<$<CONFIG:Release>:/W4>
+    )
 endif()
 
-# Enable link-time optimization where supported.
+# Enable link-time optimization where supported
 include(CheckIPOSupported)
 
 check_ipo_supported(
@@ -47,7 +53,7 @@ target_include_directories(buildlexor PRIVATE
 )
 
 # ------------------------------------------------------------------------------
-# 2. Custom Command & Target to Generate PasmTokenizer.hpp
+# 2. Custom Command to Generate PasmTokenizer.hpp
 # ------------------------------------------------------------------------------
 
 set(GENERATED_TOKENIZER_HEADER
@@ -56,16 +62,11 @@ set(GENERATED_TOKENIZER_HEADER
 
 add_custom_command(
     OUTPUT "${GENERATED_TOKENIZER_HEADER}"
-    COMMAND buildlexor "${GENERATED_TOKENIZER_HEADER}"
+    COMMAND $<TARGET_FILE:buildlexor> "${GENERATED_TOKENIZER_HEADER}"
     DEPENDS buildlexor
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Running buildlexor to generate PasmTokenizer.hpp..."
     VERBATIM
-)
-
-add_custom_target(
-    generate_lexer
-    DEPENDS "${GENERATED_TOKENIZER_HEADER}"
 )
 
 # ------------------------------------------------------------------------------
@@ -82,10 +83,7 @@ add_executable(pasm_parser
     "${GENERATED_TOKENIZER_HEADER}"
 )
 
-target_include_directories(pasm_parser
-    PRIVATE
+target_include_directories(pasm_parser PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_BINARY_DIR}"
 )
-
-add_dependencies(pasm_parser generate_lexer)
