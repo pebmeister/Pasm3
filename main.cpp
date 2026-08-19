@@ -528,6 +528,9 @@ class AssemblerParser {
     size_t index_{0};
     PasmTokenizer::Token Tok;
 
+	// Add this as a member variable in your Parser class
+	std::vector<bool> ifdef_stack;
+
 private:
     bool IsMacro(std::string name) const {
         std::transform(name.begin(), name.end(), name.begin(),
@@ -590,6 +593,30 @@ public:
         }
     }
 
+	void SkipToElseOrEndif() {
+		int depth = 1; // We are currently inside 1 unclosed .ifdef block
+
+		while (!TokIs(TokenKind::Eof)) {
+			if (TokIs(TokenKind::Directive)) {
+				if (Tok.text == ".ifdef" || Tok.text == ".ifndef") {
+					depth++; // Entering a nested block
+				} 
+				else if (Tok.text == ".endif") {
+					depth--; // Exiting a block
+					if (depth == 0) {
+						return; // Found the matching .endif!
+					}
+				} 
+				else if (Tok.text == ".else" && depth == 1) {
+					return; // Found the matching .else at our current level!
+				}
+			}
+			ConsumeToken(); // Skip the token entirely
+		}
+
+		throw std::runtime_error("Unexpected EOF: Missing .endif");
+	}
+
     // Helper to check if relative label
     std::optional<int> GetRelativeLabelCount() {
 
@@ -610,10 +637,13 @@ public:
 
         return std::nullopt;
     }
+	
 
     std::vector<std::unique_ptr<Statement>> ParseProgram() {
         std::vector<std::unique_ptr<Statement>> statements;
 
+		SymbolTable definedSyms;
+		
         bool display_tok = false;
         if (display_tok) {
             std::cout << "\n";
@@ -643,8 +673,9 @@ public:
             if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
-                auto val_expr = ParseExpression();
+                auto val_expr = ParseExpression();				
                 statements.push_back(std::make_unique<EquStatement>(Tok.file, Tok.line, sym_name, val_expr.release()));
+				definedSyms.Define(sym_name, 1);
                 continue;
             }
 
@@ -666,6 +697,7 @@ public:
                 Tok.id = static_cast<int>(TokenKind::Label);
                 statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(name)));
                 ConsumeToken();
+				definedSyms.Define(name, 1);
                 continue;
             }
 
@@ -739,6 +771,8 @@ public:
                     });
                     macros_[lower_key] = std::move(def);
 
+					definedSyms.Define(lower_key, 1);
+
                     // Macro definitions emit no statements into the AST
                     continue;
                 }
@@ -772,7 +806,6 @@ public:
                     continue;
                 }
                 else if (dir == ".print") {
-                    
                     if (!TokIs(TokenKind::Identifier)) {
                         throw std::runtime_error(std::format("Expected Identifier after .print File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
                     }
@@ -784,7 +817,6 @@ public:
 					[](unsigned char c) {
 						return static_cast<char>(std::tolower(c));
 					});
-
 									
 					if (lower_opt  == "on") cmd = PrintCmd::on;
 					else if (lower_opt == "off")  cmd = PrintCmd::off;
@@ -797,6 +829,68 @@ public:
                     ConsumeToken(); 
 					continue;
                 }
+				else if ((dir == ".ifdef") || (dir == ".ifndef")) {
+					
+					if (!TokIs(TokenKind::Identifier)) {
+						throw std::runtime_error(std::format(
+							"Expected Identifier after .ifdef File: {} Line: {}", 
+							src_mgr.GetFileName(Tok.file), Tok.line
+						));
+					}
+					
+					auto sym = definedSyms.Lookup(Tok.text);
+					ConsumeToken(); // Consume the identifier token
+
+					if ((sym.has_value() && dir == ".ifdef") || (!sym.has_value() && dir == ".ifndef")) {                    
+						// Condition is TRUE. 
+						// Keep parsing normally, but record that this block succeeded
+						// so we know to skip the .else later.
+						ifdef_stack.push_back(true);
+					} 
+					else {
+						// Condition is FALSE.
+						// Skip all tokens until we hit .else or .endif
+						SkipToElseOrEndif();
+
+						// If we landed on an .else, we must parse the else block normally.
+						// Record that the IF portion was false.
+						if (Tok.text == ".else") {
+							ifdef_stack.push_back(false);
+							ConsumeToken(); // Consume ".else"
+						} 
+						// If we landed on .endif, just consume it and don't push to stack.
+						else if (Tok.text == ".endif") {
+							ConsumeToken(); // Consume ".endif"
+						}
+					}
+				}
+				else if (dir == ".else") {
+					if (ifdef_stack.empty()) {
+						throw std::runtime_error("Unexpected .else without .ifdef");
+					}
+
+					bool if_was_true = ifdef_stack.back();
+					ConsumeToken(); // Consume ".else"
+
+					if (if_was_true) {
+						// The IF block executed, so we MUST skip this ELSE block
+						SkipToElseOrEndif(); // Will land on .endif
+						ConsumeToken();      // Consume ".endif"
+						ifdef_stack.pop_back(); // Close the block
+					} else {
+						// The IF block was false, so we are currently parsing this ELSE block.
+						// Just let the parser continue naturally!
+					}
+				}
+				else if (dir == ".endif") {
+					if (ifdef_stack.empty()) {
+						throw std::runtime_error("Unexpected .endif without .ifdef");
+					}
+					ConsumeToken(); // Consume ".endif"
+					ifdef_stack.pop_back(); // Close the block
+				}
+				
+				
                 else {
                     std::cout << "Warning Unknown directive '" << dir << "'  File: " << src_mgr.GetFileName(dir_tok.file) << " Line: " << dir_tok.line << "\n";
                 }
