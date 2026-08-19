@@ -748,7 +748,7 @@ public:
                 else if (dir == ".include" || dir == ".inc") {
 
                     if (!TokIs(TokenKind::StringLiteral)) {
-                        throw std::runtime_error("Expected string filename after .include");
+                        throw std::runtime_error(std::format("string filename after .include File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
                     }
 
                     std::string inc_filename = Tok.text; // e.g. "constants.inc"
@@ -773,25 +773,30 @@ public:
                 }
                 else if (dir == ".print") {
                     
-                    if (!TokIs(TokenKind::Identifier) || Tok.text.size() < 2) {
-                        throw std::runtime_error("Expected Identifier after .print");
+                    if (!TokIs(TokenKind::Identifier)) {
+                        throw std::runtime_error(std::format("Expected Identifier after .print File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
                     }
 					
-					auto c  = std::tolower(Tok.text[1]);
 					PrintCmd cmd;
-					switch (c) {
-						case 'n': cmd = PrintCmd::on; break;
-						case 'u': cmd = PrintCmd::push; break;
-						case 'o': cmd = PrintCmd::pop; break;
+					std::string lower_opt = Tok.text;
+					
+					std::transform(lower_opt.begin(), lower_opt.end(), lower_opt.begin(),
+					[](unsigned char c) {
+						return static_cast<char>(std::tolower(c));
+					});
 
-						default:
-						case 'f': cmd = PrintCmd::off; break;
+									
+					if (lower_opt  == "on") cmd = PrintCmd::on;
+					else if (lower_opt == "off")  cmd = PrintCmd::off;
+					else if (lower_opt == "push") cmd = PrintCmd::push;
+					else if (lower_opt == "pop")  cmd = PrintCmd::pop;
+					else {
+						throw std::runtime_error(std::format("Unknown option for .print File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
 					}
-
                     statements.push_back(std::make_unique<PrintStatement>(Tok.file, Tok.line, cmd));     
-                    ConsumeToken();                 
+                    ConsumeToken(); 
+					continue;
                 }
-
                 else {
                     std::cout << "Warning Unknown directive '" << dir << "'  File: " << src_mgr.GetFileName(dir_tok.file) << " Line: " << dir_tok.line << "\n";
                 }
