@@ -29,7 +29,6 @@
 #include "opcodedict.h"
 #include "PasmTokenizer.hpp"
 
-std::string read_file_to_string(const std::string& path);
 
 struct SourceManager {
     std::vector<std::string> files;          // Global registry: index = fileid
@@ -68,10 +67,19 @@ struct SourceManager {
     }
 };
 
+inline std::string read_file_to_string(const std::string& path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) throw std::runtime_error("Failed to open file: " + path);
+
+    std::ostringstream ss;
+    ss << file.rdbuf();          // reads entire file
+    return ss.str();
+}
+
 std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
     const std::string& filepath,
     SourceManager& src_mgr,
-    PasmTokenizer& tokenizer
+    const PasmTokenizer& tokenizer
 ) {
     src_mgr.PushInclude(filepath);
     int fileid = src_mgr.GetOrRegisterFile(filepath);
@@ -95,12 +103,8 @@ struct AnonymousLabel {
     std::pair<int, size_t> statement_id;   // Sequential statement/AST index for relative position
 };
 
-SourceManager src_mgr;
-PasmTokenizer tokenizer;
-std::unordered_map<std::string, MacroDef> macros_;
-std::vector<AnonymousLabel> anonymous_labels;
 
-std::optional<int> FindAnonLabel(bool forward, int count, uint16_t pc) {
+std::optional<int> FindAnonLabel(const std::vector<AnonymousLabel>& anonymous_labels,  bool forward, int count, uint16_t pc) {
     auto sz = anonymous_labels.size();
     if (sz == 0) {
         return std::nullopt;
@@ -378,7 +382,8 @@ public:
     }
 };
 
-inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTable& symbols, const std::string& parent_scope, uint16_t pc ) {
+inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vector<AnonymousLabel>& anonymous_labels, const SymbolTable& symbols,
+		const std::string& parent_scope, uint16_t pc ) {
     if (!node) return std::nullopt;
 
     if (auto num = dynamic_cast<const NumberExpr*>(node)) return num->value;
@@ -394,13 +399,13 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
     }
 
     if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
-        return FindAnonLabel(anon->forward, anon->count, pc);
+        return FindAnonLabel(anonymous_labels, anon->forward, anon->count, pc);
     }
 
     if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
 
         if (!un->operand) return std::nullopt;
-        auto val = EvaluateExpr(un->operand.get(), symbols, parent_scope, pc);
+        auto val = EvaluateExpr(un->operand.get(), anonymous_labels, symbols, parent_scope, pc);
         if (!val) return std::nullopt;
         switch ((TokenKind)un->op) {
         case TokenKind::Minus:
@@ -422,8 +427,8 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const SymbolTab
 
     if (auto bin = dynamic_cast<const BinaryExpr*>(node)) {
         if (!bin->lhs || !bin->rhs) return std::nullopt;
-        auto lhs = EvaluateExpr(bin->lhs.get(), symbols, parent_scope, pc);
-        auto rhs = EvaluateExpr(bin->rhs.get(), symbols, parent_scope, pc);
+        auto lhs = EvaluateExpr(bin->lhs.get(), anonymous_labels, symbols, parent_scope, pc);
+        auto rhs = EvaluateExpr(bin->rhs.get(), anonymous_labels, symbols, parent_scope, pc);
         if (!lhs || !rhs) return std::nullopt;
 
         switch ((TokenKind)bin->op) {
@@ -532,7 +537,7 @@ class AssemblerParser {
 	std::vector<bool> ifdef_stack;
 
 private:
-    bool IsMacro(std::string name) const {
+    bool IsMacro(std::string name, const std::unordered_map<std::string, MacroDef>& macros_) const {
         std::transform(name.begin(), name.end(), name.begin(),
         [](unsigned char c) {
             return static_cast<char>(std::tolower(c));
@@ -540,7 +545,7 @@ private:
         return macros_.find(name) != macros_.end();
     }
 
-    int prTok(std::string msg="") {
+    int prTok(const SourceManager &src_mgr, std::string msg="") {
         auto text = Tok.text;
         auto id = Tok.id;
         if (id == (int)TokenKind::Newline) text = "[\\n]";
@@ -559,7 +564,7 @@ public:
     PasmTokenizer::Token ConsumeToken() {
         PasmTokenizer::Token prev = Tok;
         index_++;
-        Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), ""};
+        Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), "", 0, 0, 0, prev.file}; 
         SkipWs();
         return prev;
     }
@@ -639,7 +644,7 @@ public:
     }
 	
 
-    std::vector<std::unique_ptr<Statement>> ParseProgram() {
+    std::vector<std::unique_ptr<Statement>> ParseProgram(SourceManager &src_mgr, std::unordered_map<std::string, MacroDef>& macros_, PasmTokenizer& tokenizer) {
         std::vector<std::unique_ptr<Statement>> statements;
 
 		SymbolTable definedSyms;
@@ -652,7 +657,7 @@ public:
         while (!TokIs(TokenKind::Eof)) {
 
             if (display_tok) {
-                prTok();
+                prTok(src_mgr);
             }
 
             // check for a comment
@@ -690,7 +695,7 @@ public:
 
             // 3. Labels
             // Ensure we don't accidentally treat a macro invocation as a label
-            if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text))) {
+            if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text, macros_))) {
                 std::string name = Tok.text;
                 if (!name.empty() && name.back() == ':')
                     name.pop_back();
@@ -796,7 +801,7 @@ public:
 
                     // 2. Recursively parse the included tokens into AST statements
                     AssemblerParser parser(inc_tokens);
-                    auto inc_statements = parser.ParseProgram();
+                    auto inc_statements = parser.ParseProgram(src_mgr,  macros_, tokenizer);
 
                     // 3. Insert the included statements directly inline
                     for (auto& stmt : inc_statements) {
@@ -899,7 +904,7 @@ public:
             }
 
             // 4.5 Macro Expansion
-            if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
+            if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text, macros_)) {
 
                 auto mac_call_tok = Tok;
 
@@ -981,7 +986,7 @@ public:
                             }
                         }
                         else if (body_tok.text[0] == '@') {
-                            auto newlab = std::move(body_tok);
+                            auto newlab = body_tok;
                             newlab.text += std::to_string(mac.times_called);
                             expanded_tokens.push_back(newlab);
                             substituted = true;
@@ -1224,7 +1229,7 @@ class MultiPassAssembler {
 public:
     explicit MultiPassAssembler(uint16_t start_pc = 0xC000) : start_pc_(start_pc) {}
 
-    void Assemble(std::vector<std::unique_ptr<Statement>>& statements) {
+    void Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
         size_t pass = 1;
         bool symbols_changed = true;
         const size_t max_passes = 10;
@@ -1232,7 +1237,7 @@ public:
         std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
         while (symbols_changed && pass <= max_passes) {
-            symbols_changed = ResolutionPass(statements);
+            symbols_changed = ResolutionPass(statements, anonymous_labels, src_mgr);
             std::cout << "Pass " << pass << " complete. "
                       << (symbols_changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
             pass++;
@@ -1243,14 +1248,14 @@ public:
             return;
         }
 
-        EmitFinalPass(statements);
+        EmitFinalPass(statements, anonymous_labels, src_mgr);
     }
 
 
     std::map<std::pair<int, size_t>, size_t> anon_idmap;
 
 private:
-    bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements) {
+    bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
         uint16_t pc = start_pc_;
         bool changed = false;
         std::vector<std::unique_ptr<Statement>> new_statements;
@@ -1302,14 +1307,14 @@ private:
             }
             else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
                 if (org->address_expr) {
-                    auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                     if (val) pc = static_cast<uint16_t>(*val);
                 }
                 new_statements.push_back(std::move(stmt));
             }
             else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
                 if (equ->value_expr) {
-                    auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                     if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
                 }
                 new_statements.push_back(std::move(stmt));
@@ -1329,7 +1334,7 @@ private:
                 auto mode_it = info->mode_to_opcode.find(inst->mode);
                 if (mode_it != info->mode_to_opcode.end()) {
 
-                    auto val = EvaluateExpr(inst->operand.get(), symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
                     if (val.has_value()) {
                         auto evaluated = val.value();
                         if (inst->mode == RULE_TYPE::Op_Relative) {
@@ -1454,7 +1459,7 @@ private:
         }
     }
 
-    void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements) {
+    void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
 
         uint16_t pc = start_pc_;
         std::vector<uint8_t> binary_output;
@@ -1485,7 +1490,7 @@ private:
             // 2. Org Directives (*= $XXXX)
             else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
                 if (org->address_expr) {
-                    auto val = EvaluateExpr(org->address_expr.get(), symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                     if (val) pc = static_cast<uint16_t>(*val);
                 }
                 
@@ -1496,7 +1501,7 @@ private:
             else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
                 uint16_t v = 0;
                 if (equ->value_expr) {
-                    auto val = EvaluateExpr(equ->value_expr.get(), symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                     v = val ? static_cast<uint16_t>(*val) : 0;
                 }
                 if (printstate)
@@ -1510,7 +1515,7 @@ private:
 
                 for (const auto& expr : data->elements) {
                     if (!expr) continue;
-                    auto val = EvaluateExpr(expr.get(), symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                     int64_t v = val.value_or(0);
 
                     if (data->width == DataWidth::Byte) {
@@ -1584,7 +1589,7 @@ private:
                 std::string operand_str; // Will hold the formatted operand (e.g., "#$32", "$C000")
 
                 if (inst_stmt->operand) {
-                    auto eval_result = EvaluateExpr(inst_stmt->operand.get(), symbols_, parent_scope, pc);
+                    auto eval_result = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
 
                     // Catch unresolved symbols in the final pass
 
@@ -1684,45 +1689,6 @@ private:
     }
 };
 
-std::string read_file_to_string(const std::string& path) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) throw std::runtime_error("Failed to open file: " + path);
-
-    std::ostringstream ss;
-    ss << file.rdbuf();          // reads entire file
-    return ss.str();
-}
-
-void validate_tokens(std::vector<PasmTokenizer::Token> tokens)
-{
-    // Walk though tokens
-    bool in_comment = false;
-    for (const auto& tok : tokens) {
-        auto text = tok.text;
-        if ((text == "\n") || (text == "\r") || (text == "\r\n")) text = "[EOL]";
-        else if (text == "\t") text = "\\t";
-        else if (text == " ") text = "' '";
-
-        // Track whether we are inside a comment
-        if (tok.id == static_cast<int>(TokenKind::Semicolon)) {
-            in_comment = true;
-        } else if (tok.id == static_cast<int>(TokenKind::Newline)) {
-            in_comment = false;
-        }
-        if (in_comment ) {
-            continue;
-        }
-        if (tok.id == static_cast<int>(TokenKind::Invalid)) {
-
-            if (!in_comment) {
-                std::cerr << "Lexical Error at line " << tok.line
-                          << ", col " << tok.col
-                          << ": Unexpected character '" << text << "'\n";
-            }
-            continue;
-        }
-    }
-}
 
 // ============================================================================
 // 6. Main Test Driver
@@ -1730,6 +1696,11 @@ void validate_tokens(std::vector<PasmTokenizer::Token> tokens)
 
 int main(int argc, char* argv[])
 {
+	SourceManager src_mgr;
+	PasmTokenizer tokenizer;
+	std::unordered_map<std::string, MacroDef> macros_;
+	std::vector<AnonymousLabel> anonymous_labels;
+
     std::vector<std::string>input_filenames;
     auto arg = 1;
     while(arg < argc) {
@@ -1754,16 +1725,14 @@ int main(int argc, char* argv[])
         tokens.insert(tokens.end(), file_tokens.begin(), file_tokens.end());
     }
 
-    validate_tokens(tokens);
-
     try {
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         AssemblerParser parser(tokens);
-        auto statements = parser.ParseProgram();
+        auto statements = parser.ParseProgram(src_mgr, macros_, tokenizer);
 
         MultiPassAssembler assembler(0xC000);
-        assembler.Assemble(statements);
+        assembler.Assemble(statements, anonymous_labels, src_mgr);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         std::cout << "Elapsed " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000000.0 << " seconds." << std::endl;
     }
