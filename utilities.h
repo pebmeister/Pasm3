@@ -1,6 +1,8 @@
 #pragma once
-#include "PasmTokenizer.hpp"
 #include <fstream>
+#include <algorithm>
+#include "PasmTokenizer.hpp"
+
 
 inline std::string GetMangledSymbol(const std::string& symbol, const std::string& parent_scope) {
     if (symbol.starts_with('@')) {
