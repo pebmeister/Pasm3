@@ -10,6 +10,7 @@
 #include "getmangledsymbol.h"
 
 #include "findanonlabel.h"
+#include "utilities.h"
 
 size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
     switch (mode) {
