@@ -44,7 +44,7 @@ endif()
 add_executable(buildlexor
     buildlexor/main.cpp
     buildlexor/RegexEngine.h
-    tokenkind.h
+	tokenkind.h
 )
 
 target_include_directories(buildlexor PRIVATE
@@ -76,10 +76,24 @@ add_custom_command(
 add_executable(pasm_parser
     main.cpp
     opcodedict.cpp
-    opcodedict.h
-    opcodes.h
-    ruletype.h
-    tokenkind.h
+	multipassassembler.cpp
+	utilities.cpp
+	anonymouslabel.h
+	exprNode.h
+	findanonlabel.h
+	getmangledsymbol.h
+	multipassassembler.h
+	opcodedict.h
+	opcodeinfo.h
+	opcodes.h
+	ruletype.h
+	sourceManager.h
+	statement.h
+	symboltable.h
+	tokenkind.h
+	macrodef.h
+	utilities.h
+	AssemblerParser.h
     "${GENERATED_TOKENIZER_HEADER}"
 )
 
