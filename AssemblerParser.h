@@ -122,7 +122,6 @@ public:
         return std::nullopt;
     }
 	
-
     std::vector<std::unique_ptr<Statement>> ParseProgram(SourceManager &src_mgr, std::unordered_map<std::string, MacroDef>& macros_, PasmTokenizer& tokenizer) {
         std::vector<std::unique_ptr<Statement>> statements;
 
@@ -213,8 +212,40 @@ public:
 
                     do {
                         if (TokIs(TokenKind::Comma)) ConsumeToken();
-                        auto expr = ParseExpression();
-                        if (expr.isUsable()) elems.push_back(expr.release());
+						if (TokIs(TokenKind::StringLiteral)) {
+							PasmTokenizer::Token str_tok = ConsumeToken();
+							std::string str = str_tok.text;
+
+							// 1. Strip surrounding quotes if your tokenizer includes them in .text
+							if (str.size() >= 2 && str.front() == '"' && str.back() == '"') {
+								str = str.substr(1, str.size() - 2);
+							}
+
+							// 2. Expand each character in the string to a NumberExpr
+							for (size_t i = 0; i < str.length(); ++i) {
+								char c = str[i];
+								
+								// Optional: Handle basic escape sequences (e.g., \n, \t, \0, \\)
+								if (c == '\\' && i + 1 < str.length()) {
+									i++;
+									switch (str[i]) {
+										case 'n':  c = '\n'; break;
+										case 'r':  c = '\r'; break;
+										case 't':  c = '\t'; break;
+										case '0':  c = '\0'; break;
+										case '\\': c = '\\'; break;
+										case '"':  c = '"';  break;
+										default:   c = str[i]; break;
+									}
+								}
+
+								elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(c)));
+							}
+						}
+						else {
+							auto expr = ParseExpression();
+							if (expr.isUsable()) elems.push_back(expr.release());							
+						}
                     } while (TokIs(TokenKind::Comma));
                     statements.push_back(std::make_unique<DataStatement>(Tok.file, Tok.line, w, std::move(elems)));
                 }
@@ -260,9 +291,13 @@ public:
                     // Macro definitions emit no statements into the AST
                     continue;
                 }
-
-
-                // Inside ParseProgram() or your directive handler:
+				
+                else if (dir == ".ds") {
+                    auto size_expr = ParseExpression();
+                    statements.push_back(std::make_unique<DsStatement>(Tok.file, Tok.line, size_expr.release()));
+                }
+                
+				// Inside ParseProgram() or your directive handler:
                 else if (dir == ".include" || dir == ".inc") {
 
                     if (!TokIs(TokenKind::StringLiteral)) {
@@ -411,7 +446,8 @@ public:
                         current_arg.clear();
                         ConsumeToken();
                     } else {
-                        current_arg.push_back(ConsumeToken());
+						auto tok = ConsumeToken();
+                        current_arg.push_back(tok);
                     }
                 }
                 if (!current_arg.empty()) {
@@ -465,10 +501,12 @@ public:
                             }
                         }
                         else if (body_tok.text[0] == '@') {
-                            auto newlab = body_tok;
-                            newlab.text += std::to_string(mac.times_called);
-                            expanded_tokens.push_back(newlab);
-                            substituted = true;
+							auto expTok = body_tok;
+							expTok.file = Tok.file;
+							expTok.line = Tok.line;
+							expTok.text = "@" + mac_call_tok.text + "_" + std::to_string(mac.times_called) + "_" + body_tok.text.substr(1);
+							expanded_tokens.push_back(expTok);
+							substituted = true;
                         }
                     }
 
@@ -612,6 +650,8 @@ private:
                     val = std::stoll(t.text.substr(1), nullptr, 16);
                 } else if (t.text.starts_with("%") && t.text.size() > 1) {
                     val = std::stoll(t.text.substr(1), nullptr, 2);
+                } else if (t.text.starts_with("'") && t.text.ends_with("'") && t.text.size() == 3) {
+                    val = static_cast<int64_t>(t.text[1]);					
                 } else if (!t.text.empty()) {
                     val = std::stoll(t.text);
                 }

@@ -19,6 +19,7 @@ compiler.addRules({
     { "[0-9]+", static_cast<int>(Number)},
     { "[$][0-9|A-F]+", static_cast<int>(Number)},
     { "[%][0-1]+", static_cast<int>(Number)},
+    { "'.'", static_cast<int>(Number)},
 	{ "\"[^\r\n\"]*\"", static_cast<int>(StringLiteral), true },
     { "[=]", static_cast<int>(Equal)},
     { "[\\*]", static_cast<int>(Star)},

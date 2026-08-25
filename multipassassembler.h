@@ -19,7 +19,8 @@ private:
     std::string FormatOperand(RULE_TYPE mode, int64_t val);
 	size_t GetInstructionSize(RULE_TYPE mode);
 
-	
+	std::string parent_scope="GLOBAL_";
+
 public:
     explicit MultiPassAssembler(uint16_t start_pc = 0xC000) : start_pc_(start_pc) {}
 	

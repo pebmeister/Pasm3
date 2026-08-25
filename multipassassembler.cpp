@@ -46,6 +46,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 	std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
 	while (symbols_changed && pass <= max_passes) {
+		parent_scope="GLOBAL_";
 		symbols_changed = ResolutionPass(statements, anonymous_labels, src_mgr);
 		std::cout << "Pass " << pass << " complete. "
 				  << (symbols_changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
@@ -57,6 +58,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 		return;
 	}
 
+	parent_scope="GLOBAL_";
 	EmitFinalPass(statements, anonymous_labels, src_mgr);
 }
 
@@ -73,8 +75,6 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 		{"bvc", "bvs"}, {"bvs", "bvc"},
 		{"bmi", "bpl"}, {"bpl", "bmi"}
 	};
-
-	std::string parent_scope="";
 
 	for (auto& stmt : statements) {
 		if (!stmt) continue;
@@ -102,7 +102,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 				}
 			}
 			else if (name[0] == '@') {
-				symbols_.Define(GetMangledSymbol(lbl->name, parent_scope), pc);
+				auto mangled = GetMangledSymbol(name, parent_scope);				
+				changed |= symbols_.Define(name, pc);
 			}
 			else {
 				parent_scope = name;
@@ -120,7 +121,18 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 		else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
 			if (equ->value_expr) {
 				auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				if (val) changed |= symbols_.Define(equ->name, static_cast<uint16_t>(*val));
+				if (val.has_value()) {
+					changed |= symbols_.Define(equ->name, static_cast<uint16_t>(val.value()));
+				}
+			}
+			new_statements.push_back(std::move(stmt));
+		}
+		else if (auto ds = dynamic_cast<const DsStatement*>(stmt.get())) {
+			if (ds->size_expr) {
+				auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+				if (val.has_value()) {
+					pc += val.value();
+				}
 			}
 			new_statements.push_back(std::move(stmt));
 		}
@@ -269,7 +281,6 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 	uint16_t pc = start_pc_;
 	std::vector<uint8_t> binary_output;
 	std::ostringstream listing;
-	std::string parent_scope="";
 
 	listing << "\n===============================================================================\n";
 	listing << "                               ASSEMBLY LISTING\n";
@@ -364,6 +375,12 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 					if (printstate)
 						listing << std::format("${:04X}  {:14}\n", chunk_pc, hex_str);
 				}
+			}
+		}
+		else if (auto ds = dynamic_cast<const DsStatement*>(stmt.get())) {
+			auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+			if (val.has_value()) {
+				pc += val.value();
 			}
 		}
 		// 5. Instruction / Opcode Statement
