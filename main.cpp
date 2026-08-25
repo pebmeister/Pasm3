@@ -1,92 +1,78 @@
-// Written by Paul Baxter
-
 #include <iostream>
-#include <memory>
-#include <string>
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <cstdint>
-#include <cctype>
-#include <optional>
-#include <algorithm>
-#include <iomanip>
-#include <sstream>
-#include <utility>
-#include <format>
 #include <fstream>
-#include <sstream>
-#include <exception>
-#include <stack>
-#include <chrono>
+#include "RegexEngine.h" // Header containing your NFABuilder, DFAConverter, and RegexCompiler
 
-#define GEN_RULEMAP
-#include "ruletype.h"
-#undef GEN_RULEMAP
-
-#define GEN_TOKMAP
 #include "tokenkind.h"
-#undef GEN_TOKMAP
 
-#include "opcodedict.h"
-#include "PasmTokenizer.hpp"
-#include "anonymouslabel.h"
-#include "multipassassembler.h"
-#include "symboltable.h"
-#include "sourceManager.h"
+using enum TokenKind;
 
-#include "getmangledsymbol.h"
-#include "opcodeinfo.h"
+int main() {
+    RegexCompiler compiler;
 
-#include "exprNode.h"
-#include "macrodef.h"
-#include "utilities.h"
-#include "AssemblerParser.h"
+compiler.addRules({
+    { "[\\r]?[\\n]", static_cast<int>(Newline)},
+    { "[ \\t]*", static_cast<int>(Ws)},
+    { "[;]", static_cast<int>(Semicolon)},
+    { "[\\\\][1-9]+", static_cast<int>(MacroArg)},
+    { "[@]?[a-z_][a-z0-9_]*[:]?", static_cast<int>(Identifier), true},
+    { "[\\.][a-z_][a-z0-9_]*", static_cast<int>(Directive), true},
+    { "[0-9]+", static_cast<int>(Number)},
+    { "[$][0-9|A-F]+", static_cast<int>(Number)},
+    { "[%][0-1]+", static_cast<int>(Number)},
+    { "'.'", static_cast<int>(Number)},
+	{ "\"[^\r\n\"]*\"", static_cast<int>(StringLiteral), true },
+    { "[=]", static_cast<int>(Equal)},
+    { "[\\*]", static_cast<int>(Star)},
+    { "[,]", static_cast<int>(Comma)},
+    { "[%]", static_cast<int>(Percent)},
+    { "[&]", static_cast<int>(Ampersand)},
+    { "[\\(]", static_cast<int>(LParen)},
+    { "[\\)]", static_cast<int>(RParen)},
+    { "[\\+]", static_cast<int>(Plus)},
+    { "[\\-]", static_cast<int>(Minus)},
+    { "[\\#]", static_cast<int>(Hash)},
+    { "[$]", static_cast<int>(PcSymbol)},
+    { "[\\|]", static_cast<int>(Pipe)},
+    { "[\\^]", static_cast<int>(Caret)},
+    { "[\\<]", static_cast<int>(LowByte)},
+    { "[\\>]", static_cast<int>(HighByte)},
+    { "(\\<){2}", static_cast<int>(Shl)},
+    { "(\\>){2}", static_cast<int>(Shr)},
+    { "[~]", static_cast<int>(Tilde)},
+    { "[!]", static_cast<int>(Bang)},
+    { "ORA|AND|EOR|ADC|SBC", static_cast<int>(Opcode), true},
+    { "CMP|CPX|CPY|DEC|DEX", static_cast<int>(Opcode), true},
+    { "DEY|INC|INX|INY|ASL", static_cast<int>(Opcode), true},
+    { "ROL|LSR|ROR|LDA|STA", static_cast<int>(Opcode), true},
+    { "LDX|STX|LDY|STY|STZ", static_cast<int>(Opcode), true},
+    { "TAX|TXA|TAY|TYA|TSX", static_cast<int>(Opcode), true},
+    { "TXS|PLA|PHA|PLP|PHP", static_cast<int>(Opcode), true},
+    { "PHX|PHY|PLX|PLY|BRA", static_cast<int>(Opcode), true},
+    { "BPL|BMI|BVC|BVS|BCC", static_cast<int>(Opcode), true},
+    { "BCS|BNE|BEQ|STP|WAI", static_cast<int>(Opcode), true},
+    { "BRK|RTI|JSR|RTS|JMP", static_cast<int>(Opcode), true},
+    { "BIT|CLC|SEC|CLD|SED", static_cast<int>(Opcode), true},
+    { "CLI|SEI|CLV|NOP|SLO", static_cast<int>(Opcode), true},
+    { "RLA|SRE|RRA|SAX|LAX", static_cast<int>(Opcode), true},
+    { "DCP|ISC|ANC|ANC2|ARR", static_cast<int>(Opcode), true},
+    { "XAA|AXS|USBC|AHX|SHY", static_cast<int>(Opcode), true},
+    { "SHX|TAS|LAS|TRB|TSB", static_cast<int>(Opcode), true},
+    { "RMB[0-7]|SMB[0-7]",   static_cast<int>(Opcode), true},
+    { "BBR[0-7]|BBS[0-7]",   static_cast<int>(Opcode), true},
+});
 
-int main(int argc, char* argv[])
-{
-	SourceManager src_mgr;
-	PasmTokenizer tokenizer;
-	std::unordered_map<std::string, MacroDef> macros_;
-	std::vector<AnonymousLabel> anonymous_labels;
 
-    std::vector<std::string>input_filenames;
-    auto arg = 1;
-    while(arg < argc) {
-        if (argv[arg][0] != '-') {
-            input_filenames.push_back(argv[arg]);
-            arg++;
-        }
-        else {
-            std::cout << "Unknown option " << argv[arg] << "\n";
-            return -1;
-        }
-    }
-    if (input_filenames.empty()) {
-        std::cout << "No input file specified.\n";
-        return 1;
-    }
+	std::string classname = "PasmTokenizer";
+	std::string outfile = "../PasmTokenizer.hpp";
 
-    std::vector<PasmTokenizer::Token> tokens;
+    // 2. Generate the C++ code for the compiled DFA tokenizer
+    std::string generated_code = compiler.generateCppClass(classname);
 
-    for (const auto& root_file : input_filenames) {
-        auto file_tokens = LoadAndTokenizeFile(root_file, src_mgr, tokenizer);
-        tokens.insert(tokens.end(), file_tokens.begin(), file_tokens.end());
-    }
+    // 3. Save the generated class to a standalone header file
+    std::ofstream out(outfile);
+    out << generated_code;
+    out.close();
 
-    try {
-
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        AssemblerParser parser(tokens);
-        auto statements = parser.ParseProgram(src_mgr, macros_, tokenizer);
-
-        MultiPassAssembler assembler(0xC000);
-        assembler.Assemble(statements, anonymous_labels, src_mgr);
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        std::cout << "Elapsed " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000000.0 << " seconds." << std::endl;
-    }
-    catch (std::exception& ex) {
-        std::cerr << "Error " << ex.what() << "\n";
-    }
+    std::cout << "Successfully generated '" << outfile << "'!\n";
     return 0;
 }

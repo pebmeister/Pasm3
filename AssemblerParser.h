@@ -213,8 +213,20 @@ public:
 
                     do {
                         if (TokIs(TokenKind::Comma)) ConsumeToken();
-                        auto expr = ParseExpression();
-                        if (expr.isUsable()) elems.push_back(expr.release());
+						if (TokIs(TokenKind::StringLiteral)) {
+							auto txtbytes = Tok.text.substr(1, Tok.text.size() -2);
+							
+							std::cout << "string literal '" << txtbytes << "'\n";
+							for (auto b : txtbytes) {
+								auto bytexpr = ExprResult(std::make_unique<NumberExpr>(static_cast<int>(b)));
+								elems.push_back(bytexpr.release());
+							}
+							ConsumeToken();
+						}
+						else {
+							auto expr = ParseExpression();
+							if (expr.isUsable()) elems.push_back(expr.release());
+						}
                     } while (TokIs(TokenKind::Comma));
                     statements.push_back(std::make_unique<DataStatement>(Tok.file, Tok.line, w, std::move(elems)));
                 }
@@ -260,9 +272,13 @@ public:
                     // Macro definitions emit no statements into the AST
                     continue;
                 }
-
-
-                // Inside ParseProgram() or your directive handler:
+				
+                else if (dir == ".ds") {
+                    auto size_expr = ParseExpression();
+                    statements.push_back(std::make_unique<DsStatement>(Tok.file, Tok.line, size_expr.release()));
+                }
+                
+				// Inside ParseProgram() or your directive handler:
                 else if (dir == ".include" || dir == ".inc") {
 
                     if (!TokIs(TokenKind::StringLiteral)) {
@@ -612,6 +628,8 @@ private:
                     val = std::stoll(t.text.substr(1), nullptr, 16);
                 } else if (t.text.starts_with("%") && t.text.size() > 1) {
                     val = std::stoll(t.text.substr(1), nullptr, 2);
+                } else if (t.text.starts_with("'") && t.text.ends_with("'") && t.text.size() == 3) {
+                    val = static_cast<int64_t>(t.text[1]);					
                 } else if (!t.text.empty()) {
                     val = std::stoll(t.text);
                 }

@@ -37,6 +37,11 @@ struct OrgStatement : Statement {
     explicit OrgStatement(int file, int line, std::unique_ptr<ExprNode> expr) : Statement(file, line), address_expr(std::move(expr)) {}
 };
 
+struct DsStatement : Statement {
+    std::unique_ptr<ExprNode> size_expr;
+    explicit DsStatement(int file, int line, std::unique_ptr<ExprNode> expr) : Statement(file, line), size_expr(std::move(expr)) {}
+};
+
 struct EquStatement : Statement {
     std::string name;
     std::unique_ptr<ExprNode> value_expr;
