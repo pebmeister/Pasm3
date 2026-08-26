@@ -102,19 +102,18 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 				}
 			}
 			else if (name[0] == '@') {
-				auto mangled = GetMangledSymbol(name, parent_scope);				
-				changed |= symbols_.Define(name, pc);
+				name = GetMangledSymbol(name, parent_scope);				
 			}
 			else {
 				parent_scope = name;
-				changed |= symbols_.Define(lbl->name, pc);
 			}
+			changed |= symbols_.Define(name, pc);
 			new_statements.push_back(std::move(stmt));
 		}
 		else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 			if (org->address_expr) {
 				auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				if (val) pc = static_cast<uint16_t>(*val);
+				if (val) pc = static_cast<uint16_t>(val.value());
 			}
 			new_statements.push_back(std::move(stmt));
 		}
@@ -160,8 +159,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 						if (offset < -128 || offset > 127) {
 							auto it = inverted_branches.find(inst->mnemonic);
 							if (it != inverted_branches.end()) {
-								std::cout << "Warning: Branch out of range for '" << inst->mnemonic
-										  << "' at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
+							//	std::cout << "Warning: Branch out of range for '" << inst->mnemonic <<  "' [" << offset << "] "
+							//			  << " at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
 
 								// 1. Create the JMP statement FIRST by moving the original target expression
 								auto jmp_inst = std::make_unique<InstructionStatement>(
@@ -192,7 +191,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 					else { // range check and optimize for page zero
 						if (evaluated < 0 || evaluated > 0xFFFF) {
 							throw std::runtime_error(
-								std::format("Operand out of range for '{}'  at ${:04X}", inst->mnemonic, pc)
+								std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst->mnemonic, pc,  src_mgr.GetFileName(inst->file), inst->line)
 							);
 						}
 						RULE_TYPE want_type = inst->mode;
@@ -297,6 +296,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 		
 		// 1. Label Statements
 		if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
+			
 			if (printstate)
 				listing << std::format("${:04X}                {}\n", pc, lbl->name);
 			if (lbl->name[0] != '@') {
@@ -307,7 +307,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 		else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 			if (org->address_expr) {
 				auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				if (val) pc = static_cast<uint16_t>(*val);
+				if (val.has_value()) pc = static_cast<uint16_t>(val.value());
 			}
 			
 			if (printstate)
@@ -318,7 +318,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 			uint16_t v = 0;
 			if (equ->value_expr) {
 				auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				v = val ? static_cast<uint16_t>(*val) : 0;
+				v = val.has_value() ? static_cast<uint16_t>(val.value()) : 0;
 			}
 			if (printstate)
 				listing << std::format("${:04X}  {:14} {} = ${:04X}\n", v, "", equ->name, v);
@@ -395,13 +395,19 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
 			auto modeIt = info->mode_to_opcode.find(inst_stmt->mode);
 			if (modeIt == info->mode_to_opcode.end()) {
-				throw std::runtime_error(
-					std::format(
-						"Invalid addressing mode for mnemonic '{}' File: {}  Line: {}",
-						inst_stmt->mnemonic,
-						src_mgr.GetFileName(inst_stmt->file), inst_stmt->line
-					)
-				);
+				if (inst_stmt->mode == RULE_TYPE::Op_Implied) {
+					modeIt = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
+					if (modeIt == info->mode_to_opcode.end()) {
+						throw std::runtime_error(
+							std::format(
+								"Invalid addressing mode for mnemonic '{}' File: {}  Line: {}",
+								inst_stmt->mnemonic,
+								src_mgr.GetFileName(inst_stmt->file), inst_stmt->line
+							)
+						);
+					}
+				}
+				
 			}
 
 			// Re-use the iterator instead of doing another map lookup with .at()
@@ -411,6 +417,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 			std::string operand_str; // Will hold the formatted operand (e.g., "#$32", "$C000")
 
 			if (inst_stmt->operand) {
+				
 				auto eval_result = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
 
 				// Catch unresolved symbols in the final pass

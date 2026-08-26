@@ -73,13 +73,13 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
 
     if (auto num = dynamic_cast<const NumberExpr*>(node)) return num->value;
 
-    if (auto sym = dynamic_cast<const SymbolExpr*>(node)) {
+    if (auto sym = dynamic_cast<const SymbolExpr*>(node)) {		
         auto name = sym->name;
         if (sym->name[0] == '@') {
-            name = GetMangledSymbol(sym->name, parent_scope);
+            name = GetMangledSymbol(name, parent_scope);
         }
         auto val = symbols.Lookup(name);
-        if (val) return static_cast<int64_t>(*val);
+        if (val.has_value()) return static_cast<int64_t>(val.value());
         return std::nullopt;
     }
 

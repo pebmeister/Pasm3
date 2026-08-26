@@ -126,7 +126,6 @@ public:
         std::vector<std::unique_ptr<Statement>> statements;
 
 		SymbolTable definedSyms;
-		
         bool display_tok = false;
         if (display_tok) {
             std::cout << "\n";
@@ -180,7 +179,6 @@ public:
                 Tok.id = static_cast<int>(TokenKind::Label);
                 statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(name)));
                 ConsumeToken();
-				definedSyms.Define(name, 1);
                 continue;
             }
 

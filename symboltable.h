@@ -50,12 +50,10 @@ public:
         auto it = symbols_.find(name);
         if (it == symbols_.end()) {
             symbols_.emplace(name, val);
-			std::cout << "define " << name << " $" << std::hex << val << std::dec << "\n";
             return true;
         }
         if (it->second != val) {
             it->second = val;
-			std::cout << "change " << name << " $" << std::hex << val << std::dec << "\n";
             return true;
         }
         return false;
