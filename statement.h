@@ -18,6 +18,8 @@ struct Statement {
 
 struct LabelStatement : Statement {
     std::string name;
+	bool is_local() const { return name[0] == '@'; }
+	bool is_anon() const { return name[0] == '-' || name[0] == '+'; }
     explicit LabelStatement(int file, int line, std::string name) : Statement(file, line), name(std::move(name)) {}
 };
 

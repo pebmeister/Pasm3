@@ -6,6 +6,8 @@ struct SourceManager {
     std::vector<std::string> files;          // Global registry: index = fileid
     std::vector<std::string> include_stack;  // Active include chain
 
+	std::map<std::pair<int,int>, std::string> source;
+
     // Safe lookup helper
     std::string GetFileName(int fileid) const {
         if (fileid >= 0 && fileid < static_cast<int>(files.size())) {
@@ -23,6 +25,10 @@ struct SourceManager {
         return static_cast<int>(files.size() - 1);
     }
 
+	std::string GetLine(int fileid, int lineNo) {
+		return source[{fileid, lineNo}];
+	}
+	
     // Push file onto stack with circular dependency check
     void PushInclude(const std::string& filepath) {
         if (std::find(include_stack.begin(), include_stack.end(), filepath) != include_stack.end()) {
@@ -37,4 +43,5 @@ struct SourceManager {
             include_stack.pop_back();
         }
     }
+	
 };

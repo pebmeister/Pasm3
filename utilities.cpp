@@ -25,15 +25,29 @@
 #include "AssemblerParser.h"
 #include "utilities.h"
 
+
 std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
     const std::string& filepath,
     SourceManager& src_mgr,
     const PasmTokenizer& tokenizer
 ) {
+	
+	std::cout << "LoadAndTokenizeFile " << filepath <<"\n";
+	
     src_mgr.PushInclude(filepath);
     int fileid = src_mgr.GetOrRegisterFile(filepath);
+	
+	int lineNo = 1;
+	std::string line;
+	std::string source_code;
+	std::ifstream infile(filepath);
+	while (std::getline(infile, line)) {
+		src_mgr.source[{fileid, lineNo}] = line;
+		source_code += (line + "\n");
+		lineNo++;
+	}
+	infile.close();
 
-    std::string source_code = read_file_to_string(filepath);
     auto filetokens = tokenizer.tokenize(source_code, fileid);
 
     src_mgr.PopInclude();

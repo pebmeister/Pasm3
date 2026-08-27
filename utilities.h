@@ -13,15 +13,6 @@ inline std::string GetMangledSymbol(const std::string& symbol, const std::string
 }
 
 
-inline std::string read_file_to_string(const std::string& path) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) throw std::runtime_error("Failed to open file: " + path);
-
-    std::ostringstream ss;
-    ss << file.rdbuf();          // reads entire file
-    return ss.str();
-}
-
 std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
     const std::string& filepath,
     SourceManager& src_mgr,
