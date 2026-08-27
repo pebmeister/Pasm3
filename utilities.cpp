@@ -32,10 +32,9 @@ std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
     const PasmTokenizer& tokenizer
 ) {
 	
-	std::cout << "LoadAndTokenizeFile " << filepath <<"\n";
 	
-    src_mgr.PushInclude(filepath);
-    int fileid = src_mgr.GetOrRegisterFile(filepath);
+  src_mgr.PushInclude(filepath);
+  int fileid = src_mgr.GetOrRegisterFile(filepath);
 	
 	int lineNo = 1;
 	std::string line;
