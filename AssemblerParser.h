@@ -209,7 +209,8 @@ public:
                     std::vector<std::unique_ptr<ExprNode>> elems;
 
                     do {
-                        if (TokIs(TokenKind::Comma)) ConsumeToken();
+                        if (TokIs(TokenKind::Comma)) 
+                            ConsumeToken();
 						if (TokIs(TokenKind::StringLiteral)) {
 							PasmTokenizer::Token str_tok = ConsumeToken();
 							std::string str = str_tok.text;

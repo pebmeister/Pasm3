@@ -79,6 +79,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
         if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
             auto name = lbl->name;
+            
             if (lbl->is_anon()) {
                 std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
                 auto it = anon_idmap.find(stmt_id);
@@ -102,7 +103,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
             }
             else {
                 if (lbl->is_local()) {
-                    name = GetMangledSymbol(name, parent_scope);
+                    name = GetMangledSymbol(name, parent_scope); 
                 }
                 else {
                     parent_scope = name;
