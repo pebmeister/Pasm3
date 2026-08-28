@@ -102,7 +102,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 			    new_statements.push_back(std::move(stmt));
 			}
             else {
-			    else if (lbl->is_local()) {
+			    if (lbl->is_local()) {
 				    name = GetMangledSymbol(name, parent_scope);				
 			    }
 			    else {
