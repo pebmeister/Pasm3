@@ -191,8 +191,17 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
             auto mode_it = info->mode_to_opcode.find(inst->mode);
             if (mode_it == info->mode_to_opcode.end()) {
-                throw std::runtime_error(
-                    std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
+                if (inst->mode == RULE_TYPE::Op_Implied) {
+                    mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
+                    if (mode_it == info->mode_to_opcode.end()) {
+                        throw std::runtime_error(
+                            std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
+                    }
+                }
+                else {
+                    throw std::runtime_error(
+                        std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
+                }
             }
             auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
             if (val.has_value()) {
@@ -321,12 +330,6 @@ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
     }
 }
 
-template<typename... Args>
-std::string dyn_print(std::string_view rt_fmt_str, Args&&... args)
-{
-    return std::vformat(rt_fmt_str, std::make_format_args(args...));
-}
-
 void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
 
     uint16_t pc = start_pc_;
@@ -387,7 +390,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 last_printed++;
                 std::string src_text = src_mgr.GetLine(stmt->file, last_printed);
                 // Empty ADDR, BYTES, and SIMPLIFIED columns for skipped lines
-                listing << std::format("{:5d}) {:7} {:14} {:30} {}\n", last_printed, "", "", "", src_text);
+                listing << std::format("{:5d}) {:7}{:14} {:30} {}\n", last_printed, "", "", "", src_text);
             }
         };
 
