@@ -80,7 +80,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
 		if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
 			auto name = lbl->name;
-			if (name[0] == '+' || name[0] == '-' ) {
+			if (lbl.is_anon()) {
 				std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
 				auto it = anon_idmap.find(stmt_id);
 				if (it == anon_idmap.end()) {
@@ -99,22 +99,25 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 						changed = true;
 					}
 				}
+			    new_statements.push_back(std::move(stmt));
 			}
-			else if (name[0] == '@') {
-				name = GetMangledSymbol(name, parent_scope);				
-			}
-			else {
-				parent_scope = name;
-			}
-			changed |= symbols_.Define(name, pc);
-			new_statements.push_back(std::move(stmt));
+            else {
+			    else if (lbl.is_local()) {
+				    name = GetMangledSymbol(name, parent_scope);				
+			    }
+			    else {
+				    parent_scope = name;
+			    }
+			    changed |= symbols_.Define(name, pc);
+			    new_statements.push_back(std::move(stmt));
+            }
 		}
 		
 		// Org
 		else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 			if (org->address_expr) {
 				auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				if (val.has_value()) pc = static_cast<uint16_t>(val.value());
+				if (val.has_value() pc = static_cast<uint16_t>(val.value());
 			}
 			new_statements.push_back(std::move(stmt));
 		}
@@ -564,281 +567,3 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
 	std::cout << listing.str();
 }
-
-/*
-void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
-
-	uint16_t pc = start_pc_;
-	std::vector<uint8_t> binary_output;
-	std::ostringstream listing;
-
-	listing << "\n===============================================================================\n";
-	listing << "                                ASSEMBLY LISTING\n";
-	listing << "===============================================================================\n";
-	listing << "LINE   ADDR  BYTES          STATEMENT\n";
-	listing << "-------------------------------------------------------------------------------\n";
-
-	std::stack<bool> pr_stack;
-	auto printstate = true;
-
-	constexpr int addr_width = 4;
-	constexpr int op_spc_width = 1;
-	constexpr int op_field_width = 14;
-	
-	std::string fmat = "${:0" + std::to_string(addr_width) + "X}{:" + std::to_string(op_spc_width) + "}{:" + std::to_string(op_field_width) + "}{}";
-	std::string fmat_org = "${:0" + std::to_string(addr_width) + "X}{:" + std::to_string(op_spc_width) + "}{:" + std::to_string(op_field_width) + "}  {} {:04X}";
-
-	std::map<int, int> file_last_printed_line;
-	int last_file = -1;
-
-	for (const auto& stmt : statements) {
-		if (!stmt) continue;
-
-		// 1. Process Print Directives FIRST (Must remain completely silent)
-		if (auto prn = dynamic_cast<const PrintStatement*>(stmt.get())) {
-			switch (prn->cmd) {
-			case PrintCmd::on:   printstate = true;  break;
-			case PrintCmd::off:  printstate = false; break;							
-			case PrintCmd::push: pr_stack.push(printstate); break;
-			case PrintCmd::pop:
-				if (pr_stack.empty()) {
-					throw std::runtime_error(std::format("print stack underflow File: {} Line: {}", src_mgr.GetFileName(prn->file), prn->line));
-				}
-				printstate = pr_stack.top();
-				pr_stack.pop();
-				break;
-			default:
-				throw std::runtime_error(std::format("unknown print directive File: {} Line: {}", src_mgr.GetFileName(prn->file), prn->line));
-			}
-
-			// Advance the line tracker for this file without printing anything
-			file_last_printed_line[stmt->file] = stmt->line;
-			continue;
-		}
-
-		// 2. If printing is turned off, update line tracker and skip listing generation
-		if (!printstate) {
-			file_last_printed_line[stmt->file] = stmt->line;
-			continue;
-		}
-
-		// Helper to handle file transitions and catch up blank/skipped line numbers
-		auto sync_file_and_line_catchup = [&](int target_line) {
-			if (stmt->file != last_file) {
-				listing << "Processing " << src_mgr.GetFileName(stmt->file) << "\n";
-				last_file = stmt->file;
-			}
-
-			int& last_printed = file_last_printed_line[stmt->file];
-			while (last_printed + 1 < target_line) {
-				last_printed++;
-				listing << std::format("{:5d})\n", last_printed);
-			}
-		};
-
-		// Helper to emit a formatted listing row with aligned line numbers
-		auto emit_listing_row = [&](const std::string& row_text) {
-			sync_file_and_line_catchup(stmt->line);
-
-			int& last_printed = file_last_printed_line[stmt->file];
-			if (last_printed < stmt->line) {
-				// First row for this source line
-				listing << std::format("{:5d}) {}\n", stmt->line, row_text);
-				last_printed = stmt->line;
-			} else {
-				// Continuation row for multi-chunk statements (e.g., .byte)
-				listing << std::format("       {}\n", row_text);
-			}
-		};
-
-		// ---------------------------------------------------------------------
-		// Statement Listing Generation
-		// ---------------------------------------------------------------------
-
-		// 1. Label Statements
-		if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
-			emit_listing_row(dyn_print(fmat, pc, "", "", lbl->name));
-			if (!lbl->is_local()) {
-				parent_scope = lbl->name;
-			}
-		}
-		// 2. Org Directives (*= $XXXX)
-		else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
-			if (org->address_expr) {
-				auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				if (!val.has_value()) {
-					throw std::runtime_error(
-						std::format("Invalid value File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
-					);
-				}
-				pc = static_cast<uint16_t>(val.value());
-			}
-			emit_listing_row(dyn_print(fmat_org, pc, "", "", "*=", pc));
-		}
-		// 3. Equate Directives (NAME = $VAL)
-		else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
-			uint16_t v = 0;
-			if (equ->value_expr) {
-				auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				if (!val.has_value()) {
-					throw std::runtime_error(
-						std::format("Invalid value File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
-					);
-				}
-				v = static_cast<uint16_t>(val.value());
-			}
-			emit_listing_row(std::format("${:04X}{:3}{:14}{} = ${:04X}", v, "", "", equ->name, v));
-		}
-		
-		// 4. Data Directives (.byte / .word)
-		else if (auto data = dynamic_cast<const DataStatement*>(stmt.get())) {
-			uint16_t current_pc = pc;
-			std::vector<uint8_t> data_bytes;
-			std::vector<std::string> elem_strs;
-
-			for (const auto& expr : data->elements) {
-				if (!expr) continue;
-				auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				int64_t v = val.value_or(0);
-
-				if (data->width == DataWidth::Byte) {
-					uint8_t b = static_cast<uint8_t>(v & 0xFF);
-					data_bytes.push_back(b);
-					elem_strs.push_back(std::format("${:02X}", b));
-				} else {
-					uint8_t low = static_cast<uint8_t>(v & 0xFF);
-					uint8_t high = static_cast<uint8_t>((v >> 8) & 0xFF);
-					data_bytes.push_back(low);
-					data_bytes.push_back(high);
-					elem_strs.push_back(std::format("${:04X}", static_cast<uint16_t>(v & 0xFFFF)));
-				}
-			}
-
-			binary_output.insert(binary_output.end(), data_bytes.begin(), data_bytes.end());
-			pc += static_cast<uint16_t>(data_bytes.size());
-
-			std::string dir_keyword = (data->width == DataWidth::Byte) ? ".byte" : ".word";
-			size_t elems_per_chunk = (data->width == DataWidth::Byte) ? 4 : 2;
-			size_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
-
-			for (size_t i = 0; i < elem_strs.size(); i += elems_per_chunk) {
-				size_t elem_count = std::min(elems_per_chunk, elem_strs.size() - i);
-				size_t byte_offset = i * bytes_per_elem;
-				size_t byte_count = elem_count * bytes_per_elem;
-				uint16_t chunk_pc = static_cast<uint16_t>(current_pc + byte_offset);
-
-				std::string hex_str;
-				for (size_t b = 0; b < byte_count; ++b) {
-					hex_str += std::format("{:02X} ", data_bytes[byte_offset + b]);
-				}
-
-				std::string chunk_stmt = dir_keyword;
-				for (size_t e = 0; e < elem_count; ++e) {
-					chunk_stmt += (e == 0 ? " " : ", ") + elem_strs[i + e];
-				}
-
-				emit_listing_row(std::format("${:04X}  {:14} {}", chunk_pc, hex_str, chunk_stmt));
-			}
-		}
-		// .ds Directives
-		else if (auto ds = dynamic_cast<const DsStatement*>(stmt.get())) {
-			auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-			if (val.has_value()) {
-				pc += static_cast<uint16_t>(val.value());
-			}
-			// Catch up preceding empty lines, but do not emit bytes or listing text for .ds
-			sync_file_and_line_catchup(stmt->line);
-		}
-		// 5. Instruction / Opcode Statement
-		else if (auto inst_stmt = dynamic_cast<const InstructionStatement*>(stmt.get())) {
-
-			auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
-			if (!info) {
-				throw std::runtime_error(
-					std::format("Invalid mnemonic {} File: {}  Line:{}", inst_stmt->mnemonic, src_mgr.GetFileName(stmt->file), stmt->line)
-				);
-			}
-
-			auto modeIt = info->mode_to_opcode.find(inst_stmt->mode);
-			if (modeIt == info->mode_to_opcode.end()) {
-				if (inst_stmt->mode == RULE_TYPE::Op_Implied) {
-					modeIt = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
-				}
-				if (modeIt == info->mode_to_opcode.end()) {
-					throw std::runtime_error(
-						std::format(
-							"Invalid addressing mode for mnemonic '{}' File: {}  Line: {}",
-							inst_stmt->mnemonic,
-							src_mgr.GetFileName(stmt->file), stmt->line
-						)
-					);
-				}
-			}
-
-			auto [opcode, _] = modeIt->second;
-			std::vector<uint8_t> emitted_bytes = { opcode };
-			std::string operand_str;
-
-			if (inst_stmt->operand) {
-				auto eval_result = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
-
-				if (!eval_result.has_value()) {
-					std::cout << listing.str();
-					throw std::runtime_error(
-						std::format("Unresolved symbol in operand for '{}' at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(stmt->file), stmt->line)
-					);
-				}
-
-				int val = static_cast<int>(eval_result.value());
-				operand_str = FormatOperand(inst_stmt->mode, val);
-
-				if (inst_stmt->mode == RULE_TYPE::Op_Relative) {
-					int next_pc = pc + 2;
-					int offset = val - next_pc;
-
-					if (offset < -128 || offset > 127) {
-						throw std::runtime_error(std::format("Branch out of range: offset is {} File: {} Line: {}", offset, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
-					}
-					emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
-				}
-				else {
-					auto sz = GetInstructionSize(inst_stmt->mode);
-					switch (sz) {
-					case 2:
-						emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-						break;
-					case 3:
-						emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
-						emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
-						break;
-					default:
-						break;
-					}
-				}
-			}
-
-			binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
-
-			std::string hex_dump;
-			for (uint8_t b : emitted_bytes) {
-				hex_dump += std::format("{:02X} ", b);
-			}
-
-			std::string full_instruction = inst_stmt->mnemonic;
-			if (!operand_str.empty()) {
-				full_instruction += " " + operand_str;
-			}
-
-			emit_listing_row(std::format("${:04X}  {:14} {}", pc, hex_dump, full_instruction));
-
-			pc += static_cast<uint16_t>(emitted_bytes.size());
-		}
-	}
-
-	listing << "-------------------------------------------------------------------------------\n";
-	listing << std::format("Emitted {} bytes.\n", binary_output.size());
-
-	std::cout << listing.str();
-}
-
-*/
