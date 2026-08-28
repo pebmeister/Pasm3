@@ -117,7 +117,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 		else if (auto org = dynamic_cast<const OrgStatement*>(stmt.get())) {
 			if (org->address_expr) {
 				auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-				if (val.has_value() pc = static_cast<uint16_t>(val.value());
+				if (val.has_value()) pc = static_cast<uint16_t>(val.value());
 			}
 			new_statements.push_back(std::move(stmt));
 		}
