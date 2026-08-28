@@ -125,9 +125,13 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
         // Equ
         else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
             if (equ->value_expr) {
+                auto name = equ->name;
+                if (equ->is_local()) {
+                    name = GetMangledSymbol(name, parent_scope); 
+                }
                 auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                 if (val.has_value()) {
-                    changed |= symbols_.Define(equ->name, static_cast<uint16_t>(val.value()));
+                    changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()));
                 }
             }
             new_statements.push_back(std::move(stmt));

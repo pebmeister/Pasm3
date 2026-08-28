@@ -53,6 +53,8 @@ struct DsStatement : Statement {
 
 struct EquStatement : Statement {
     std::string name;
+	bool is_local() const { return name[0] == '@'; }
+
     std::unique_ptr<ExprNode> value_expr;
     EquStatement(int file, int line, std::string n, std::unique_ptr<ExprNode> expr)
         : Statement(file, line), name(std::move(n)), value_expr(std::move(expr)) {}
