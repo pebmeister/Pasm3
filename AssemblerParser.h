@@ -496,8 +496,8 @@ public:
 
                                 if (arg_idx >= 0 && arg_idx < static_cast<int>(args.size())) {
                                     for (auto a : args[arg_idx]) {
-                                        a.file = Tok.file;
-                                        a.line = Tok.line;
+                                        a.file = mac_call_tok.file;
+                                        a.line = mac_call_tok.line;
                                         expanded_tokens.push_back(a);
                                     }
                                     substituted = true;
@@ -509,8 +509,8 @@ public:
                         }
                         else if (body_tok.text[0] == '@') {
 							auto expTok = body_tok;
-							expTok.file = Tok.file;
-							expTok.line = Tok.line;
+							expTok.file = mac_call_tok.file;
+							expTok.line = mac_call_tok.line;
 							expTok.text = "@" + mac_call_tok.text + "_" + std::to_string(mac.times_called) + "_" + body_tok.text.substr(1);
 							expanded_tokens.push_back(expTok);
 							substituted = true;
@@ -519,8 +519,8 @@ public:
 
                     if (!substituted) {
                         auto expTok = body_tok;
-                        expTok.file = Tok.file;
-                        expTok.line = Tok.line;
+                        expTok.file = mac_call_tok.file;
+                        expTok.line = mac_call_tok.line;
                         expanded_tokens.push_back(expTok);
                     }
                 }
