@@ -79,6 +79,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
         if (auto lbl = dynamic_cast<const LabelStatement*>(stmt.get())) {
             auto name = lbl->name;
+            
             if (lbl->is_anon()) {
                 std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
                 auto it = anon_idmap.find(stmt_id);
@@ -102,7 +103,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
             }
             else {
                 if (lbl->is_local()) {
-                    name = GetMangledSymbol(name, parent_scope);
+                    name = GetMangledSymbol(name, parent_scope); 
                 }
                 else {
                     parent_scope = name;
@@ -124,9 +125,13 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
         // Equ
         else if (auto equ = dynamic_cast<const EquStatement*>(stmt.get())) {
             if (equ->value_expr) {
+                auto name = equ->name;
+                if (equ->is_local()) {
+                    name = GetMangledSymbol(name, parent_scope); 
+                }
                 auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                 if (val.has_value()) {
-                    changed |= symbols_.Define(equ->name, static_cast<uint16_t>(val.value()));
+                    changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()));
                 }
             }
             new_statements.push_back(std::move(stmt));
