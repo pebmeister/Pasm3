@@ -78,6 +78,9 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
         if (sym->name[0] == '@') {
             name = GetMangledSymbol(name, parent_scope);
         }
+        else if (sym->name[0] == '*') {
+            return pc;
+        }
         auto val = symbols.Lookup(name);
         if (val.has_value()) return static_cast<int64_t>(val.value());
         return std::nullopt;
