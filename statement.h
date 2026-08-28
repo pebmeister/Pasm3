@@ -39,6 +39,13 @@ struct OrgStatement : Statement {
     explicit OrgStatement(int file, int line, std::unique_ptr<ExprNode> expr) : Statement(file, line), address_expr(std::move(expr)) {}
 };
 
+struct FillStatement : Statement {
+    std::unique_ptr<ExprNode> byte_expr;
+    std::unique_ptr<ExprNode> length_expr;
+    explicit FillStatement(int file, int line, std::unique_ptr<ExprNode> byteexpr, std::unique_ptr<ExprNode> lenexpr) : Statement(file, line),
+        byte_expr(std::move(byteexpr)), length_expr(std::move(lenexpr)) {}
+};
+
 struct DsStatement : Statement {
     std::unique_ptr<ExprNode> size_expr;
     explicit DsStatement(int file, int line, std::unique_ptr<ExprNode> expr) : Statement(file, line), size_expr(std::move(expr)) {}

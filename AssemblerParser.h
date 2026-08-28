@@ -248,6 +248,14 @@ public:
                     statements.push_back(std::make_unique<DataStatement>(Tok.file, Tok.line, w, std::move(elems)));
                 }
 
+                else if (dir == ".fill") {
+                    auto byteexpr = ParseExpression();
+                    ConsumeToken();
+                    auto lenexpr = ParseExpression();
+                    ConsumeToken();
+                    statements.push_back(std::make_unique<FillStatement>(dir_tok.file, dir_tok.line, byteexpr.release(), lenexpr.release()));
+                }
+
                 else if (dir == ".macro") {
                     PasmTokenizer::Token name_tok = ConsumeToken();
                     if (!name_tok.is(static_cast<int>(TokenKind::Identifier))) {
@@ -659,7 +667,7 @@ private:
             return ExprResult(std::make_unique<NumberExpr>(val));
         }
 
-        if (TokIs(TokenKind::Identifier)) {
+        if (TokIs(TokenKind::Identifier) || TokIs(TokenKind::Star)) {
             PasmTokenizer::Token t = ConsumeToken();
             return ExprResult(std::make_unique<SymbolExpr>(t.text));
         }
