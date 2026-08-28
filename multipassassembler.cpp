@@ -54,7 +54,6 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 
 	if (symbols_changed) {
 		throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +" passes.");
-		return;
 	}
 
 	parent_scope="GLOBAL_";
@@ -155,8 +154,9 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 		else if (auto inst = dynamic_cast<InstructionStatement*>(stmt.get())) {
 			const OpCodeInfo* info = FindOpCodeInfo(inst->mnemonic);
 			if (!info) {
-				new_statements.push_back(std::move(stmt));
-				continue;
+				throw std::runtime_error(
+					std::format("Unknown opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line)
+									);
 			}
 
 			auto mode_it = info->mode_to_opcode.find(inst->mode);
