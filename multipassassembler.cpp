@@ -246,8 +246,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                             new_statements.push_back(std::move(stmt));
                             new_statements.push_back(std::move(jmp_inst));
 
-                            pc += GetInstructionSize(RULE_TYPE::Absolute);                        
-                            pc += GetInstructionSize(RULE_TYPE::Relative);
+                            pc += GetInstructionSize(RULE_TYPE::Op_Absolute);                        
+                            pc += GetInstructionSize(RULE_TYPE::Op_Relative);
                             changed = true;
                             branch_island_injected = true;
 
