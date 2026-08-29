@@ -215,6 +215,10 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                     int64_t offset = evaluated - (pc + 2);
 
                     if (offset < -128 || offset > 127) {
+						
+						std::cout << "offset " << std::dec << offset << "  pc = $" << std::hex << pc << " evaluated $" << std::hex << evaluated << std::dec << "\n";
+						
+						
                         auto it = inverted_branches.find(inst->mnemonic);
                         if (it != inverted_branches.end()) {
                         //  std::cout << "Warning: Branch out of range for '" << inst->mnemonic <<  "' [" << offset << "] "
@@ -338,7 +342,6 @@ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
 void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
 
     uint16_t pc = start_pc_;
-    std::vector<uint8_t> binary_output;
     std::ostringstream listing;
 
     listing << "\n========================================================================================================================\n";
@@ -478,6 +481,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 }
             }
 
+			if (load_address == 0) {
+				load_address = pc;
+			}
             binary_output.insert(binary_output.end(), data_bytes.begin(), data_bytes.end());
             pc += static_cast<uint16_t>(data_bytes.size());
 
@@ -579,7 +585,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                 }
             }
-
+			if (load_address == 0) {
+				load_address = pc;
+			}
             binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
 
             std::string hex_dump;
@@ -599,7 +607,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
     }
 
     listing << "------------------------------------------------------------------------------------------------------------------------\n";
-    listing << std::format("Emitted {} bytes.\n", binary_output.size());
+    listing << std::format("Emitted {} bytes. Load address ${:04X}.\n", binary_output.size(), load_address);
 
-    std::cout << listing.str();
+    listing_file = listing.str();
 }

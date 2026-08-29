@@ -20,12 +20,15 @@ private:
 	size_t GetInstructionSize(RULE_TYPE mode);
 
 	std::string parent_scope="GLOBAL_";
-
-public:
-    explicit MultiPassAssembler(uint16_t start_pc = 0xC000) : start_pc_(start_pc) {}
 	
-    void Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr);
+public:
+	uint16_t load_address = 0;
+	std::vector<uint8_t> binary_output;
+	std::string listing_file;
 
+    explicit MultiPassAssembler(uint16_t start_pc = 0xC000) : start_pc_(start_pc) {}	
+    void Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr);
+	
 private:
     bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr);
     void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr);

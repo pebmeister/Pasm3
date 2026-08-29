@@ -71,7 +71,5 @@ compiler.addRules({
     std::ofstream out(outfile);
     out << generated_code;
     out.close();
-
-    std::cout << "Successfully generated '" << outfile << "'!\n";
     return 0;
 }
