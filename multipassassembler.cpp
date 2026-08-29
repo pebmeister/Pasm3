@@ -194,6 +194,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                     std::format("Unknown opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
             }
 
+            bool branch_island_injected = false;
+
             auto mode_it = info->mode_to_opcode.find(inst->mode);
             if (mode_it == info->mode_to_opcode.end()) {
                 if (inst->mode == RULE_TYPE::Op_Implied) {
@@ -246,6 +248,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
                             pc += 5;
                             changed = true;
+                            branch_island_injected = true;
+
                         }
                     }
                 }
@@ -287,8 +291,10 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                     }
                 }
             }
-            pc += GetInstructionSize(inst->mode);
-            new_statements.push_back(std::move(stmt));
+            if (!branch_island_injected) {
+                pc += GetInstructionSize(inst->mode);
+                new_statements.push_back(std::move(stmt));
+            }
         }
         else if (auto pr = dynamic_cast<PrintStatement*>(stmt.get())) {
             new_statements.push_back(std::move(stmt));
