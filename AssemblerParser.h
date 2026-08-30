@@ -206,7 +206,7 @@ public:
                 }
                 else if (dir == ".basic_hdr") {
                     auto org_addr = std::make_unique<NumberExpr>(static_cast<uint16_t>(0x0801)));
-                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, org_addr.release()));
+                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, org_addr));
                     
                     std::vector<std::unique_ptr<ExprNode>> elems;
                     for (auto by: {
