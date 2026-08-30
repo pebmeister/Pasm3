@@ -175,9 +175,9 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                     auto data_stmt = std::make_unique<DataStatement>(
                         fill->file, fill->line, DataWidth::Byte, std::move(elems)
                     );
-
-                    new_statements.push_back(std::move(data_stmt));
                     pc += static_cast<uint16_t>(ll);
+                    new_statements.push_back(std::move(data_stmt));
+
                 }
                 else {
                     // Keep FillStatement for next pass if expressions couldn't resolve yet
@@ -239,12 +239,14 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                                 std::make_unique<NumberExpr>(pc + 5)
                             );
 
+                            // 3. adjust the pc
+                            pc += GetInstructionSize(RULE_TYPE::Op_Relative);
+                            pc += GetInstructionSize(RULE_TYPE::Op_Absolute);
+
                             // 4. Push the new branch first, followed immediately by the new JMP
                             new_statements.push_back(std::move(branch_stmt));
                             new_statements.push_back(std::move(jmp_inst));
-
-                            pc += GetInstructionSize(RULE_TYPE::Op_Relative);
-                            pc += GetInstructionSize(RULE_TYPE::Op_Absolute);                       
+                       
                             continue;
                         }
                     }
