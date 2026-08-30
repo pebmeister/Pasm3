@@ -482,9 +482,11 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 }
             }
 
-			if (load_address == 0) {
+			if (!load_address_set) {
 				load_address = pc;
+                load_address_set = true;
 			}
+
             binary_output.insert(binary_output.end(), data_bytes.begin(), data_bytes.end());
             pc += static_cast<uint16_t>(data_bytes.size());
 
@@ -586,8 +588,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                 }
             }
-			if (load_address == 0) {
+			if {!load_address_set) {
 				load_address = pc;
+                load_address_set = true;
 			}
             binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
 
