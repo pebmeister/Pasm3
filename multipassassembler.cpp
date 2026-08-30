@@ -599,7 +599,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                 }
             }
-			if {!load_address_set) {
+			if (!load_address_set) {
 				load_address = pc;
                 load_address_set = true;
 			}
