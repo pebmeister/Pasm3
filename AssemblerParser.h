@@ -215,7 +215,7 @@ public:
                                   0x9e, 
                                   0x32, 0x30, 0x36, 0x31,
                                   0x00,
-                                  0x00, 0x00, 0x00 
+                                  0x00, 0x00
                                 }) {
                   
                   elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(by)));
