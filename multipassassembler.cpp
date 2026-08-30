@@ -242,7 +242,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                             );
   
                             // 3. create the target label
-                            auto lable_inst = std::make_unique<LabelStatement>(
+                            auto label_inst = std::make_unique<LabelStatement>(
                                 stmt->file,
                                 stmt->line,
                                 skip_label
