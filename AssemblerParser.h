@@ -202,7 +202,25 @@ public:
 
                 if (dir == ".org") {
                     auto addr_expr = ParseExpression();
-                    statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.release()));
+                    statements.push_back(std::make_unique<OrgStatement>(Tok.file, dir.line, addr_expr.release()));
+                }
+                else if (dir == ".basic_hdr") {
+                    auto org_addr = std::make_unique<NumberExpr>(static_cast<uint16_t>(0x0801)));
+                    statements.push_back(std::make_unique<OrgStatement>(dir.file, Tok.line, org_addr.release()));
+                    
+                    std::vector<std::unique_ptr<ExprNode>> elems;
+                    for (auto by: {
+                                  0x0b, 0x08, 
+                                  0x0a, 0x00, 
+                                  0x9e, 
+                                  0x32, 0x30, ox36, 0x31,
+                                  0x00,
+                                  0x00, 0x00, 0x00 
+                                }) {
+                  
+                  elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(by)));
+                    }
+                    statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, DataWidth::Byte, std::move(elems)));
                 }
                 else if (dir == ".byte" || dir == ".word") {
                     DataWidth w = (dir == ".byte") ? DataWidth::Byte : DataWidth::Word;
