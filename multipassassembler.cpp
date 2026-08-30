@@ -244,7 +244,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                             pc += GetInstructionSize(RULE_TYPE::Op_Absolute);
 
                             // 4. Push the new branch first, followed immediately by the new JMP
-                            new_statements.push_back(std::move(branch_stmt));
+                            new_statements.push_back(std::move(branch_inst));
                             new_statements.push_back(std::move(jmp_inst));
                        
                             continue;
