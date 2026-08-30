@@ -215,7 +215,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
                     if (offset < -128 || offset > 127) {
                         static int island_counter = 0;
-                        std::string skip_lable = std::format("@__island{}", ++ island_counter);
+                        std::string skip_label = std::format("@__island{}", ++ island_counter);
 
                         auto it = inverted_branches.find(inst->mnemonic);
                         if (it != inverted_branches.end()) {
