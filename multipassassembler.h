@@ -20,6 +20,7 @@ private:
 	size_t GetInstructionSize(RULE_TYPE mode);
 
 	std::string parent_scope="GLOBAL_";
+    bool load_address_set = false;
 	
 public:
 	uint16_t load_address = 0;
