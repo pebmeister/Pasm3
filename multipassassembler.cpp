@@ -214,6 +214,9 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                     int64_t offset = evaluated - (pc + 2);
 
                     if (offset < -128 || offset > 127) {
+                        static int island_counter = 0;
+                        std::strig skip_lable = std::format("@__island{}", ++ island_counter);
+
                         auto it = inverted_branches.find(inst->mnemonic);
                         if (it != inverted_branches.end()) {
                         std::cout << 
@@ -235,16 +238,24 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                                 stmt->line,
                                 it->second,
                                 RULE_TYPE::Op_Relative,
-                                std::make_unique<NumberExpr>(pc + 5)
+                                std::make_unique<SymbolExpr>(skip_label)
+                            );
+  
+                            // 3. create the target label
+                            auto lable_inst = std::make_unique<LabelStatement>(
+                                stmt->file,
+                                stmt->line,
+                                skip_label
                             );
 
-                            // 3. adjust the pc
+                            // 4. adjust the pc
                             pc += GetInstructionSize(RULE_TYPE::Op_Relative);
                             pc += GetInstructionSize(RULE_TYPE::Op_Absolute);
 
-                            // 4. Push the new branch first, followed immediately by the new JMP
+                            // 5. Push the new branch first, followed immediately by the new JMP and label
                             new_statements.push_back(std::move(branch_inst));
                             new_statements.push_back(std::move(jmp_inst));
+                            new_statements.push_back(std::move(label_inst));
                        
                             continue;
                         }
