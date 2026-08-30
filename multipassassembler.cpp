@@ -165,17 +165,16 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                 if (byt.has_value() && len.has_value()) {
                     std::vector<std::unique_ptr<ExprNode>> elems;
                     auto b = byt.value();
-                    auto ll = len.value();
 
-                    for (auto i = 0; i < ll; ++i) {
-                        elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(b)));                    
+                    for (auto i = 0; i < len.value(); ++i) {
+                    elems.push_back( std::make_unique<NumberExpr>(static_cast<uint8_t>(b)));                    
                     }
 
                     // Create DataStatement preserving line & source string metadata
                     auto data_stmt = std::make_unique<DataStatement>(
                         fill->file, fill->line, DataWidth::Byte, std::move(elems)
                     );
-                    pc += static_cast<uint16_t>(ll);
+                    pc += static_cast<uint16_t>(elems.size());
                     new_statements.push_back(std::move(data_stmt));
 
                 }
