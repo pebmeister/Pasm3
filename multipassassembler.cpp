@@ -194,8 +194,6 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                     std::format("Unknown opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
             }
 
-            bool branch_island_injected = false;
-
             auto mode_it = info->mode_to_opcode.find(inst->mode);
             if (mode_it == info->mode_to_opcode.end()) {
                 if (inst->mode == RULE_TYPE::Op_Implied) {
@@ -217,14 +215,11 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                     int64_t offset = evaluated - (pc + 2);
 
                     if (offset < -128 || offset > 127) {
-						
-						std::cout << "offset " << std::dec << offset << "  pc = $" << std::hex << pc << " evaluated $" << std::hex << evaluated << std::dec << "\n";
-						
-						
                         auto it = inverted_branches.find(inst->mnemonic);
                         if (it != inverted_branches.end()) {
-                        //  std::cout << "Warning: Branch out of range for '" << inst->mnemonic <<  "' [" << offset << "] "
-                        //            << " at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
+                        std::cout << 
+                            "Warning: Branch out of range for '" << inst->mnemonic <<  "' [" << offset << "] " << 
+                            "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
 
                             // 1. Create the JMP statement FIRST by moving the original target expression
                             auto jmp_inst = std::make_unique<InstructionStatement>(
@@ -235,22 +230,22 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                                 std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
                             );
 
-                            // 2. Modify the original statement in-place into the inverted branch
-                            inst->mnemonic = it->second;
-                            inst->mode = RULE_TYPE::Op_Relative;
+                            // 2. create inverted branch
+                            auto branch_inst = std::make_unique<InstructionStatement>(
+                                stmt->file,
+                                stmt->line,
+                                it->second,
+                                RULE_TYPE::Op_Relative,
+                                std::make_unique<NumberExpr>(pc + 5)
+                            );
 
-                            // 3. Refill the now-empty operand with the new relative jump target (+5)
-                            inst->operand = std::make_unique<NumberExpr>(pc + 5);
-
-                            // 4. Push the modified branch first, followed immediately by the new JMP
-                            new_statements.push_back(std::move(stmt));
+                            // 4. Push the new branch first, followed immediately by the new JMP
+                            new_statements.push_back(std::move(branch_stmt));
                             new_statements.push_back(std::move(jmp_inst));
 
-                            pc += GetInstructionSize(RULE_TYPE::Op_Absolute);                        
                             pc += GetInstructionSize(RULE_TYPE::Op_Relative);
-                            changed = true;
-                            branch_island_injected = true;
-
+                            pc += GetInstructionSize(RULE_TYPE::Op_Absolute);                       
+                            continue;
                         }
                     }
                 }
@@ -292,10 +287,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                     }
                 }
             }
-            if (!branch_island_injected) {
-                pc += GetInstructionSize(inst->mode);
-                new_statements.push_back(std::move(stmt));
-            }
+            pc += GetInstructionSize(inst->mode);
+            new_statements.push_back(std::move(stmt));
         }
         else if (auto pr = dynamic_cast<PrintStatement*>(stmt.get())) {
             new_statements.push_back(std::move(stmt));
