@@ -1,4 +1,11 @@
 #pragma once
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+
+#include "options.h"
+namespace fs = std::filesystem;
+
 
 enum class Associativity { Left, Right };
 
@@ -16,6 +23,8 @@ class AssemblerParser {
 	std::vector<bool> ifdef_stack;
 
 private:
+    Options options;
+    
     bool IsMacro(std::string name, const std::unordered_map<std::string, MacroDef>& macros_) const {
         std::transform(name.begin(), name.end(), name.begin(),
         [](unsigned char c) {
@@ -36,7 +45,7 @@ private:
     }
 
 public:
-    explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens) : tokens_(std::move(tokens)) {
+    explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens, Options& opts) : tokens_(std::move(tokens)), options(opts) {
         if (!tokens_.empty()) Tok = tokens_[0];
     }
 
@@ -264,7 +273,7 @@ public:
 							if (expr.isUsable()) elems.push_back(expr.release());							
 						}
                     } while (TokIs(TokenKind::Comma));
-                    statements.push_back(std::make_unique<DataStatement>(Tok.file, Tok.line, w, std::move(elems)));
+                    statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, w, std::move(elems)));
                 }
 
                 else if (dir == ".fill") {
@@ -324,25 +333,38 @@ public:
                 
 				// Inside ParseProgram() or your directive handler:
                 else if (dir == ".include" || dir == ".inc") {
-
                     if (!TokIs(TokenKind::StringLiteral)) {
-                        throw std::runtime_error(std::format("string filename after .include File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
+                        throw std::runtime_error(std::format(
+                            "string filename after .include File: {} Line: {}",
+                            src_mgr.GetFileName(Tok.file), Tok.line));
                     }
 
-                    std::string inc_filename = Tok.text; // e.g. "constants.inc"
-                    ConsumeToken(); // consume filename string
+                    // Remove the surrounding quotes from the filename string
+                    std::string inc_filename = Tok.text.substr(1, Tok.text.size() - 2);
+                    ConsumeToken();
 
-                    inc_filename.erase(0, 1);
-                    inc_filename.erase(inc_filename.size() - 1);
+                    std::string filepath = inc_filename;
+                    bool exists = fs::exists(filepath);
 
-                    // 1. Tokenize the included file using SourceManager
-                    auto inc_tokens = LoadAndTokenizeFile(inc_filename, src_mgr, tokenizer);
+                    for (size_t index = 0; !exists && index < options.include.size(); ++index) {
+                        filepath = options.include[index] + inc_filename;
+                        exists = fs::exists(filepath);
+                    }
 
-                    // 2. Recursively parse the included tokens into AST statements
-                    AssemblerParser parser(inc_tokens);
-                    auto inc_statements = parser.ParseProgram(src_mgr,  macros_, tokenizer);
+                    if (!exists) {
+                        throw std::runtime_error(std::format(
+                            "unable to find .include '{}' File : {} Line: {}",
+                            inc_filename, src_mgr.GetFileName(Tok.file), Tok.line));
+                    }
 
-                    // 3. Insert the included statements directly inline
+                    // Tokenize the included file using SourceManager
+                    auto inc_tokens = LoadAndTokenizeFile(filepath, src_mgr, tokenizer);
+
+                    // Recursively parse the included tokens into AST statements
+                    AssemblerParser parser(inc_tokens, options);
+                    auto inc_statements = parser.ParseProgram(src_mgr, macros_, tokenizer);
+
+                    // Insert the included statements directly inline
                     for (auto& stmt : inc_statements) {
                         statements.push_back(std::move(stmt));
                     }
@@ -466,6 +488,9 @@ public:
                 std::vector<PasmTokenizer::Token> current_arg;
 
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof) && !TokIs(TokenKind::Semicolon)) {
+
+                    // prTok(src_mgr);
+
                     if (TokIs(TokenKind::Comma)) {
                         args.push_back(current_arg);
                         current_arg.clear();
