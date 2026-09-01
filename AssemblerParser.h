@@ -501,13 +501,7 @@ public:
                         current_arg.push_back(tok);
                     }
                 }
-				if (current_arg.size() == 1) {
-					if (current_arg[0].text[0] == '+' || current_arg[0].text[0] == '-') {
-						throw std::runtime_error( std::format("Macro call can not use anonomous argument for positional parameter {} File: {} Line: {}",
-														  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
-					
-					}
-				}
+
                 if (!current_arg.empty()) {
                     args.push_back(current_arg);
                 }
