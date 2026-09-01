@@ -124,6 +124,7 @@ public:
         if ((count > 1) ||
                 (TokAheadIs(TokenKind::Eof, 1) ||
                  TokAheadIs(TokenKind::Newline, 1) ||
+                 TokAheadIs(TokenKind::Comma, 1) ||
                  TokAheadIs(TokenKind::Semicolon, 1))) {
             return count;
         }
