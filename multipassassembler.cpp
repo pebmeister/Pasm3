@@ -40,7 +40,6 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
 void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
 	pass = 1;
     bool symbols_changed = true;
-    const size_t max_passes = 10;
 
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
@@ -217,7 +216,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 							// force another pass before givng up
 							changed = true;
 						}
-                        if ((pass > 3) && (offset < -128 || offset > 127)) {
+                        if ((pass >= (max_passes - 1)) && (offset < -128 || offset > 127)) {
                             static int island_counter = 0;
                             std::string skip_label = std::format("@__island{}", ++ island_counter);
 
