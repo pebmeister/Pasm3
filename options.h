@@ -8,4 +8,5 @@ struct Options {
 	bool c64 = false;
 	bool verbose = false;
 	bool warnings = true;
+	bool ignore_size = true;
 };

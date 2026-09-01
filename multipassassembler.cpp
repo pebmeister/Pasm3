@@ -38,7 +38,7 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
 }
 
 void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
-    size_t pass = 1;
+	pass = 1;
     bool symbols_changed = true;
     const size_t max_passes = 10;
 
@@ -209,11 +209,15 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                 }
                 auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
                 if (val.has_value()) {
-                    auto evaluated = val.value();
+                    int64_t evaluated = val.value();
                     if (inst->mode == RULE_TYPE::Op_Relative) {
-                        int64_t offset = evaluated - (pc + 2);
-
-                        if (offset < -128 || offset > 127) {
+                        int64_t offset = evaluated - (static_cast<int64_t>(pc) + 2);
+						
+						if (offset < -128 || offset > 127) {
+							// force another pass before givng up
+							changed = true;
+						}
+                        if ((pass > 3) && (offset < -128 || offset > 127)) {
                             static int island_counter = 0;
                             std::string skip_label = std::format("@__island{}", ++ island_counter);
 
@@ -262,10 +266,10 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                         }
                     }
                     else { // range check and optimize for page zero
-                        if (evaluated < 0 || evaluated > 0xFFFF) {
-                            throw std::runtime_error(
-                                std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst->mnemonic, pc,  src_mgr.GetFileName(inst->file), inst->line)
-                            );
+                        if (!options.ignore_size && ((evaluated < 0 || evaluated > 0xFFFF))) {
+							throw std::runtime_error(
+								std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst->mnemonic, pc,  src_mgr.GetFileName(inst->file), inst->line)
+							);
                         }
                         RULE_TYPE want_mode = inst->mode;
                         if (evaluated <= 0xFF) {
