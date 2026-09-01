@@ -2,10 +2,13 @@
 #include <cctype>
 #include <cstdint>
 #include <iostream>
+#include <iomanip>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <algorithm> // Required for std::ranges::contains
+#include <unordered_set>
 
 class SymbolTable {
 private:
@@ -45,12 +48,30 @@ private:
         CaseInsensitiveEqual
     > symbols_;
 
+	std::unordered_set<std::string> trace_syms_;
+	
+
 public:
-    bool Define(const std::string& name, uint16_t val) {
+	void Trace(const std::string& name) {
+        trace_syms_.insert(name);
+    }
+
+    void Untrace(const std::string& name) {
+        trace_syms_.erase(name);
+    }
+	
+    bool Define(const std::string& name, uint16_t val) {		
+
+		if (trace_syms_.contains(name)) { 
+            std::cout << "[SYM TRACE] " << name << " -> $" 
+                      << std::hex << std::uppercase << val << "\n";
+        }
+		
         auto it = symbols_.find(name);
+				
         if (it == symbols_.end()) {
-            symbols_.emplace(name, val);
-            return true;
+            symbols_.emplace(name, val);        
+			return true;
         }
         if (it->second != val) {
             it->second = val;
@@ -65,4 +86,19 @@ public:
         }
         return std::nullopt;
     }
+	
+	void print() {
+		auto count = 0;
+		for (const auto& [sym, value] : symbols_) {
+			std::cout << 
+				std::setfill(' ') << std::setw(30) << sym << 
+				" $" << std::setfill('0') << std::setw(4) << std::hex << value << 
+				std::setw(0) << std::setfill(' ');
+			if (++count == 3) {
+				count = 0;
+				std::cout << "\n";
+			}				
+		}
+		std::cout << "\n";
+	}
 };
