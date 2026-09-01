@@ -24,6 +24,7 @@ private:
 	std::string parent_scope="GLOBAL_";
     bool load_address_set = false;
 	size_t pass = 1;
+    size_t max_passes = 10;
 
 public:
 	uint16_t load_address = 0;

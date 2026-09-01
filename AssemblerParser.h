@@ -231,8 +231,8 @@ public:
                     }
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, DataWidth::Byte, std::move(elems)));
                 }
-                else if (dir == ".byte" || dir == ".word") {
-                    DataWidth w = (dir == ".byte") ? DataWidth::Byte : DataWidth::Word;
+                else if (dir == ".byte" || dir == ".text" || dir == ".word") {
+                    DataWidth w = (dir == ".byte" || dir == ".text") ? DataWidth::Byte : DataWidth::Word;
                     std::vector<std::unique_ptr<ExprNode>> elems;
 
                     do {
@@ -500,6 +500,13 @@ public:
                         current_arg.push_back(tok);
                     }
                 }
+				if (current_arg.size() == 1) {
+					if (current_arg[0].text[0] == '+' || current_arg[0].text[0] == '-') {
+						throw std::runtime_error( std::format("Macro call can not use anonomous argument for positional parameter {} File: {} Line: {}",
+														  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+					
+					}
+				}
                 if (!current_arg.empty()) {
                     args.push_back(current_arg);
                 }
@@ -558,8 +565,12 @@ public:
 							expanded_tokens.push_back(expTok);
 							substituted = true;
                         }
-                    }
+						else if ((body_tok.text[0] == '-' || (body_tok.text[0] == '+'))) {
+							throw std::runtime_error( std::format("Macro call can not use anonomous labels {} File: {} Line: {}",
+														  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+						}
 
+                    }
                     if (!substituted) {
                         auto expTok = body_tok;
                         expTok.file = mac_call_tok.file;
