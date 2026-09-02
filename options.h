@@ -5,7 +5,7 @@ struct Options {
     std::string outfile;
     std::vector<std::string> include;
     std::vector<std::string>input_filenames;
-    std::vector<std::string, int>definedd_symbols;
+    std::vector<std::pair<std::string, int>>defined_symbols;
 	bool c64 = false;
 	bool verbose = false;
 	bool warnings = true;
