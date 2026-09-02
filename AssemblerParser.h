@@ -228,7 +228,7 @@ public:
                                   0x00, 0x00
                                 }) {
                   
-                  elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(by)));
+						elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(by)));
                     }
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, DataWidth::Byte, std::move(elems)));
                 }
@@ -493,6 +493,10 @@ public:
                     // prTok(src_mgr);
 
                     if (TokIs(TokenKind::Comma)) {
+						if (current_arg.size() == 1 && (current_arg[0].text == "+" || current_arg[0].text == "-")) {
+							throw std::runtime_error( std::format("Macro call can not use anonomous labels {} File: {} Line: {}",
+												  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+						}
                         args.push_back(current_arg);
                         current_arg.clear();
                         ConsumeToken();
@@ -503,6 +507,10 @@ public:
                 }
 
                 if (!current_arg.empty()) {
+					if (current_arg.size() == 1 && (current_arg[0].text == "+" || current_arg[0].text == "-")) {
+						throw std::runtime_error( std::format("Macro call can not use anonomous labels {} File: {} Line: {}",
+											  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+					}
                     args.push_back(current_arg);
                 }
 
