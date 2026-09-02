@@ -68,12 +68,12 @@ public:
 };
 
 inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vector<AnonymousLabel>& anonymous_labels, const SymbolTable& symbols,
-		const std::string& parent_scope, uint16_t pc ) {
+        const std::string& parent_scope, uint16_t pc ) {
     if (!node) return std::nullopt;
 
     if (auto num = dynamic_cast<const NumberExpr*>(node)) return num->value;
 
-    if (auto sym = dynamic_cast<const SymbolExpr*>(node)) {		
+    if (auto sym = dynamic_cast<const SymbolExpr*>(node)) {
         auto name = sym->name;
         if (sym->name[0] == '@') {
             name = GetMangledSymbol(name, parent_scope);
