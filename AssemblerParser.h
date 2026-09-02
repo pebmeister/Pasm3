@@ -19,12 +19,12 @@ class AssemblerParser {
     size_t index_{0};
     PasmTokenizer::Token Tok;
 
-	// Add this as a member variable in your Parser class
-	std::vector<bool> ifdef_stack;
+    // Add this as a member variable in your Parser class
+    std::vector<bool> ifdef_stack;
 
 private:
     Options options;
-    
+
     bool IsMacro(std::string name, const std::unordered_map<std::string, MacroDef>& macros_) const {
         std::transform(name.begin(), name.end(), name.begin(),
         [](unsigned char c) {
@@ -52,7 +52,7 @@ public:
     PasmTokenizer::Token ConsumeToken() {
         PasmTokenizer::Token prev = Tok;
         index_++;
-        Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), "", 0, 0, 0, prev.file}; 
+        Tok = (index_ < tokens_.size()) ? tokens_[index_] : PasmTokenizer::Token{static_cast<int>(TokenKind::Eof), "", 0, 0, 0, prev.file};
         SkipWs();
         return prev;
     }
@@ -86,29 +86,29 @@ public:
         }
     }
 
-	void SkipToElseOrEndif() {
-		int depth = 1; // We are currently inside 1 unclosed .ifdef block
+    void SkipToElseOrEndif() {
+        int depth = 1; // We are currently inside 1 unclosed .ifdef block
 
-		while (!TokIs(TokenKind::Eof)) {
-			if (TokIs(TokenKind::Directive)) {
-				if (Tok.text == ".ifdef" || Tok.text == ".ifndef") {
-					depth++; // Entering a nested block
-				} 
-				else if (Tok.text == ".endif") {
-					depth--; // Exiting a block
-					if (depth == 0) {
-						return; // Found the matching .endif!
-					}
-				} 
-				else if (Tok.text == ".else" && depth == 1) {
-					return; // Found the matching .else at our current level!
-				}
-			}
-			ConsumeToken(); // Skip the token entirely
-		}
+        while (!TokIs(TokenKind::Eof)) {
+            if (TokIs(TokenKind::Directive)) {
+                if (Tok.text == ".ifdef" || Tok.text == ".ifndef") {
+                    depth++; // Entering a nested block
+                }
+                else if (Tok.text == ".endif") {
+                    depth--; // Exiting a block
+                    if (depth == 0) {
+                        return; // Found the matching .endif!
+                    }
+                }
+                else if (Tok.text == ".else" && depth == 1) {
+                    return; // Found the matching .else at our current level!
+                }
+            }
+            ConsumeToken(); // Skip the token entirely
+        }
 
-		throw std::runtime_error("Unexpected EOF: Missing .endif");
-	}
+        throw std::runtime_error("Unexpected EOF: Missing .endif");
+    }
 
     // Helper to check if relative label
     std::optional<int> GetRelativeLabelCount() {
@@ -131,11 +131,11 @@ public:
 
         return std::nullopt;
     }
-	
+
     std::vector<std::unique_ptr<Statement>> ParseProgram(SourceManager &src_mgr, std::unordered_map<std::string, MacroDef>& macros_, PasmTokenizer& tokenizer) {
         std::vector<std::unique_ptr<Statement>> statements;
 
-		SymbolTable definedSyms;
+        SymbolTable definedSyms;
         bool display_tok = false;
         if (display_tok) {
             std::cout << "\n";
@@ -165,9 +165,9 @@ public:
             if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
-                auto val_expr = ParseExpression();				
+                auto val_expr = ParseExpression();
                 statements.push_back(std::make_unique<EquStatement>(Tok.file, Tok.line, sym_name, val_expr.release()));
-				definedSyms.Define(sym_name, 1);
+                definedSyms.Define(sym_name, 1);
                 continue;
             }
 
@@ -217,18 +217,18 @@ public:
                 else if (dir == ".basic_hdr") {
                     auto org_addr = std::make_unique<NumberExpr>(static_cast<uint16_t>(0x0801));
                     statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, std::move(org_addr)));
-                    
+
                     std::vector<std::unique_ptr<ExprNode>> elems;
                     for (auto by: {
-                                  0x0b, 0x08, 
-                                  0x0a, 0x00, 
-                                  0x9e, 
+                                  0x0b, 0x08,
+                                  0x0a, 0x00,
+                                  0x9e,
                                   0x32, 0x30, 0x36, 0x31,
                                   0x00,
                                   0x00, 0x00
                                 }) {
-                  
-						elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(by)));
+
+                        elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(by)));
                     }
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, DataWidth::Byte, std::move(elems)));
                 }
@@ -237,42 +237,42 @@ public:
                     std::vector<std::unique_ptr<ExprNode>> elems;
 
                     do {
-                        if (TokIs(TokenKind::Comma)) 
+                        if (TokIs(TokenKind::Comma))
                             ConsumeToken();
-						if (TokIs(TokenKind::StringLiteral)) {
-							PasmTokenizer::Token str_tok = ConsumeToken();
-							std::string str = str_tok.text;
+                        if (TokIs(TokenKind::StringLiteral)) {
+                            PasmTokenizer::Token str_tok = ConsumeToken();
+                            std::string str = str_tok.text;
 
-							// 1. Strip surrounding quotes if your tokenizer includes them in .text
-							if (str.size() >= 2 && str.front() == '"' && str.back() == '"') {
-								str = str.substr(1, str.size() - 2);
-							}
+                            // 1. Strip surrounding quotes if your tokenizer includes them in .text
+                            if (str.size() >= 2 && str.front() == '"' && str.back() == '"') {
+                                str = str.substr(1, str.size() - 2);
+                            }
 
-							// 2. Expand each character in the string to a NumberExpr
-							for (size_t i = 0; i < str.length(); ++i) {
-								char c = str[i];
-								
-								// Optional: Handle basic escape sequences (e.g., \n, \t, \0, \\)
-								if (c == '\\' && i + 1 < str.length()) {
-									i++;
-									switch (str[i]) {
-										case 'n':  c = '\n'; break;
-										case 'r':  c = '\r'; break;
-										case 't':  c = '\t'; break;
-										case '0':  c = '\0'; break;
-										case '\\': c = '\\'; break;
-										case '"':  c = '"';  break;
-										default:   c = str[i]; break;
-									}
-								}
+                            // 2. Expand each character in the string to a NumberExpr
+                            for (size_t i = 0; i < str.length(); ++i) {
+                                char c = str[i];
 
-								elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(c)));
-							}
-						}
-						else {
-							auto expr = ParseExpression();
-							if (expr.isUsable()) elems.push_back(expr.release());							
-						}
+                                // Optional: Handle basic escape sequences (e.g., \n, \t, \0, \\)
+                                if (c == '\\' && i + 1 < str.length()) {
+                                    i++;
+                                    switch (str[i]) {
+                                        case 'n':  c = '\n'; break;
+                                        case 'r':  c = '\r'; break;
+                                        case 't':  c = '\t'; break;
+                                        case '0':  c = '\0'; break;
+                                        case '\\': c = '\\'; break;
+                                        case '"':  c = '"';  break;
+                                        default:   c = str[i]; break;
+                                    }
+                                }
+
+                                elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(c)));
+                            }
+                        }
+                        else {
+                            auto expr = ParseExpression();
+                            if (expr.isUsable()) elems.push_back(expr.release());
+                        }
                     } while (TokIs(TokenKind::Comma));
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, w, std::move(elems)));
                 }
@@ -321,18 +321,18 @@ public:
                     });
                     macros_[lower_key] = std::move(def);
 
-					definedSyms.Define(lower_key, 1);
+                    definedSyms.Define(lower_key, 1);
 
                     // Macro definitions emit no statements into the AST
                     continue;
                 }
-				
+
                 else if (dir == ".ds") {
                     auto size_expr = ParseExpression();
                     statements.push_back(std::make_unique<DsStatement>(Tok.file, Tok.line, size_expr.release()));
                 }
-                
-				// Inside ParseProgram() or your directive handler:
+
+                // Inside ParseProgram() or your directive handler:
                 else if (dir == ".include" || dir == ".inc") {
                     if (!TokIs(TokenKind::StringLiteral)) {
                         throw std::runtime_error(std::format(
@@ -376,88 +376,87 @@ public:
                     if (!TokIs(TokenKind::Identifier)) {
                         throw std::runtime_error(std::format("Expected Identifier after .print File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
                     }
-					
-					PrintCmd cmd;
-					std::string lower_opt = Tok.text;
-					
-					std::transform(lower_opt.begin(), lower_opt.end(), lower_opt.begin(),
-					[](unsigned char c) {
-						return static_cast<char>(std::tolower(c));
-					});
-									
-					if (lower_opt  == "on") cmd = PrintCmd::on;
-					else if (lower_opt == "off")  cmd = PrintCmd::off;
-					else if (lower_opt == "push") cmd = PrintCmd::push;
-					else if (lower_opt == "pop")  cmd = PrintCmd::pop;
-					else {
-						throw std::runtime_error(std::format("Unknown option for .print File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
-					}
-                    statements.push_back(std::make_unique<PrintStatement>(Tok.file, Tok.line, cmd));     
-                    ConsumeToken(); 
-					continue;
+
+                    PrintCmd cmd;
+                    std::string lower_opt = Tok.text;
+
+                    std::transform(lower_opt.begin(), lower_opt.end(), lower_opt.begin(),
+                    [](unsigned char c) {
+                        return static_cast<char>(std::tolower(c));
+                    });
+
+                    if (lower_opt  == "on") cmd = PrintCmd::on;
+                    else if (lower_opt == "off")  cmd = PrintCmd::off;
+                    else if (lower_opt == "push") cmd = PrintCmd::push;
+                    else if (lower_opt == "pop")  cmd = PrintCmd::pop;
+                    else {
+                        throw std::runtime_error(std::format("Unknown option for .print File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
+                    }
+                    statements.push_back(std::make_unique<PrintStatement>(Tok.file, Tok.line, cmd));
+                    ConsumeToken();
+                    continue;
                 }
-				else if ((dir == ".ifdef") || (dir == ".ifndef")) {
-					
-					if (!TokIs(TokenKind::Identifier)) {
-						throw std::runtime_error(std::format(
-							"Expected Identifier after .ifdef File: {} Line: {}", 
-							src_mgr.GetFileName(Tok.file), Tok.line
-						));
-					}
-					
-					auto sym = definedSyms.Lookup(Tok.text);
-					ConsumeToken(); // Consume the identifier token
+                else if ((dir == ".ifdef") || (dir == ".ifndef")) {
 
-					if ((sym.has_value() && dir == ".ifdef") || (!sym.has_value() && dir == ".ifndef")) {                    
-						// Condition is TRUE. 
-						// Keep parsing normally, but record that this block succeeded
-						// so we know to skip the .else later.
-						ifdef_stack.push_back(true);
-					} 
-					else {
-						// Condition is FALSE.
-						// Skip all tokens until we hit .else or .endif
-						SkipToElseOrEndif();
+                    if (!TokIs(TokenKind::Identifier)) {
+                        throw std::runtime_error(std::format(
+                            "Expected Identifier after .ifdef File: {} Line: {}",
+                            src_mgr.GetFileName(Tok.file), Tok.line
+                        ));
+                    }
 
-						// If we landed on an .else, we must parse the else block normally.
-						// Record that the IF portion was false.
-						if (Tok.text == ".else") {
-							ifdef_stack.push_back(false);
-							ConsumeToken(); // Consume ".else"
-						} 
-						// If we landed on .endif, just consume it and don't push to stack.
-						else if (Tok.text == ".endif") {
-							ConsumeToken(); // Consume ".endif"
-						}
-					}
-				}
-				else if (dir == ".else") {
-					if (ifdef_stack.empty()) {
-						throw std::runtime_error("Unexpected .else without .ifdef");
-					}
+                    auto sym = definedSyms.Lookup(Tok.text);
+                    ConsumeToken(); // Consume the identifier token
 
-					bool if_was_true = ifdef_stack.back();
-					ConsumeToken(); // Consume ".else"
+                    if ((sym.has_value() && dir == ".ifdef") || (!sym.has_value() && dir == ".ifndef")) {
+                        // Condition is TRUE.
+                        // Keep parsing normally, but record that this block succeeded
+                        // so we know to skip the .else later.
+                        ifdef_stack.push_back(true);
+                    }
+                    else {
+                        // Condition is FALSE.
+                        // Skip all tokens until we hit .else or .endif
+                        SkipToElseOrEndif();
 
-					if (if_was_true) {
-						// The IF block executed, so we MUST skip this ELSE block
-						SkipToElseOrEndif(); // Will land on .endif
-						ConsumeToken();      // Consume ".endif"
-						ifdef_stack.pop_back(); // Close the block
-					} else {
-						// The IF block was false, so we are currently parsing this ELSE block.
-						// Just let the parser continue naturally!
-					}
-				}
-				else if (dir == ".endif") {
-					if (ifdef_stack.empty()) {
-						throw std::runtime_error("Unexpected .endif without .ifdef");
-					}
-					ConsumeToken(); // Consume ".endif"
-					ifdef_stack.pop_back(); // Close the block
-				}
-				
-				
+                        // If we landed on an .else, we must parse the else block normally.
+                        // Record that the IF portion was false.
+                        if (Tok.text == ".else") {
+                            ifdef_stack.push_back(false);
+                            ConsumeToken(); // Consume ".else"
+                        }
+                        // If we landed on .endif, just consume it and don't push to stack.
+                        else if (Tok.text == ".endif") {
+                            ConsumeToken(); // Consume ".endif"
+                        }
+                    }
+                }
+                else if (dir == ".else") {
+                    if (ifdef_stack.empty()) {
+                        throw std::runtime_error("Unexpected .else without .ifdef");
+                    }
+
+                    bool if_was_true = ifdef_stack.back();
+                    ConsumeToken(); // Consume ".else"
+
+                    if (if_was_true) {
+                        // The IF block executed, so we MUST skip this ELSE block
+                        SkipToElseOrEndif(); // Will land on .endif
+                        ConsumeToken();      // Consume ".endif"
+                        ifdef_stack.pop_back(); // Close the block
+                    } else {
+                        // The IF block was false, so we are currently parsing this ELSE block.
+                        // Just let the parser continue naturally!
+                    }
+                }
+                else if (dir == ".endif") {
+                    if (ifdef_stack.empty()) {
+                        throw std::runtime_error("Unexpected .endif without .ifdef");
+                    }
+                    ConsumeToken(); // Consume ".endif"
+                    ifdef_stack.pop_back(); // Close the block
+                }
+
                 else {
                     std::cout << "Warning Unknown directive '" << dir << "'  File: " << src_mgr.GetFileName(dir_tok.file) << " Line: " << dir_tok.line << "\n";
                 }
@@ -493,24 +492,24 @@ public:
                     // prTok(src_mgr);
 
                     if (TokIs(TokenKind::Comma)) {
-						if (current_arg.size() == 1 && (current_arg[0].text == "+" || current_arg[0].text == "-")) {
-							throw std::runtime_error( std::format("Macro call can not use anonomous labels {} File: {} Line: {}",
-												  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
-						}
+                        if (current_arg.size() == 1 && (current_arg[0].text == "+" || current_arg[0].text == "-")) {
+                            throw std::runtime_error( std::format("Macros can not use anonomous labels {} File: {} Line: {}",
+                                                  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+                        }
                         args.push_back(current_arg);
                         current_arg.clear();
                         ConsumeToken();
                     } else {
-						auto tok = ConsumeToken();
+                        auto tok = ConsumeToken();
                         current_arg.push_back(tok);
                     }
                 }
 
                 if (!current_arg.empty()) {
-					if (current_arg.size() == 1 && (current_arg[0].text == "+" || current_arg[0].text == "-")) {
-						throw std::runtime_error( std::format("Macro call can not use anonomous labels {} File: {} Line: {}",
-											  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
-					}
+                    if (current_arg.size() == 1 && (current_arg[0].text == "+" || current_arg[0].text == "-")) {
+                        throw std::runtime_error( std::format("Macros can not use anonomous labels {} File: {} Line: {}",
+                                              mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+                    }
                     args.push_back(current_arg);
                 }
 
@@ -561,17 +560,17 @@ public:
                             }
                         }
                         else if (body_tok.text[0] == '@') {
-							auto expTok = body_tok;
-							expTok.file = mac_call_tok.file;
-							expTok.line = mac_call_tok.line;
-							expTok.text = "@" + mac_call_tok.text + "_" + std::to_string(mac.times_called) + "_" + body_tok.text.substr(1);
-							expanded_tokens.push_back(expTok);
-							substituted = true;
+                            auto expTok = body_tok;
+                            expTok.file = mac_call_tok.file;
+                            expTok.line = mac_call_tok.line;
+                            expTok.text = "@" + mac_call_tok.text + "_" + std::to_string(mac.times_called) + "_" + body_tok.text.substr(1);
+                            expanded_tokens.push_back(expTok);
+                            substituted = true;
                         }
-						else if ((body_tok.text[0] == '-' || (body_tok.text[0] == '+'))) {
-							throw std::runtime_error( std::format("Macro call can not use anonomous labels {} File: {} Line: {}",
-														  mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
-						}
+                        else if ((body_tok.text[0] == '-' || (body_tok.text[0] == '+'))) {
+                            throw std::runtime_error( std::format("Macros can not use anonomous labels {} File: {} Line: {}",
+                                                          mac_call_tok.text, src_mgr.GetFileName(mac_call_tok.file), mac_call_tok.line));
+                        }
 
                     }
                     if (!substituted) {
@@ -675,7 +674,7 @@ public:
                                      ));
                 continue;
             }
-            std::cout << "Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << " File: " << src_mgr.GetFileName(Tok.file) << " Line: " << Tok.line << "\n";
+            std::cout << "Syntax Error: Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << " File: " << src_mgr.GetFileName(Tok.file) << " Line: " << Tok.line << "\n";
             ConsumeToken();
         }
 
@@ -715,7 +714,9 @@ private:
                 } else if (t.text.starts_with("%") && t.text.size() > 1) {
                     val = std::stoll(t.text.substr(1), nullptr, 2);
                 } else if (t.text.starts_with("'") && t.text.ends_with("'") && t.text.size() == 3) {
-                    val = static_cast<int64_t>(t.text[1]);					
+                    val = static_cast<int64_t>(t.text[1]);
+                } else if (t.text.starts_with("\"") && t.text.ends_with("\"") && t.text.size() == 3) {
+                    val = static_cast<int64_t>(t.text[1]);
                 } else if (!t.text.empty()) {
                     val = std::stoll(t.text);
                 }
