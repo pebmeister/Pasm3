@@ -20,7 +20,6 @@ compiler.addRules({
     { "[$][0-9|a-f]+", static_cast<int>(Number), true},
     { "[%][0-1]+", static_cast<int>(Number)},
     { "'.'", static_cast<int>(Number)},
-    { "\".\"", static_cast<int>(Number)},
 	{ "\"[^\r\n\"]*\"", static_cast<int>(StringLiteral), true },
     { "[=]", static_cast<int>(Equal)},
     { "\\.equ", static_cast<int>(Equal), true},

@@ -715,14 +715,18 @@ private:
                     val = std::stoll(t.text.substr(1), nullptr, 2);
                 } else if (t.text.starts_with("'") && t.text.ends_with("'") && t.text.size() == 3) {
                     val = static_cast<int64_t>(t.text[1]);
-                } else if (t.text.starts_with("\"") && t.text.ends_with("\"") && t.text.size() == 3) {
-                    val = static_cast<int64_t>(t.text[1]);
                 } else if (!t.text.empty()) {
                     val = std::stoll(t.text);
                 }
             } catch (...) {
                 val = 0;
             }
+            return ExprResult(std::make_unique<NumberExpr>(val));
+        }
+        
+        if (TokIs(TokenKind::StringLiteral) && (Tok.text.size()==3)) {
+            PasmTokenizer::Token t = ConsumeToken();
+            auto val = static_cast<int64_t>(t.text[1]);
             return ExprResult(std::make_unique<NumberExpr>(val));
         }
 
