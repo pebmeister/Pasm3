@@ -136,6 +136,13 @@ public:
         std::vector<std::unique_ptr<Statement>> statements;
 
         SymbolTable definedSyms;
+        
+        for (auto&[sym, val] : options.defined_symbols) {        
+            definedSyms.Define(sym, 1);
+            
+            std::cout << "defining " << sym << "\n";
+        }
+        
         bool display_tok = false;
         if (display_tok) {
             std::cout << "\n";
