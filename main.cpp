@@ -75,6 +75,16 @@ int main(int argc, char* argv[])
             }
             options.include.push_back(argv[arg]);
         }
+        else if (arg_str == "-st") {
+            arg++;
+            if (arg >= argc) {
+                std::cout << "invalid symbol trace\n";
+                return -1;
+            }
+            options.traced_symbols.push_back(argv[arg]);
+        }
+
+
         else {  
             std::cout << "Unknown option '" << arg_str << "'\n";
             return -1;
