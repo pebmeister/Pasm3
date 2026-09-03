@@ -41,6 +41,10 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     pass = 1;
     bool symbols_changed = true;
 
+    for (auto&sym : options.traced_symbols) {
+        symbols_.Trace(sym);
+    }
+
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
     while (symbols_changed && pass <= max_passes) {
