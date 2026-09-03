@@ -39,23 +39,26 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
 
 void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     pass = 1;
-    bool symbols_changed = true;
+    changed = true;
 
     for (auto&sym : options.traced_symbols) {
         symbols_.Trace(sym);
     }
+    for (auto&[sym, val] : options.defined_symbols) {        
+        changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
+    }
 
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
-    while (symbols_changed && pass <= max_passes) {
+    while (changed && pass <= max_passes) {
         parent_scope="GLOBAL_";
-        symbols_changed = ResolutionPass(statements, anonymous_labels, src_mgr);
+        changed = ResolutionPass(statements, anonymous_labels, src_mgr);
         std::cout << "Pass " << pass << " complete. "
-            << (symbols_changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
+            << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
         pass++;
     }
 
-    if (symbols_changed) {
+    if (changed) {
         throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +" passes.");
     }
 
@@ -65,7 +68,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 
 bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     uint16_t pc = start_pc_;
-    bool changed = false;
+    changed = false;
     std::vector<std::unique_ptr<Statement>> new_statements;
     new_statements.reserve(statements.size());
 
