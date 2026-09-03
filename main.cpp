@@ -83,8 +83,26 @@ int main(int argc, char* argv[])
             }
             options.traced_symbols.push_back(argv[arg]);
         }
-
-
+        else if (arg_str == "-d") {
+            if (arg + 2 >= argc) {
+                std::cout << "invalid symbol\n";
+                return -1;
+            }
+            arg++;
+            std::string sym = argv[arg];
+            arg++;
+            std::string val = argv[arg];
+            int symval;
+            std::stringstream ss;
+            if (val[0] == '$') {
+                ss << std::hex << val.substr(1);
+            }
+            else {
+                ss << std::dec << val;
+            }
+            ss >> symval;
+            options.defined_symbols.push_back({sym, symval} );
+        }
         else {  
             std::cout << "Unknown option '" << arg_str << "'\n";
             return -1;
