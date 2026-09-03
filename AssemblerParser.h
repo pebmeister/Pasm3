@@ -139,8 +139,6 @@ public:
         
         for (auto&[sym, val] : options.defined_symbols) {        
             definedSyms.Define(sym, 1);
-            
-            std::cout << "defining " << sym << "\n";
         }
         
         bool display_tok = false;
