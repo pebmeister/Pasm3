@@ -220,10 +220,11 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                         int64_t offset = evaluated - (static_cast<int64_t>(pc) + 2);
                         
                         if (offset < -128 || offset > 127) {
-                            // force another pass before givng up
+                            // force another pass before givng up                            
                             changed = true;
                         }
-                        if ((pass >= (max_passes - 1)) && (offset < -128 || offset > 127)) {
+                        if ((pass >= (max_passes - 2)) && (offset < -128 || offset > 127)) {
+                            // give it a shot. Allow 2 passes to resolve this
                             static int island_counter = 0;
                             std::string skip_label = std::format("@__island{}", ++ island_counter);
 
