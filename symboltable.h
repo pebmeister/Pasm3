@@ -64,7 +64,7 @@ public:
 
 		if (trace_syms_.contains(name)) { 
             std::cout << "[SYM TRACE] " << name << " -> $" 
-                      << std::hex << std::uppercase << val << "\n";
+                      << std::hex << std::uppercase << val << std::dec << std::nouppercase << "\n";
         }
 		
         auto it = symbols_.find(name);
