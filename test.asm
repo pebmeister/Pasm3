@@ -13,3 +13,5 @@
    rts
    beq @start
   
+	* = *
+	nop

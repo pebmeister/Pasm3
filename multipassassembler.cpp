@@ -512,7 +512,18 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 load_address = pc;
                 load_address_set = true;
             }
-
+			if (binary_output.size() + load_address < pc) {
+				std::vector<uint8_t> ds_data(pc - load_address - binary_output.size(), 0);
+				auto bytes = pc - load_address - binary_output.size();
+				std::cout << "Warning inserting " << bytes << " bytes.\n";
+				std::vector<uint8_t> ds_dtata(bytes, 0);
+				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
+			}
+			else if (binary_output.size() + load_address > pc) {
+				throw std::runtime_error(
+					std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
+				);
+			}
             binary_output.insert(binary_output.end(), data_bytes.begin(), data_bytes.end());
             pc += static_cast<uint16_t>(data_bytes.size());
 
@@ -618,6 +629,17 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 load_address = pc;
                 load_address_set = true;
             }
+			if (binary_output.size() + load_address < pc) {
+				auto bytes = pc - load_address - binary_output.size();
+				std::cout << "Warning inserting " << bytes << " bytes.\n";
+				std::vector<uint8_t> ds_data(bytes, 0);
+				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
+			}
+			else if (binary_output.size() + load_address > pc) {
+				throw std::runtime_error(
+					std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
+				);
+			}
             binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
 
             std::string hex_dump;
