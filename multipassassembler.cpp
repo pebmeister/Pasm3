@@ -51,12 +51,14 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
     }
 
-    while (changed && pass <= max_passes) {
+    while (((changed || (wait_clean)) && pass <= max_passes) {
+        wait_clean = false;
         parent_scope="GLOBAL_";
         changed = ResolutionPass(statements, anonymous_labels, src_mgr);
         std::cout << "Pass " << pass << " complete. "
             << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
         pass++;
+        clean = !changed;
     }
 
     if (changed) {
