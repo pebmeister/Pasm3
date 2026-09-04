@@ -9,18 +9,35 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Optimization & Compiler Flags
 # ------------------------------------------------------------------------------
 
-# Optimize Release builds for maximum speed
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(
+        # Release - Maximum speed
         $<$<CONFIG:Release>:-O3>
         $<$<CONFIG:Release>:-Wall>
+        
+        # Debug - Maximum debuggability
+        $<$<CONFIG:Debug>:-O0>      # Disable all optimizations for accurate stepping
+        $<$<CONFIG:Debug>:-g3>      # Include extra debug info (includes C++ macros)
+        $<$<CONFIG:Debug>:-Wall>
+        $<$<CONFIG:Debug>:-Wextra>
     )
 elseif(MSVC)
     add_compile_options(
+        # Release - Maximum speed
         $<$<CONFIG:Release>:/O2>
         $<$<CONFIG:Release>:/W4>
+        
+        # Debug - Maximum debuggability
+        $<$<CONFIG:Debug>:/Od>      # Disable optimization
+        $<$<CONFIG:Debug>:/Zi>      # Generate complete debug info (PDB)
+        $<$<CONFIG:Debug>:/RTC1>    # Enable strict runtime checks (uninitialized vars, stack corruption)
+        $<$<CONFIG:Debug>:/W4>
     )
+    
+    # MSVC specific linker flag required for /Zi to work properly in Debug
+    add_link_options($<$<CONFIG:Debug>:/DEBUG>)
 endif()
+
 
 # Enable link-time optimization where supported
 include(CheckIPOSupported)
