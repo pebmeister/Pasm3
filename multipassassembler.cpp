@@ -41,14 +41,14 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     pass = 1;
     changed = true;
 
+    std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
+
     for (auto&sym : options.traced_symbols) {
         symbols_.Trace(sym);
     }
     for (auto&[sym, val] : options.defined_symbols) {        
         changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
     }
-
-    std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
     while (changed && pass <= max_passes) {
         parent_scope="GLOBAL_";
@@ -224,6 +224,10 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                             changed = true;
                         }
                         if ((pass >= (max_passes - 2)) && (offset < -128 || offset > 127)) {
+							auto target = evaluated;
+							if (offset > 0) {
+								target += 3; // add jump island jmp $xxxx
+							}
                             // give it a shot. Allow 2 passes to resolve this
                             static int island_counter = 0;
                             std::string skip_label = std::format("@__island{}", ++ island_counter);
@@ -231,7 +235,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                             auto it = inverted_branches.find(inst->mnemonic);
                             if (it != inverted_branches.end()) {
                                 std::cout << 
-                                "Warning: Branch out of range for '" << inst->mnemonic <<  "' [" << offset << "] " << 
+                                "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " << 
                                 "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
 
                                 // 1. Create the JMP statement FIRST by moving the original target expression

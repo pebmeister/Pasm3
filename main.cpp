@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
     auto arg = 1;
     
     while(arg < argc) {
-        std::string arg_str = std::string(argv[arg]);
+        std::string arg_str = std::string(argv[arg]);		
         if (arg_str[0] != '-') {
             options.input_filenames.push_back(argv[arg]);
         }
@@ -84,11 +84,11 @@ int main(int argc, char* argv[])
             options.traced_symbols.push_back(argv[arg]);
         }
         else if (arg_str == "-d") {
-            if (arg + 2 >= argc) {
+            arg++;
+            if (arg >= argc) {
                 std::cout << "invalid symbol\n";
                 return -1;
             }
-            arg++;
             std::string sym = argv[arg];
             arg++;
             std::string val = argv[arg];
