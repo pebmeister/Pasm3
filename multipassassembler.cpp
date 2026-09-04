@@ -40,6 +40,7 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
 void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     pass = 1;
     changed = true;
+    clean = false;
 	island_counter = 0;
 
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
@@ -51,13 +52,15 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
     }
 
-    while ((changed || wait_clean) && pass <= max_passes) {
-        wait_clean = false;
+    while (((changed || (wait_clean && !clean)) && pass <= max_passes) {
         parent_scope="GLOBAL_";
         changed = ResolutionPass(statements, anonymous_labels, src_mgr);
         std::cout << "Pass " << pass << " complete. "
             << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
         pass++;
+        if (wait_clean && clean) {
+            wait_clean = false;
+        }
         clean = !changed;
     }
 
