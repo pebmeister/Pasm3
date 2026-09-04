@@ -223,11 +223,11 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                         int64_t offset = evaluated - (static_cast<int64_t>(pc) + 2);
                         
                         if (offset < -128 || offset > 127) {
-                            // force another pass before givng up                            
-                            changed = true;
+                            // wait for all symbols to resolve first
+                            wait_clean = true;
                         }
-						// give it a shot. Allow 2 passes to resolve this
-                        if ((pass >= (max_passes - 2)) && (offset < -128 || offset > 127)) {
+				        // wait passes to resolve first
+                        if (clean && (offset < -128 || offset > 127)) {
 							auto target = evaluated;
 							if (offset > 0) {
 								target += 3; // add jump island jmp $xxxx
