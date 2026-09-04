@@ -40,6 +40,7 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
 void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     pass = 1;
     changed = true;
+	island_counter = 0;
 
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
@@ -223,14 +224,13 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                             // force another pass before givng up                            
                             changed = true;
                         }
+						// give it a shot. Allow 2 passes to resolve this
                         if ((pass >= (max_passes - 2)) && (offset < -128 || offset > 127)) {
 							auto target = evaluated;
 							if (offset > 0) {
 								target += 3; // add jump island jmp $xxxx
 							}
-                            // give it a shot. Allow 2 passes to resolve this
-                            static int island_counter = 0;
-                            std::string skip_label = std::format("@__island{}", ++ island_counter);
+							std::string skip_label = std::format("@__island{}", ++ island_counter);
 
                             auto it = inverted_branches.find(inst->mnemonic);
                             if (it != inverted_branches.end()) {
@@ -513,10 +513,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 load_address_set = true;
             }
 			if (binary_output.size() + load_address < pc) {
-				std::vector<uint8_t> ds_data(pc - load_address - binary_output.size(), 0);
 				auto bytes = pc - load_address - binary_output.size();
+				std::vector<uint8_t> ds_data(bytes, 0);
 				std::cout << "Warning inserting " << bytes << " bytes.\n";
-				std::vector<uint8_t> ds_dtata(bytes, 0);
 				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
 			}
 			else if (binary_output.size() + load_address > pc) {
@@ -629,10 +628,11 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 load_address = pc;
                 load_address_set = true;
             }
+
 			if (binary_output.size() + load_address < pc) {
 				auto bytes = pc - load_address - binary_output.size();
-				std::cout << "Warning inserting " << bytes << " bytes.\n";
 				std::vector<uint8_t> ds_data(bytes, 0);
+				std::cout << "Warning inserting " << bytes << " bytes.\n";
 				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
 			}
 			else if (binary_output.size() + load_address > pc) {
