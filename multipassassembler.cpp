@@ -60,7 +60,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         std::cout << "Pass " << pass << " complete. "
             << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
         pass++;
-        if (wait_clean && clean) {
+        if (wait_clean && clean && !changed) {
             wait_clean = false;
         }
     }
