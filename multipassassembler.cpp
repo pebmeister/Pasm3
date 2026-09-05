@@ -53,6 +53,8 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     }
 
     while ((changed || (wait_clean && !clean)) && pass <= max_passes) {
+        clean = !changed;
+
         parent_scope="GLOBAL_";
         changed = ResolutionPass(statements, anonymous_labels, src_mgr);
         std::cout << "Pass " << pass << " complete. "
@@ -61,7 +63,6 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         if (wait_clean && clean) {
             wait_clean = false;
         }
-        clean = !changed;
     }
 
     if (changed) {
