@@ -180,7 +180,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                 break;
             }
 
-            case Stmt_Type::Fill: {
+            case StmtType::Fill: {
                 // Fill
                 // Transform FillStatement -> DataStatement
                 auto fill = static_cast<const FillStatement*>(stmt.get());
@@ -307,7 +307,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                                 if (inst->mode == Op_Absolute) want_mode = Op_ZeroPage;
                                 else if (inst->mode == Op_AbsoluteX) want_mode = Op_ZeroPageX;
                                 else if (inst->mode == Op_AbsoluteY) want_mode = Op_ZeroPageY;
-                                if (want_mode != inst_mode) {
+                                if (want_mode != inst->mode) {
                                     want_clean - true;
                                 }
                                 if (clean && want_mode != inst->mode) {
@@ -321,7 +321,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                                 if (inst->mode == Op_ZeroPage) want_mode = Op_Absolute;
                                 else if (inst->mode == Op_ZeroPageX) want_mode = Op_AbsoluteX;
                                 else if (inst->mode == Op_ZeroPageY) want_mode = Op_AbsoluteY;
-                                if (want_mode != inst_mode) {
+                                if (want_mode != inst->mode) {
                                     wait_clean = true;
                                 }
 
