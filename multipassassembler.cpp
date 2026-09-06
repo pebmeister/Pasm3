@@ -173,7 +173,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
             case StmtType::Data: {
                 // Data
-                auto data = dynamic_cast<const DataStatement*>(stmt.get())
+                auto data = static_cast<const DataStatement*>(stmt.get());
                 uint16_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
                 pc += static_cast<uint16_t>(data->elements.size() * bytes_per_elem);
                 new_statements.push_back(std::move(stmt));
