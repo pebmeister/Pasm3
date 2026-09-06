@@ -452,7 +452,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
         };
 
         // help to write bytes to output
-        auto emit_bytes = [&](std::vector<uint8_t>& emmitted_bytes) {
+        auto emit_bytes = [&](std::vector<uint8_t>& emitted_bytes) {
             if (!load_address_set) {
                 load_address = pc;
                 load_address_set = true;
