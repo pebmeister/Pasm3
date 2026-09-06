@@ -248,9 +248,9 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                             if (clean && (offset < -128 || offset > 127)) {
 							     auto target = evaluated;
 							     if (offset > 0) {
-								    target += 3; // add jump island jmp $xxxx
-							    }
-							    std::string skip_label = std::format("@__island{}", ++ island_counter);
+								     target += 3; // add jump island jmp $xxxx
+							     }
+							     std::string skip_label = std::format("@__island{}", ++ island_counter);
 
                                 auto it = inverted_branches.find(inst->mnemonic);
                                 if (it != inverted_branches.end()) {
