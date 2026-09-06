@@ -1,6 +1,6 @@
 #pragma once 
 
-enum class StmtType {
+enum StmtType {
     Label,
     Org,
     Equ,
