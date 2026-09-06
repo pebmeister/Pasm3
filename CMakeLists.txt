@@ -23,6 +23,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 elseif(MSVC)
     add_compile_options(
+        #disable size loss of data warning.
+        /wd4244
+        /wd4267
+
         # Release - Maximum speed
         $<$<CONFIG:Release>:/O2>
         $<$<CONFIG:Release>:/W4>
