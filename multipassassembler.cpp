@@ -357,7 +357,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                 // never going to get here. Place holder If we want warning instead of error
                 new_statements.push_back(std::move(stmt));
                 break;
-           }
+            }
+        }
     }
 
     statements = std::move(new_statements);
