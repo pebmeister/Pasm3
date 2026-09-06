@@ -470,7 +470,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 				);
 			}
             binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
-            pc += emmited_bytes.size();
+            pc += emitted_bytes.size();
         };
 
         // ---------------------------------------------------------------------
@@ -648,7 +648,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
             emit_listing_row(pc, hex_dump, full_instruction);
 
-            emit_bytes(emmitted_bytes);
+            emit_bytes(emitted_bytes);
         }
     }
 
