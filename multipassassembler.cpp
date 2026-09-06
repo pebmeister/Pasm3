@@ -426,8 +426,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         throw std::runtime_error(std::format("print stack underflow File: {} Line: {}", src_mgr.GetFileName(prn->file), prn->line));
                     }
                     printstate = pr_stack.top();
-                   pr_stack.pop();
-                   break;
+                    pr_stack.pop();
+                    break;
 
                 default:
                     throw std::runtime_error(std::format("unknown print directive File: {} Line: {}", src_mgr.GetFileName(prn->file), prn->line));
