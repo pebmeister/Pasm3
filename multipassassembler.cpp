@@ -692,7 +692,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 break;
             }
             default:
-                listing << std::format("missing emmit bytes for {}\n", static_cast<int>(stmt_type));
+                listing << std::format("missing emit bytes for {}\n", static_cast<int>(stmt_type));
                 break;
          }
     }
