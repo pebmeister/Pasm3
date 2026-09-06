@@ -597,7 +597,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
             case StmtType::Ds: {
                 // .ds Directives
-                auto ds = static _cast<const DsStatement*>(stmt.get());
+                auto ds = static_cast<const DsStatement*>(stmt.get());
                 auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                 emit_listing_row(pc, "", ".ds");
                 if (val.has_value()) {
