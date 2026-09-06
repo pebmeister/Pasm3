@@ -451,6 +451,28 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             }
         };
 
+        // help to write bytes to output
+        auto emit_bytes = [&](std::vector<uint8_t>& emmitted_bytes) {
+            if (!load_address_set) {
+                load_address = pc;
+                load_address_set = true;
+            }
+
+			if (binary_output.size() + load_address < pc) {
+				auto bytes = pc - load_address - binary_output.size();
+				std::vector<uint8_t> ds_data(bytes, 0);
+				std::cout << "Warning inserting " << bytes << " bytes.\n";
+				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
+			}
+			else if (binary_output.size() + load_address > pc) {
+				throw std::runtime_error(
+					std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
+				);
+			}
+            binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
+            pc += emmited_bytes.size();
+        };
+
         // ---------------------------------------------------------------------
         // Statement Listing Generation
         // ---------------------------------------------------------------------
@@ -513,25 +535,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     elem_strs.push_back(std::format("${:04X}", static_cast<uint16_t>(v & 0xFFFF)));
                 }
             }
-
-            if (!load_address_set) {
-                load_address = pc;
-                load_address_set = true;
-            }
-			if (binary_output.size() + load_address < pc) {
-				auto bytes = pc - load_address - binary_output.size();
-				std::vector<uint8_t> ds_data(bytes, 0);
-				std::cout << "Warning inserting " << bytes << " bytes.\n";
-				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
-			}
-			else if (binary_output.size() + load_address > pc) {
-				throw std::runtime_error(
-					std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
-				);
-			}
-            binary_output.insert(binary_output.end(), data_bytes.begin(), data_bytes.end());
-            pc += static_cast<uint16_t>(data_bytes.size());
-
+            emit_bytes(data_bytes);
+ 
             std::string dir_keyword = (data->width == DataWidth::Byte) ? ".byte" : ".word";
             size_t elems_per_chunk = (data->width == DataWidth::Byte) ? 4 : 2;
             size_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
@@ -630,23 +635,6 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                 }
             }
-            if (!load_address_set) {
-                load_address = pc;
-                load_address_set = true;
-            }
-
-			if (binary_output.size() + load_address < pc) {
-				auto bytes = pc - load_address - binary_output.size();
-				std::vector<uint8_t> ds_data(bytes, 0);
-				std::cout << "Warning inserting " << bytes << " bytes.\n";
-				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
-			}
-			else if (binary_output.size() + load_address > pc) {
-				throw std::runtime_error(
-					std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
-				);
-			}
-            binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
 
             std::string hex_dump;
             for (uint8_t b : emitted_bytes) {
@@ -660,7 +648,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
             emit_listing_row(pc, hex_dump, full_instruction);
 
-            pc += static_cast<uint16_t>(emitted_bytes.size());
+            emit_bytes(emmitted_bytes);
         }
     }
 
