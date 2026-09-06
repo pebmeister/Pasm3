@@ -33,7 +33,7 @@ struct Statement {
     StmtType stmt_type{StmtType::Unknown};
 
     Statement(int file, int line, StmtType stmt_type)
-        : file(file), line(line), stmt_type(stmt_type)
+        : file(file), line(line), stmt_type(stmt_type) {}
 };
 
 struct LabelStatement : Statement {
