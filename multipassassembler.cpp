@@ -497,10 +497,11 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             pc += emitted_bytes.size();
         };
 
+        auto stmt_type = stmt->stmt_type;
         // ---------------------------------------------------------------------
         // Statement Listing Generation
         // ---------------------------------------------------------------------
-        switch (stmt->stmt_type) {
+        switch (stmt_type) {
             case StmtType::Label: {
                 // 1. Label Statements
                 auto lbl = static_cast<const LabelStatement*>(stmt.get());
@@ -691,7 +692,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 break;
             }
             default:
-                std::cout << std::format("missing emmit bytes for {}\n", stmt->stmt_type);
+                listing << std::format("missing emmit bytes for {}\n", stmt_type);
                 break;
          }
     }
