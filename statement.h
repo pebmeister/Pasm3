@@ -27,7 +27,7 @@ enum PrintCmd {
 
 struct Statement {
     virtual ~Statement() = default;
-|
+
     int file{0};
     int line{0};
     StmtType stmt_type{StmtType::Unknown};
