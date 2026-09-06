@@ -143,7 +143,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
             case StmtType::Equ: {
                 // Equ
-                equ = static_cast<const EquStatement*>(stmt.get());
+                auto equ = static_cast<const EquStatement*>(stmt.get());
                 if (equ->value_expr) {
                     auto name = equ->name;
                     if (equ->is_local()) {
