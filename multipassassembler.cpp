@@ -307,10 +307,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                                 if (inst->mode == Op_Absolute) want_mode = Op_ZeroPage;
                                 else if (inst->mode == Op_AbsoluteX) want_mode = Op_ZeroPageX;
                                 else if (inst->mode == Op_AbsoluteY) want_mode = Op_ZeroPageY;
+
                                 if (want_mode != inst->mode) {
-                                    wait_clean = true;
-                                }
-                                if (clean && want_mode != inst->mode) {
                                     mode_it = info->mode_to_opcode.find(want_mode);
                                     if (mode_it != info->mode_to_opcode.end()) {
                                         inst->mode = want_mode;
@@ -321,11 +319,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                                 if (inst->mode == Op_ZeroPage) want_mode = Op_Absolute;
                                 else if (inst->mode == Op_ZeroPageX) want_mode = Op_AbsoluteX;
                                 else if (inst->mode == Op_ZeroPageY) want_mode = Op_AbsoluteY;
-                                if (want_mode != inst->mode) {
-                                    // wait_clean = true;
-                                }
 
-                                if (/* clean && */ want_mode != inst->mode) {
+                                if (want_mode != inst->mode) {
                                     mode_it = info->mode_to_opcode.find(want_mode);
                                     if (mode_it != info->mode_to_opcode.end()) {
                                         inst->mode = want_mode;
