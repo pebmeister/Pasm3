@@ -544,7 +544,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 break;
             }
 
-            case StmtType::Data:
+            case StmtType::Data: {
                 // 4. Data Directives (.byte / .word)
                 auto data = static_cast<const DataStatement*>(stmt.get());
                 uint16_t current_pc = pc;
