@@ -14,7 +14,7 @@ enum ExprType {
 }
 
 struct ExprNode {
-    virtual ExprType expr_type = ExprType::Unknown;
+    ExprType expr_type = ExprType::Unknown;
     virtual ~ExprNode() = default;
 };
 
