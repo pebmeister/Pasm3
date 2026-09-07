@@ -437,12 +437,6 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             continue;
         }
 
-        // 2. Skip listing generation when printstate is off
-        if (!printstate) {
-            file_last_printed_line[stmt->file] = stmt->line;
-            continue;
-        }
-
         // Helper to catch up unprinted lines (comments, blank lines)
         auto sync_file_and_line_catchup = [&](int target_line) {
             if (stmt->file != last_file) {
@@ -505,7 +499,13 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             case StmtType::Label: {
                 // 1. Label Statements
                 auto lbl = static_cast<const LabelStatement*>(stmt.get());
-                emit_listing_row(pc, "", lbl->name);
+                if (printstate) {
+                     emit_listing_row(pc, "", lbl->name);
+                }
+                else {
+                    file_last_printed_line[stmt->file] = stmt->line;
+                }
+
                 if (!lbl->is_local() && !lbl->is_anon()) {
                     parent_scope = lbl->name;
                 }
@@ -524,7 +524,12 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                     pc = static_cast<uint16_t>(val.value());
                 }
-                emit_listing_row(pc, "", std::format("*= ${:04X}", pc));
+                if (printstate) {
+                    emit_listing_row(pc, "", std::format("*= ${:04X}", pc));
+                }
+                else {
+                    file_last_printed_line[stmt->file] = stmt->line;
+                }
                 break;
             }
 
@@ -541,7 +546,12 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                     v = static_cast<uint16_t>(val.value());
                 }
-                emit_listing_row(v, "", std::format("{} = ${:04X}", equ->name, v));
+                if (printtstate) {
+                    emit_listing_row(v, "", std::format("{} = ${:04X}", equ->name, v));
+                }
+                else {
+                    file_last_printed_line[stmt->file] = stmt->line;
+                }
                 break;
             }
 
@@ -570,6 +580,11 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                 }
                 emit_bytes(data_bytes);
+
+                if (!printstate) {
+                    file_last_printed_line[stmt->file] = stmt->line;
+                    break;
+                }
  
                 std::string dir_keyword = (data->width == DataWidth::Byte) ? ".byte" : ".word";
                 size_t elems_per_chunk = (data->width == DataWidth::Byte) ? 4 : 2;
@@ -600,7 +615,12 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 // .ds Directives
                 auto ds = static_cast<const DsStatement*>(stmt.get());
                 auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                emit_listing_row(pc, "", ".ds");
+                if (printstate) {
+                    emit_listing_row(pc, "", ".ds");
+                }
+                else {
+                    file_last_printed_line[stmt->file] = stmt->line;
+                }
                 if (val.has_value()) {
                     pc += static_cast<uint16_t>(val.value());
                 }
@@ -685,8 +705,12 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 if (!operand_str.empty()) {
                     full_instruction += " " + operand_str;
                 }
-
-                emit_listing_row(pc, hex_dump, full_instruction);
+                if (printstate) {
+                    emit_listing_row(pc, hex_dump, full_instruction);
+                }
+                else {
+                    file_last_printed_line[stmt->file] = stmt->line;
+                }
 
                 emit_bytes(emitted_bytes);
                 break;
