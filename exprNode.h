@@ -11,7 +11,7 @@ enum ExprType {
     AnonLbl,
     Unary,
     Binary
-}
+};
 
 struct ExprNode {
     ExprType expr_type = ExprType::Unknown;
