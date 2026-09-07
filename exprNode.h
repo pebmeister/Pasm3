@@ -20,7 +20,7 @@ struct ExprNode {
 
 struct NumberExpr : ExprNode {
     int64_t value;
-    ExprRtype expr_type = ExprType::Number;
+    expr_type = ExprType::Number;
     explicit NumberExpr(int64_t val) : value(val) {}
 };
 
