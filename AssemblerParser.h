@@ -181,7 +181,7 @@ public:
                 ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
-                statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.release()));
+                statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, std::move(addr_expr)));
                 continue;
             }
 
@@ -217,7 +217,7 @@ public:
 
                 if (dir == ".org") {
                     auto addr_expr = ParseExpression();
-                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, addr_expr.release()));
+                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, std::move(addr_expr)));
                 }
                 else if (dir == ".basic_hdr") {
                     auto org_addr = std::make_unique<NumberExpr>(static_cast<uint16_t>(0x0801));
