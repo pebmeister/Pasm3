@@ -4,29 +4,43 @@
 #include "getmangledsymbol.h"
 #include "findanonlabel.h"
 
+enum ExprType {
+    Unknownn,
+    Number,
+    Symbol,
+    AnonLbl,
+    Unary,
+    Binary
+}
+
 struct ExprNode {
+    virtual ExprType expr_type = ExprType::Unknown;
     virtual ~ExprNode() = default;
 };
 
 struct NumberExpr : ExprNode {
     int64_t value;
+    ExprRtype expr_type = ExprType::Number;
     explicit NumberExpr(int64_t val) : value(val) {}
 };
 
 struct SymbolExpr : ExprNode {
     std::string name;
+    ExprType expr_type = ExprType::Symbol;
     explicit SymbolExpr(std::string n) : name(std::move(n)) {}
 };
 
 struct AnonLblExpr : ExprNode {
     bool forward;
     int count;
+    ExprType expr_type = ExprType::AnonLbl;
     explicit AnonLblExpr(bool f, int c) : forward(f), count(c) {}
 };
 
 struct UnaryExpr : ExprNode {
     int op;
     std::unique_ptr<ExprNode> operand;
+    ExprType expr_type = ExprType::Unary;
     UnaryExpr(int op, std::unique_ptr<ExprNode> rhs)
         : op(op), operand(std::move(rhs)) {}
 };
@@ -35,6 +49,7 @@ struct BinaryExpr : ExprNode {
     int op;
     std::unique_ptr<ExprNode> lhs;
     std::unique_ptr<ExprNode> rhs;
+    ExprType expr_type = ExprType::Binary;
     BinaryExpr(int op, std::unique_ptr<ExprNode> l, std::unique_ptr<ExprNode> r)
         : op(op), lhs(std::move(l)), rhs(std::move(r)) {}
 };
@@ -71,80 +86,91 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
         const std::string& parent_scope, uint16_t pc ) {
     if (!node) return std::nullopt;
 
-    if (auto num = dynamic_cast<const NumberExpr*>(node)) return num->value;
-
-    if (auto sym = dynamic_cast<const SymbolExpr*>(node)) {
-        auto name = sym->name;
-        if (sym->name[0] == '@') {
-            name = GetMangledSymbol(name, parent_scope);
+    auto node_type = node->expr_type;
+    
+    switch (node_type) {
+        case ExprType::Number: {
+            auto num = static_cast<const NumberExpr*>(node);
+            return num->value;
         }
-        else if (sym->name[0] == '*') {
-            return pc;
-        }
-        auto val = symbols.Lookup(name);
-        if (val.has_value()) return static_cast<int64_t>(val.value());
-        return std::nullopt;
-    }
 
-    if (auto anon = dynamic_cast<const AnonLblExpr*>(node)) {
-        return FindAnonLabel(anonymous_labels, anon->forward, anon->count, pc);
-    }
-
-    if (auto un = dynamic_cast<const UnaryExpr*>(node)) {
-
-        if (!un->operand) return std::nullopt;
-        auto val = EvaluateExpr(un->operand.get(), anonymous_labels, symbols, parent_scope, pc);
-        if (!val) return std::nullopt;
-        switch ((TokenKind)un->op) {
-        case TokenKind::Minus:
-            return -(*val);
-        case TokenKind::Plus:
-            return +(*val);
-        case TokenKind::Tilde:
-            return ~(*val);
-        case TokenKind::Bang:
-            return !(*val);
-        case TokenKind::LowByte:
-            return (*val) & 0xFF;
-        case TokenKind::HighByte:
-            return ((*val) >> 8) & 0xFF;
-        default:
+        case ExprType::Symbol: {
+            auto sym = static_cast<const SymbolExpr*>(node);
+            auto name = sym->name;
+            if (sym->name[0] == '@') {
+                name = GetMangledSymbol(name, parent_scope);
+            }
+            else if (sym->name[0] == '*') {
+                return pc;
+            }
+            auto val = symbols.Lookup(name);
+            if (val.has_value()) return static_cast<int64_t>(val.value());
             return std::nullopt;
         }
-    }
 
-    if (auto bin = dynamic_cast<const BinaryExpr*>(node)) {
-        if (!bin->lhs || !bin->rhs) return std::nullopt;
-        auto lhs = EvaluateExpr(bin->lhs.get(), anonymous_labels, symbols, parent_scope, pc);
-        auto rhs = EvaluateExpr(bin->rhs.get(), anonymous_labels, symbols, parent_scope, pc);
-        if (!lhs || !rhs) return std::nullopt;
+        case ExprType::AnonLbl: {
+            auto anon = static_cast<const AnonLblExpr*>(node);
+            return FindAnonLabel(anonymous_labels, anon->forward, anon->count, pc);
+        }
 
-        switch ((TokenKind)bin->op) {
-        case TokenKind::Plus:
-            return *lhs + *rhs;
-        case TokenKind::Minus:
-            return *lhs - *rhs;
-        case TokenKind::Star:
-            return *lhs * *rhs;
-        case TokenKind::Slash:
-            return (*rhs != 0) ? *lhs / *rhs : 0;
-        case TokenKind::Percent:
-            return (*rhs != 0) ? *lhs % *rhs : 0;
-        case TokenKind::Ampersand:
-            return *lhs & *rhs;
-        case TokenKind::Pipe:
-            return *lhs | *rhs;
-        case TokenKind::Caret:
-            return *lhs ^ *rhs;
-        case TokenKind::Shl:
-            return *lhs << *rhs;
-        case TokenKind::Shr:
-            return *lhs >> *rhs;
-        default:
-            return std::nullopt;
+        case ExprType::Unary: {
+            auto un = dynamic_cast<const UnaryExpr*>(node);
+
+            if (!un->operand) return std::nullopt;
+            auto val = EvaluateExpr(un->operand.get(), anonymous_labels, symbols, parent_scope, pc);
+            if (!val) return std::nullopt;
+            switch ((TokenKind)un->op) {
+                case TokenKind::Minus:
+                    return -(*val);
+                case TokenKind::Plus:
+                    return +(*val);
+                case TokenKind::Tilde:
+                    return ~(*val);
+                case TokenKind::Bang:
+                    return !(*val);
+                case TokenKind::LowByte:
+                    return (*val) & 0xFF;
+                case TokenKind::HighByte:
+                    return ((*val) >> 8) & 0xFF;
+                default:
+                    return std::nullopt;
+            }
+        }
+        
+        case ExprType::Binary: {
+
+            auto bin = dynamic_cast<const BinaryExpr*>(node);
+            if (!bin->lhs || !bin->rhs) return std::nullopt;
+            auto lhs = EvaluateExpr(bin->lhs.get(), anonymous_labels, symbols, parent_scope, pc);
+            auto rhs = EvaluateExpr(bin->rhs.get(), anonymous_labels, symbols, parent_scope, pc);
+            if (!lhs || !rhs) return std::nullopt;
+
+            switch ((TokenKind)bin->op) {
+                case TokenKind::Plus:
+                    return *lhs + *rhs;
+                case TokenKind::Minus:
+                    return *lhs - *rhs;
+                case TokenKind::Star:
+                    return *lhs * *rhs;
+                case TokenKind::Slash:
+                    return (*rhs != 0) ? *lhs / *rhs : 0;
+                case TokenKind::Percent:
+                    return (*rhs != 0) ? *lhs % *rhs : 0;
+                case TokenKind::Ampersand:
+                    return *lhs & *rhs;
+                case TokenKind::Pipe:
+                    return *lhs | *rhs;
+                case TokenKind::Caret:
+                    return *lhs ^ *rhs;
+                case TokenKind::Shl:
+                    return *lhs << *rhs;
+                case TokenKind::Shr:
+                    return *lhs >> *rhs;
+                default:
+                     return std::nullopt;
+            }
         }
     }
-
     return std::nullopt;
 }
 
