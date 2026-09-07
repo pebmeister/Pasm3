@@ -15,19 +15,18 @@ enum ExprType {
 
 struct ExprNode {
     ExprType expr_type = ExprType::UnknownExpr;
+    explicit ExprNode(ExprType expr_type) : expr_type(expr_type) {}
     virtual ~ExprNode() = default;
 };
 
 struct NumberExpr : ExprNode {
     int64_t value;
-    ExprType expr_type = ExprType::Number;
-    explicit NumberExpr(int64_t val) : value(val) {}
+    explicit NumberExpr(int64_t val) : value(val), ExprNode(ExprType::Number){}
 };
 
 struct SymbolExpr : ExprNode {
     std::string name;
-    ExprType expr_type = ExprType::Symbol;
-    explicit SymbolExpr(std::string n) : name(std::move(n)) {}
+    explicit SymbolExpr(std::string n) : name(std::move(n)), ExprNode(ExprType::Symbol){}
 };
 
 struct AnonLblExpr : ExprNode {
@@ -40,18 +39,18 @@ struct AnonLblExpr : ExprNode {
 struct UnaryExpr : ExprNode {
     int op;
     std::unique_ptr<ExprNode> operand;
-    ExprType expr_type = ExprType::Unary;
+    
     UnaryExpr(int op, std::unique_ptr<ExprNode> rhs)
-        : op(op), operand(std::move(rhs)) {}
+        : op(op), operand(std::move(rhs)), ExprNode(ExprType::Unary) {}
 };
 
 struct BinaryExpr : ExprNode {
     int op;
     std::unique_ptr<ExprNode> lhs;
     std::unique_ptr<ExprNode> rhs;
-    ExprType expr_type = ExprType::Binary;
+    
     BinaryExpr(int op, std::unique_ptr<ExprNode> l, std::unique_ptr<ExprNode> r)
-        : op(op), lhs(std::move(l)), rhs(std::move(r)) {}
+        : op(op), lhs(std::move(l)), rhs(std::move(r)), ExprNode(ExprType::Binary){}
 };
 
 class ExprResult {
@@ -170,6 +169,8 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
                      return std::nullopt;
             }
         }
+        case ExprType::UnknownExpr:
+            return std::nullopt;
     }
     return std::nullopt;
 }
