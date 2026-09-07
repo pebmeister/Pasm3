@@ -546,7 +546,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                     v = static_cast<uint16_t>(val.value());
                 }
-                if (printtstate) {
+                if (printstate) {
                     emit_listing_row(v, "", std::format("{} = ${:04X}", equ->name, v));
                 }
                 else {
