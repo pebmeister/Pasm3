@@ -21,19 +21,18 @@ struct ExprNode {
 
 struct NumberExpr : ExprNode {
     int64_t value;
-    explicit NumberExpr(int64_t val) : value(val), ExprNode(ExprType::Number){}
+    explicit NumberExpr(int64_t val) : ExprNode(ExprType::Number), value(val){}
 };
 
 struct SymbolExpr : ExprNode {
     std::string name;
-    explicit SymbolExpr(std::string n) : name(std::move(n)), ExprNode(ExprType::Symbol){}
+    explicit SymbolExpr(std::string n) : ExprNode(ExprType::Symbol), name(std::move(n)){}
 };
 
 struct AnonLblExpr : ExprNode {
     bool forward;
     int count;
-    ExprType expr_type = ExprType::AnonLbl;
-    explicit AnonLblExpr(bool f, int c) : forward(f), count(c) {}
+    explicit AnonLblExpr(bool f, int c) : ExprNode(ExprType::AnonLbl), forward(f), count(c) {}
 };
 
 struct UnaryExpr : ExprNode {
@@ -41,7 +40,7 @@ struct UnaryExpr : ExprNode {
     std::unique_ptr<ExprNode> operand;
     
     UnaryExpr(int op, std::unique_ptr<ExprNode> rhs)
-        : op(op), operand(std::move(rhs)), ExprNode(ExprType::Unary) {}
+        : ExprNode(ExprType::Unary), op(op), operand(std::move(rhs)) {}
 };
 
 struct BinaryExpr : ExprNode {
@@ -50,7 +49,7 @@ struct BinaryExpr : ExprNode {
     std::unique_ptr<ExprNode> rhs;
     
     BinaryExpr(int op, std::unique_ptr<ExprNode> l, std::unique_ptr<ExprNode> r)
-        : op(op), lhs(std::move(l)), rhs(std::move(r)), ExprNode(ExprType::Binary){}
+        : ExprNode(ExprType::Binary), op(op), lhs(std::move(l)), rhs(std::move(r)){}
 };
 
 class ExprResult {
