@@ -5,7 +5,7 @@
 #include "findanonlabel.h"
 
 enum ExprType {
-    Unknownn,
+    Unknown,
     Number,
     Symbol,
     AnonLbl,
@@ -20,7 +20,7 @@ struct ExprNode {
 
 struct NumberExpr : ExprNode {
     int64_t value;
-    expr_type = ExprType::Number;
+    ExprType expr_type = ExprType::Number;
     explicit NumberExpr(int64_t val) : value(val) {}
 };
 
