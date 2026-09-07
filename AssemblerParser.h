@@ -181,7 +181,7 @@ public:
                 ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
-                statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, std::move(addr_expr.get())));
+                statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.release()));
                 continue;
             }
 
