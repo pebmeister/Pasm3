@@ -41,14 +41,14 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     pass = 1;
     changed = true;
     clean = false;
-	island_counter = 0;
+    island_counter = 0;
 
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
     for (auto&sym : options.traced_symbols) {
         symbols_.Trace(sym);
     }
-    for (auto&[sym, val] : options.defined_symbols) {        
+    for (auto&[sym, val] : options.defined_symbols) {
         changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
     }
 
@@ -95,7 +95,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                 // Label
                 auto lbl = static_cast<const LabelStatement*>(stmt.get());
                 auto name = lbl->name;
-            
+
                 if (lbl->is_anon()) {
                     std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
                     auto it = anon_idmap.find(stmt_id);
@@ -108,7 +108,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                         anon_idmap[stmt_id] = anonymous_labels.size() -1;
                         changed = true;
                     }
-                    else { 
+                    else {
                         auto index = it->second;
                         if (anonymous_labels[index].address != pc) {
                             anonymous_labels[index].address = pc;
@@ -119,7 +119,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                 }
                 else {
                     if (lbl->is_local()) {
-                        name = GetMangledSymbol(name, parent_scope); 
+                        name = GetMangledSymbol(name, parent_scope);
                     }
                     else if (!lbl->is_anon()) {
                         parent_scope = name;
@@ -129,7 +129,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                 }
                 break;
             }
-           
+
             case StmtType::Org: {
                // Org
                 auto org = static_cast<const OrgStatement*>(stmt.get());
@@ -147,7 +147,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                 if (equ->value_expr) {
                     auto name = equ->name;
                     if (equ->is_local()) {
-                        name = GetMangledSymbol(name, parent_scope); 
+                        name = GetMangledSymbol(name, parent_scope);
                     }
                     auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
                     if (val.has_value()) {
@@ -239,23 +239,23 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
                         int64_t evaluated = val.value();
                         if (inst->mode == RULE_TYPE::Op_Relative) {
                             int64_t offset = evaluated - (static_cast<int64_t>(pc) + 2);
-                        
+
                             if (offset < -128 || offset > 127) {
                                 // wait for all symbols to resolve first
                                 wait_clean = true;
                             }
-				            // wait passes to resolve first
+                            // wait passes to resolve first
                             if (clean && (offset < -128 || offset > 127)) {
-							     auto target = evaluated;
-							     if (offset > 0) {
-								     target += 3; // add jump island jmp $xxxx
-							     }
-							     std::string skip_label = std::format("@__island{}", ++ island_counter);
+                                 auto target = evaluated;
+                                 if (offset > 0) {
+                                     target += 3; // add jump island jmp $xxxx
+                                 }
+                                 std::string skip_label = std::format("@__island{}", ++ island_counter);
 
                                 auto it = inverted_branches.find(inst->mnemonic);
                                 if (it != inverted_branches.end()) {
-                                    std::cout << 
-                                    "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " << 
+                                    std::cout <<
+                                    "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " <<
                                     "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
 
                                     // 1. Create the JMP statement FIRST by moving the original target expression
@@ -476,17 +476,17 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 load_address_set = true;
             }
 
-			if (binary_output.size() + load_address < pc) {
-				auto bytes = pc - load_address - binary_output.size();
-				std::vector<uint8_t> ds_data(bytes, 0);
-				std::cout << "Warning inserting " << bytes << " bytes.\n";
-				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
-			}
-			else if (binary_output.size() + load_address > pc) {
-				throw std::runtime_error(
-					std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
-				);
-			}
+            if (binary_output.size() + load_address < pc) {
+                auto bytes = pc - load_address - binary_output.size();
+                std::vector<uint8_t> ds_data(bytes, 0);
+                std::cout << "Warning inserting " << bytes << " bytes.\n";
+                binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
+            }
+            else if (binary_output.size() + load_address > pc) {
+                throw std::runtime_error(
+                    std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
+                );
+            }
             binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
             pc += emitted_bytes.size();
         };
@@ -585,7 +585,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     file_last_printed_line[stmt->file] = stmt->line;
                     break;
                 }
- 
+
                 std::string dir_keyword = (data->width == DataWidth::Byte) ? ".byte" : ".word";
                 size_t elems_per_chunk = (data->width == DataWidth::Byte) ? 4 : 2;
                 size_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
@@ -613,14 +613,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
             case StmtType::Ds: {
                 // .ds Directives
-                auto ds = static_cast<const DsStatement*>(stmt.get());
-                auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                if (printstate) {
-                    emit_listing_row(pc, "", ".ds");
-                }
-                else {
-                    file_last_printed_line[stmt->file] = stmt->line;
-                }
+               auto ds = static_cast<const DsStatement*>(stmt.get());
+               auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+               file_last_printed_line[stmt->file] = stmt->line;
                 if (val.has_value()) {
                     pc += static_cast<uint16_t>(val.value());
                 }

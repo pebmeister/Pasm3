@@ -171,7 +171,7 @@ public:
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
-                statements.push_back(std::make_unique<EquStatement>(Tok.file, Tok.line, sym_name, val_expr.release()));
+                statements.push_back(std::make_unique<EquStatement>(Tok.file, Tok.line, sym_name, val_expr.move()));
                 definedSyms.Define(sym_name, 1);
                 continue;
             }
@@ -181,7 +181,7 @@ public:
                 ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
-                statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.release()));
+                statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.move()));
                 continue;
             }
 
@@ -217,7 +217,7 @@ public:
 
                 if (dir == ".org") {
                     auto addr_expr = ParseExpression();
-                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, addr_expr.release()));
+                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, addr_expr.move()));
                 }
                 else if (dir == ".basic_hdr") {
                     auto org_addr = std::make_unique<NumberExpr>(static_cast<uint16_t>(0x0801));
@@ -276,7 +276,7 @@ public:
                         }
                         else {
                             auto expr = ParseExpression();
-                            if (expr.isUsable()) elems.push_back(expr.release());
+                            if (expr.isUsable()) elems.push_back(expr.move());
                         }
                     } while (TokIs(TokenKind::Comma));
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, w, std::move(elems)));
@@ -287,7 +287,7 @@ public:
                     ConsumeToken();
                     auto lenexpr = ParseExpression();
                     ConsumeToken();
-                    statements.push_back(std::make_unique<FillStatement>(dir_tok.file, dir_tok.line, byteexpr.release(), lenexpr.release()));
+                    statements.push_back(std::make_unique<FillStatement>(dir_tok.file, dir_tok.line, byteexpr.move(), lenexpr.move()));
                 }
 
                 else if (dir == ".macro") {
@@ -334,7 +334,7 @@ public:
 
                 else if (dir == ".ds") {
                     auto size_expr = ParseExpression();
-                    statements.push_back(std::make_unique<DsStatement>(Tok.file, Tok.line, size_expr.release()));
+                    statements.push_back(std::make_unique<DsStatement>(Tok.file, Tok.line, size_expr.move()));
                 }
 
                 // Inside ParseProgram() or your directive handler:
@@ -675,7 +675,7 @@ public:
                 }
 
                 statements.push_back(std::make_unique<InstructionStatement>(
-                                         opcode_tok.file, opcode_tok.line, mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.release())
+                                         opcode_tok.file, opcode_tok.line, mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.move())
                                      ));
                 continue;
             }
@@ -703,7 +703,7 @@ private:
             if (rhs.isInvalid()) return ExprResult::Error();
 
             lhs = ExprResult(std::make_unique<BinaryExpr>(
-                                 op_tok.id, lhs.release(), rhs.release()
+                                 op_tok.id, lhs.move(), rhs.move()
                              ));
         }
         return lhs;
@@ -760,7 +760,7 @@ private:
         if (IsUnaryPrefix(Tok.id)) {
             PasmTokenizer::Token op_tok = ConsumeToken();
             ExprResult operand = ParseExpression(50);
-            return ExprResult(std::make_unique<UnaryExpr>(op_tok.id, operand.release()));
+            return ExprResult(std::make_unique<UnaryExpr>(op_tok.id, operand.move()));
         }
 
         return ExprResult::Error();

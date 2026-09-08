@@ -75,7 +75,7 @@ public:
     const ExprNode* get() const {
         return node_.get();
     }
-    std::unique_ptr<ExprNode> release() {
+    std::unique_ptr<ExprNode> move() {
         return std::move(node_);
     }
 };
