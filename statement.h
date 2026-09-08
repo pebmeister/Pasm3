@@ -9,6 +9,8 @@ enum StmtType {
     Fill,
     Instruction,
     Print,
+    While,
+    Wend,
     Unknown
 };
 
@@ -94,3 +96,13 @@ struct PrintStatement : Statement {
     PrintCmd cmd;
     explicit PrintStatement(int file, int line, PrintCmd cmd) : Statement(file, line, StmtType::Print), cmd(std::move(cmd)) {}
 };
+
+struct WhileStatement : Statement {
+    std::unique_ptr<ExprNode> condition_expr;
+    explicit WhileStatement(int file, int line, std::unique_ptr<ExprNode> expr) : Statement(file, line, StmtType::While), condition_expr(std::move(expr)) {}
+};
+
+struct WendStatement : Statement {
+    explicit WendStatement(int file, int line) : Statement(file, line, StmtType::Wend) {}
+};
+

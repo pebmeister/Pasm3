@@ -337,6 +337,15 @@ public:
                     statements.push_back(std::make_unique<DsStatement>(Tok.file, Tok.line, size_expr.move()));
                 }
 
+                else if (dir == ".while") {
+                    auto condition_expr = ParseExpression();
+                    statements.push_back(std::make_unique<WhileStatement>(Tok.file, Tok.line, condition_expr.move()));
+                }
+
+                else if (dir == ".wend") {
+                    statements.push_back(std::make_unique<WendStatement>(Tok.file, Tok.line));
+                }
+
                 // Inside ParseProgram() or your directive handler:
                 else if (dir == ".include" || dir == ".inc") {
                     if (!TokIs(TokenKind::StringLiteral)) {
