@@ -99,6 +99,7 @@ struct PrintStatement : Statement {
 
 struct WhileStatement : Statement {
     std::unique_ptr<ExprNode> condition_expr;
+    std::vector<std::unique_ptr<Statement>> statements;
     explicit WhileStatement(int file, int line, std::unique_ptr<ExprNode> expr) : Statement(file, line, StmtType::While), condition_expr(std::move(expr)) {}
 };
 

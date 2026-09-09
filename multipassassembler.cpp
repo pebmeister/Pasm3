@@ -76,7 +76,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 void printstatements(std::vector<std::unique_ptr<Statement>>& statements) {
     auto i = 0;
     for (auto& stmt: statements) {
-        std::cout << i << " ";
+        std::cout << i++ << " ";
         if (!stmt) std::cout << "nullOpt\n";
         else {
             switch (stmt->stmt_type) {
@@ -100,8 +100,6 @@ void printstatements(std::vector<std::unique_ptr<Statement>>& statements) {
 void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>>& statements, std::vector<std::unique_ptr<Statement>>&new_statements, size_t& st_index, 
     std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) 
 {
-
-    printstatements();
 
     std::unique_ptr<Statement>&stmt = statements[st_index];    
     if (!stmt) {
@@ -231,7 +229,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
         }
 
         case StmtType::While: {
-            auto while_statement = static_cast<const WhileStatement*>(stmt.get());
+            auto while_statement = static_cast<WhileStatement*>(stmt.get());
             if (!while_statement->condition_expr) {
                 throw std::runtime_error(
                     std::format("while expression must be predefined at ${:04X} File: {} Line: {}", 
@@ -243,19 +241,25 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             // Move the WHILE statement itself into the pass pipeline if needed, or consume it
             new_statements.push_back(std::move(stmt));
 
-            size_t loopstart = st_index;
-            int iteration_count = 0;
 
+            size_t loopstart = st_index + 1;
+            if (while_statement->statements.size() == 0) {
+                for (auto idx = loopstart; idx < statements.size(); ++idx) {
+                    if (!statements[idx]) continue;
+                    if (statements[idx]->stmt_type == StmtType::Wend) break;                    
+                    while_statement->statements.push_back(std::move(statements[idx]));
+                }
+            }
+
+            std::vector<std::unique_ptr<Statement>> new_whilestatements;
+
+            int iteration_count = 0;
             while (condition.has_value() && condition.value() > 0 && iteration_count < 3) {
-                size_t inner_index = loopstart;
+                size_t inner_index = 0;
                 
-                while (inner_index < statements.size()) {
-                    if (statements[inner_index] && statements[inner_index]->stmt_type == StmtType::Wend) {
-                        break;
-                    }
-                    
+                while (inner_index < while_statement->statements.size()) {                    
                     // Execute the pass on loop body statements
-                    ProcessStatement(statements, new_statements, inner_index, anonymous_labels, src_mgr);
+                    ProcessStatement(while_statement->statements, new_whilestatements, inner_index, anonymous_labels, src_mgr);
                 }                
                 
                 iteration_count++;
@@ -267,8 +271,10 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                     pc, src_mgr.GetFileName(while_statement->file), while_statement->line));
                 }   
             }
+            while_statement->statements = std::move(new_whilestatements);
 
             // Advance st_index past the matching WEND statement for the main pass drive
+            st_index = loopstart;
             while (st_index < statements.size() && statements[st_index] && statements[st_index]->stmt_type != StmtType::Wend) {
                 ++st_index;
             }
@@ -428,9 +434,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
 bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
   
-    printstatements(statements);
-
-
     changed = false;
     std::vector<std::unique_ptr<Statement>> new_statements;
     new_statements.reserve(statements.size());
