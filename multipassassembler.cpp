@@ -230,56 +230,64 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::While: {
             auto while_statement = static_cast<WhileStatement*>(stmt.get());
+
             if (!while_statement->condition_expr) {
                 throw std::runtime_error(
                     std::format("while expression must be predefined at ${:04X} File: {} Line: {}", 
                                 pc, src_mgr.GetFileName(while_statement->file), while_statement->line));
             }
 
-            auto condition = EvaluateExpr(while_statement->condition_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-            
-            // Move the WHILE statement itself into the pass pipeline if needed, or consume it
-            new_statements.push_back(std::move(stmt));
-
-
-            size_t loopstart = st_index + 1;
-            if (while_statement->statements.size() == 0) {
-                for (auto idx = loopstart; idx < statements.size(); ++idx) {
-                    if (!statements[idx]) continue;
-                    if (statements[idx]->stmt_type == StmtType::Wend) break;                    
-                    while_statement->statements.push_back(std::move(statements[idx]));
+            // 1. Capture original loop body template ONCE into a clean body vector
+            if (while_statement->statements.empty()) {
+                size_t scan_idx = st_index + 1;
+                while (scan_idx < statements.size() && statements[scan_idx] && statements[scan_idx]->stmt_type != StmtType::Wend) {
+                    while_statement->statements.push_back(statements[scan_idx]->clone());
+                    scan_idx++;
                 }
             }
 
-            std::vector<std::unique_ptr<Statement>> new_whilestatements;
-
+            // 2. Unroll loop iterations into new_statements for THIS pass
             int iteration_count = 0;
-            while (condition.has_value() && condition.value() > 0 && iteration_count < 3) {
-                size_t inner_index = 0;
-                
-                while (inner_index < while_statement->statements.size()) {                    
-                    // Execute the pass on loop body statements
-                    ProcessStatement(while_statement->statements, new_whilestatements, inner_index, anonymous_labels, src_mgr);
-                }                
-                
-                iteration_count++;
-                condition = EvaluateExpr(while_statement->condition_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                
+            const int MAX_ITERATIONS = 3; // Infinite loop safeguard
+
+            while (iteration_count < MAX_ITERATIONS) {
+                auto condition = EvaluateExpr(while_statement->condition_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+
                 if (!condition.has_value()) {
                     throw std::runtime_error(
-                        std::format("while expression must be predefined at ${:04X} File: {} Line: {}", 
+                        std::format("while expression could not be evaluated at ${:04X} File: {} Line: {}", 
                                     pc, src_mgr.GetFileName(while_statement->file), while_statement->line));
-                }   
-            }
-            while_statement->statements = std::move(new_whilestatements);
+                }
 
-            // Advance st_index past the matching WEND statement for the main pass drive
-            st_index = loopstart;
+                // If condition evaluates to 0 or negative, stop looping
+                if (condition.value() <= 0) {
+                    break; 
+                }
+
+                // Create a FRESH clone of the template body for this iteration
+                std::vector<std::unique_ptr<Statement>> iteration_body;
+                for (const auto& body_stmt : while_statement->statements) {
+                    if (body_stmt) {
+                        iteration_body.push_back(body_stmt->clone());
+                    }
+                }
+
+                // Process this iteration's statements directly into new_statements
+                size_t inner_index = 0;
+                while (inner_index < iteration_body.size()) {
+                    ProcessStatement(iteration_body, new_statements, inner_index, anonymous_labels, src_mgr);
+                }
+
+                iteration_count++;
+            }
+
+            // 3. Advance driver index past the matching WEND statement
             while (st_index < statements.size() && statements[st_index] && statements[st_index]->stmt_type != StmtType::Wend) {
                 ++st_index;
             }
             break;
         }
+
 
         case StmtType::Instruction: {
             // Instruction
