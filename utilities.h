@@ -19,7 +19,3 @@ std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
     const PasmTokenizer& tokenizer
 );
 std::optional<int> FindAnonLabel(const std::vector<AnonymousLabel>& anonymous_labels,  bool forward, int count, uint16_t pc);
-
-
-
-

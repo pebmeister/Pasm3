@@ -30,8 +30,18 @@ private:
     size_t max_passes = 10;
 	int island_counter = 0;
 
+    // Inversion lookup table for 6502 branches
+    const std::unordered_map<std::string, std::string> inverted_branches = {
+        {"bne", "beq"}, {"beq", "bne"},
+        {"bcc", "bcs"}, {"bcs", "bcc"},
+        {"bvc", "bvs"}, {"bvs", "bvc"},
+        {"bmi", "bpl"}, {"bpl", "bmi"}
+    };
+
+
 public:
     uint16_t load_address = 0;
+    uint16_t pc = 0;
     std::vector<uint8_t> binary_output;
     std::string listing_file;
 
@@ -39,6 +49,8 @@ public:
     void Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr);
     
 private:
+    void ProcessStatement(std::vector<std::unique_ptr<Statement>>& statements, std::vector<std::unique_ptr<Statement>>&new_statements, size_t& st_index, 
+            std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr);
     bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr);
     void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr);
 };

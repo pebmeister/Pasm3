@@ -1,5 +1,12 @@
 #pragma once
 
+#include <memory>
+#include <string>
+#include <vector>
+#include <optional>
+#include <utility>
+#include <cstdint>
+
 #include "tokenkind.h"
 #include "getmangledsymbol.h"
 #include "findanonlabel.h"
@@ -17,22 +24,37 @@ struct ExprNode {
     ExprType expr_type = ExprType::UnknownExpr;
     explicit ExprNode(ExprType expr_type) : expr_type(expr_type) {}
     virtual ~ExprNode() = default;
+
+    // Pure virtual clone method
+    virtual std::unique_ptr<ExprNode> clone() const = 0;
 };
 
 struct NumberExpr : ExprNode {
     int64_t value;
-    explicit NumberExpr(int64_t val) : ExprNode(ExprType::Number), value(val){}
+    explicit NumberExpr(int64_t val) : ExprNode(ExprType::Number), value(val) {}
+
+    std::unique_ptr<ExprNode> clone() const override {
+        return std::make_unique<NumberExpr>(value);
+    }
 };
 
 struct SymbolExpr : ExprNode {
     std::string name;
-    explicit SymbolExpr(std::string n) : ExprNode(ExprType::Symbol), name(std::move(n)){}
+    explicit SymbolExpr(std::string n) : ExprNode(ExprType::Symbol), name(std::move(n)) {}
+
+    std::unique_ptr<ExprNode> clone() const override {
+        return std::make_unique<SymbolExpr>(name);
+    }
 };
 
 struct AnonLblExpr : ExprNode {
     bool forward;
     int count;
     explicit AnonLblExpr(bool f, int c) : ExprNode(ExprType::AnonLbl), forward(f), count(c) {}
+
+    std::unique_ptr<ExprNode> clone() const override {
+        return std::make_unique<AnonLblExpr>(forward, count);
+    }
 };
 
 struct UnaryExpr : ExprNode {
@@ -41,6 +63,10 @@ struct UnaryExpr : ExprNode {
     
     UnaryExpr(int op, std::unique_ptr<ExprNode> rhs)
         : ExprNode(ExprType::Unary), op(op), operand(std::move(rhs)) {}
+
+    std::unique_ptr<ExprNode> clone() const override {
+        return std::make_unique<UnaryExpr>(op, operand ? operand->clone() : nullptr);
+    }
 };
 
 struct BinaryExpr : ExprNode {
@@ -49,7 +75,15 @@ struct BinaryExpr : ExprNode {
     std::unique_ptr<ExprNode> rhs;
     
     BinaryExpr(int op, std::unique_ptr<ExprNode> l, std::unique_ptr<ExprNode> r)
-        : ExprNode(ExprType::Binary), op(op), lhs(std::move(l)), rhs(std::move(r)){}
+        : ExprNode(ExprType::Binary), op(op), lhs(std::move(l)), rhs(std::move(r)) {}
+
+    std::unique_ptr<ExprNode> clone() const override {
+        return std::make_unique<BinaryExpr>(
+            op, 
+            lhs ? lhs->clone() : nullptr, 
+            rhs ? rhs->clone() : nullptr
+        );
+    }
 };
 
 class ExprResult {
@@ -75,7 +109,7 @@ public:
     const ExprNode* get() const {
         return node_.get();
     }
-    std::unique_ptr<ExprNode> release() {
+    std::unique_ptr<ExprNode> move() {
         return std::move(node_);
     }
 };
@@ -173,5 +207,3 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
     }
     return std::nullopt;
 }
-
-

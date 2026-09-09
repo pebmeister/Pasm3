@@ -41,14 +41,14 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     pass = 1;
     changed = true;
     clean = false;
-	island_counter = 0;
+    island_counter = 0;
 
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
     for (auto&sym : options.traced_symbols) {
         symbols_.Trace(sym);
     }
-    for (auto&[sym, val] : options.defined_symbols) {        
+    for (auto&[sym, val] : options.defined_symbols) {
         changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
     }
 
@@ -73,289 +73,385 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     EmitFinalPass(statements, anonymous_labels, src_mgr);
 }
 
+void printstatements(std::vector<std::unique_ptr<Statement>>& statements) {
+    auto i = 0;
+    for (auto& stmt: statements) {
+        std::cout << i++ << " ";
+        if (!stmt) std::cout << "nullOpt\n";
+        else {
+            switch (stmt->stmt_type) {
+                case Label: std::cout << "Label\n"; break;
+                case Org: std::cout << "Org\n"; break;
+                case Equ: std::cout << "Equ\n"; break;
+                case Ds: std::cout << "Ds\n"; break;
+                case Data: std::cout << "Data\n"; break;
+                case Fill: std::cout << "Fill\n"; break;
+                case Instruction: std::cout << "Instruction\n"; break;
+                case Print: std::cout << "Print\n"; break;
+                case While: std::cout << "While\n"; break;
+                case Wend: std::cout << "Wend\n"; break;
+                case Unknown: std::cout << "Unknown\n"; break; 
+
+            }
+        }                        
+    }
+}
+
+void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>>& statements, std::vector<std::unique_ptr<Statement>>&new_statements, size_t& st_index, 
+    std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) 
+{
+
+    std::unique_ptr<Statement>&stmt = statements[st_index];    
+    if (!stmt) {
+        st_index++; 
+        return; 
+    }
+
+    switch(stmt->stmt_type) {
+        case StmtType::Label : {
+            // Label
+            auto lbl = static_cast<const LabelStatement*>(stmt.get());
+            auto name = lbl->name;
+
+            if (lbl->is_anon()) {
+                std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
+                auto it = anon_idmap.find(stmt_id);
+                if (it == anon_idmap.end()) {
+                    anonymous_labels.push_back({
+                        .type = name[0],
+                        .address = pc,
+                        .statement_id = stmt_id
+                    });
+                    anon_idmap[stmt_id] = anonymous_labels.size() -1;
+                    changed = true;
+                }
+                else {
+                    auto index = it->second;
+                    if (anonymous_labels[index].address != pc) {
+                        anonymous_labels[index].address = pc;
+                        changed = true;
+                    }
+                }
+                new_statements.push_back(std::move(stmt));
+            }
+            else {
+                if (lbl->is_local()) {
+                    name = GetMangledSymbol(name, parent_scope);
+                }
+                else if (!lbl->is_anon()) {
+                    parent_scope = name;
+                }
+                changed |= symbols_.Define(name, pc);
+                new_statements.push_back(std::move(stmt));
+            }
+            break;
+        }
+
+        case StmtType::Org: {
+           // Org
+            auto org = static_cast<const OrgStatement*>(stmt.get());
+            if (org->address_expr) {
+                auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                if (val.has_value()) pc = static_cast<uint16_t>(val.value());
+            }
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+
+        case StmtType::Equ: {
+            // Equ
+            auto equ = static_cast<const EquStatement*>(stmt.get());
+            if (equ->value_expr) {
+                auto name = equ->name;
+                if (equ->is_local()) {
+                    name = GetMangledSymbol(name, parent_scope);
+                }
+                auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                if (val.has_value()) {
+                    changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()));
+                }
+            }
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+
+        case StmtType::Ds: {
+            // Ds
+            auto ds = static_cast<const DsStatement*>(stmt.get());
+            if (ds->size_expr) {
+                auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                if (val.has_value()) {
+                    pc += val.value();
+                }
+            }
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+
+        case StmtType::Data: {
+            // Data
+            auto data = static_cast<const DataStatement*>(stmt.get());
+            uint16_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
+            pc += static_cast<uint16_t>(data->elements.size() * bytes_per_elem);
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+
+        case StmtType::Fill: {
+            // Fill
+            // Transform FillStatement -> DataStatement
+            auto fill = static_cast<const FillStatement*>(stmt.get());
+            if (fill->byte_expr && fill->length_expr) {
+                auto byt = EvaluateExpr(fill->byte_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                auto len = EvaluateExpr(fill->length_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+
+                if (byt.has_value() && len.has_value()) {
+                    std::vector<std::unique_ptr<ExprNode>> elems;
+                    auto b = byt.value();
+
+                    for (auto i = 0; i < len.value(); ++i) {
+                        elems.push_back( std::make_unique<NumberExpr>(static_cast<uint8_t>(b)));
+                    }
+
+                    // Create DataStatement preserving line & source string metadata
+                    auto data_stmt = std::make_unique<DataStatement>(
+                        fill->file, fill->line, DataWidth::Byte, std::move(elems)
+                    );
+                    pc += static_cast<uint16_t>(elems.size());
+                    new_statements.push_back(std::move(data_stmt));
+                }
+                else {
+                    // Keep FillStatement for next pass if expressions couldn't resolve yet
+                    new_statements.push_back(std::move(stmt));
+                }
+            }
+            break;
+        }
+
+        case StmtType::While: {
+            auto while_statement = static_cast<WhileStatement*>(stmt.get());
+
+            if (!while_statement->condition_expr) {
+                throw std::runtime_error(
+                    std::format("while expression must be predefined at ${:04X} File: {} Line: {}", 
+                                pc, src_mgr.GetFileName(while_statement->file), while_statement->line));
+            }
+
+            // 1. Capture original loop body template ONCE into a clean body vector
+            if (while_statement->statements.empty()) {
+                size_t scan_idx = st_index + 1;
+                while (scan_idx < statements.size() && statements[scan_idx] && statements[scan_idx]->stmt_type != StmtType::Wend) {
+                    while_statement->statements.push_back(statements[scan_idx]->clone());
+                    scan_idx++;
+                }
+            }
+
+            // 2. Unroll loop iterations into new_statements for THIS pass
+            int iteration_count = 0;
+            const int MAX_ITERATIONS = 3; // Infinite loop safeguard
+
+            while (iteration_count < MAX_ITERATIONS) {
+                auto condition = EvaluateExpr(while_statement->condition_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+
+                if (!condition.has_value()) {
+                    throw std::runtime_error(
+                        std::format("while expression could not be evaluated at ${:04X} File: {} Line: {}", 
+                                    pc, src_mgr.GetFileName(while_statement->file), while_statement->line));
+                }
+
+                // If condition evaluates to 0 or negative, stop looping
+                if (condition.value() <= 0) {
+                    break; 
+                }
+
+                // Create a FRESH clone of the template body for this iteration
+                std::vector<std::unique_ptr<Statement>> iteration_body;
+                for (const auto& body_stmt : while_statement->statements) {
+                    if (body_stmt) {
+                        iteration_body.push_back(body_stmt->clone());
+                    }
+                }
+
+                // Process this iteration's statements directly into new_statements
+                size_t inner_index = 0;
+                while (inner_index < iteration_body.size()) {
+                    ProcessStatement(iteration_body, new_statements, inner_index, anonymous_labels, src_mgr);
+                }
+
+                iteration_count++;
+            }
+
+            // 3. Advance driver index past the matching WEND statement
+            while (st_index < statements.size() && statements[st_index] && statements[st_index]->stmt_type != StmtType::Wend) {
+                ++st_index;
+            }
+            break;
+        }
+
+
+        case StmtType::Instruction: {
+            // Instruction
+            auto inst = static_cast<InstructionStatement*>(stmt.get());
+            const OpCodeInfo* info = FindOpCodeInfo(inst->mnemonic);
+            if (!info) {
+                throw std::runtime_error(
+                std::format("Unknown opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
+            }
+
+            auto mode_it = info->mode_to_opcode.find(inst->mode);
+            if (mode_it == info->mode_to_opcode.end()) {
+                if (inst->mode == RULE_TYPE::Op_Implied) {
+                    mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
+                    if (mode_it == info->mode_to_opcode.end()) {
+                        throw std::runtime_error(
+                            std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
+                        }
+                    }
+                    else {
+                        throw std::runtime_error(
+                        std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
+                    }
+                }
+                auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
+                if (val.has_value()) {
+                    int64_t evaluated = val.value();
+                    if (inst->mode == RULE_TYPE::Op_Relative) {
+                        int64_t offset = evaluated - (static_cast<int64_t>(pc) + 2);
+
+                        if (offset < -128 || offset > 127) {
+                            // wait for all symbols to resolve first
+                            wait_clean = true;
+                        }
+                        // wait passes to resolve first
+                        if (clean && (offset < -128 || offset > 127)) {
+                             auto target = evaluated;
+                             if (offset > 0) {
+                                 target += 3; // add jump island jmp $xxxx
+                             }
+                             std::string skip_label = std::format("@__island{}", ++ island_counter);
+
+                            auto it = inverted_branches.find(inst->mnemonic);
+                            if (it != inverted_branches.end()) {
+                                std::cout <<
+                                "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " <<
+                                "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
+
+                                // 1. Create the JMP statement FIRST by moving the original target expression
+                                auto jmp_inst = std::make_unique<InstructionStatement>(
+                                    stmt->file,
+                                    stmt->line,
+                                    "jmp",
+                                    RULE_TYPE::Op_Absolute,
+                                    std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
+                                );
+
+                                // 2. create inverted branch
+                                auto branch_inst = std::make_unique<InstructionStatement>(
+                                    stmt->file,
+                                    stmt->line,
+                                    it->second,
+                                    RULE_TYPE::Op_Relative,
+                                    std::make_unique<SymbolExpr>(skip_label)
+                                );
+
+                                // 3. create the target label
+                                auto label_inst = std::make_unique<LabelStatement>(
+                                    stmt->file,
+                                    stmt->line,
+                                    skip_label
+                                );
+
+                                // 4. adjust the pc
+                                pc += GetInstructionSize(RULE_TYPE::Op_Relative);
+                                pc += GetInstructionSize(RULE_TYPE::Op_Absolute);
+
+                                // 5. Push the new branch first, followed immediately by the new JMP and label
+                                new_statements.push_back(std::move(branch_inst));
+                                new_statements.push_back(std::move(jmp_inst));
+                                new_statements.push_back(std::move(label_inst));
+
+                                break;
+                            }
+                        }
+                    }
+                    else { // range check and optimize for page zero
+                        if (!options.ignore_size && ((evaluated < 0 || evaluated > 0xFFFF))) {
+                            throw std::runtime_error(
+                                std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst->mnemonic, pc,  src_mgr.GetFileName(inst->file), inst->line)
+                            );
+                        }
+                        RULE_TYPE want_mode = inst->mode;
+                        if (evaluated <= 0xFF) {
+                            if (inst->mode == Op_Absolute) want_mode = Op_ZeroPage;
+                            else if (inst->mode == Op_AbsoluteX) want_mode = Op_ZeroPageX;
+                            else if (inst->mode == Op_AbsoluteY) want_mode = Op_ZeroPageY;
+
+                            if (want_mode != inst->mode) {
+                                mode_it = info->mode_to_opcode.find(want_mode);
+                                if (mode_it != info->mode_to_opcode.end()) {
+                                    inst->mode = want_mode;
+                                }
+                            }
+                        }
+                        else {
+                            if (inst->mode == Op_ZeroPage) want_mode = Op_Absolute;
+                            else if (inst->mode == Op_ZeroPageX) want_mode = Op_AbsoluteX;
+                            else if (inst->mode == Op_ZeroPageY) want_mode = Op_AbsoluteY;
+
+                            if (want_mode != inst->mode) {
+                                mode_it = info->mode_to_opcode.find(want_mode);
+                                if (mode_it != info->mode_to_opcode.end()) {
+                                    inst->mode = want_mode;
+                                }
+                                else {
+                                    throw std::runtime_error(
+                                        std::format("Operand out of range for '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line)
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            pc += GetInstructionSize(inst->mode);
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+
+        case StmtType::Wend: {
+            // Print
+            break;
+        }
+
+        case StmtType::Print: {
+            // Print
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+
+        default: {
+            throw std::runtime_error(
+                std::format("Unknown statement at ${:04X}  File: {} Line: {}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
+            );
+            // never going to get here. Place holder If we want warning instead of error
+            // new_statements.push_back(std::move(stmt));
+            break;
+        }
+    }
+    st_index++;
+}
+
 bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
-    uint16_t pc = start_pc_;
+  
     changed = false;
     std::vector<std::unique_ptr<Statement>> new_statements;
     new_statements.reserve(statements.size());
 
-    // Inversion lookup table for 6502 branches
-    static const std::unordered_map<std::string, std::string> inverted_branches = {
-        {"bne", "beq"}, {"beq", "bne"},
-        {"bcc", "bcs"}, {"bcs", "bcc"},
-        {"bvc", "bvs"}, {"bvs", "bvc"},
-        {"bmi", "bpl"}, {"bpl", "bmi"}
-    };
+    pc = start_pc_;
 
-    for (auto& stmt : statements) {
-        if (!stmt) continue;
-
-        switch(stmt->stmt_type) {
-            case StmtType::Label : {
-                // Label
-                auto lbl = static_cast<const LabelStatement*>(stmt.get());
-                auto name = lbl->name;
-            
-                if (lbl->is_anon()) {
-                    std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
-                    auto it = anon_idmap.find(stmt_id);
-                    if (it == anon_idmap.end()) {
-                        anonymous_labels.push_back({
-                            .type = name[0],
-                            .address = pc,
-                            .statement_id = stmt_id
-                        });
-                        anon_idmap[stmt_id] = anonymous_labels.size() -1;
-                        changed = true;
-                    }
-                    else { 
-                        auto index = it->second;
-                        if (anonymous_labels[index].address != pc) {
-                            anonymous_labels[index].address = pc;
-                            changed = true;
-                        }
-                    }
-                    new_statements.push_back(std::move(stmt));
-                }
-                else {
-                    if (lbl->is_local()) {
-                        name = GetMangledSymbol(name, parent_scope); 
-                    }
-                    else if (!lbl->is_anon()) {
-                        parent_scope = name;
-                    }
-                    changed |= symbols_.Define(name, pc);
-                    new_statements.push_back(std::move(stmt));
-                }
-                break;
-            }
-           
-            case StmtType::Org: {
-               // Org
-                auto org = static_cast<const OrgStatement*>(stmt.get());
-                if (org->address_expr) {
-                    auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                    if (val.has_value()) pc = static_cast<uint16_t>(val.value());
-                }
-                new_statements.push_back(std::move(stmt));
-                break;
-            }
-
-            case StmtType::Equ: {
-                // Equ
-                auto equ = static_cast<const EquStatement*>(stmt.get());
-                if (equ->value_expr) {
-                    auto name = equ->name;
-                    if (equ->is_local()) {
-                        name = GetMangledSymbol(name, parent_scope); 
-                    }
-                    auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                    if (val.has_value()) {
-                        changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()));
-                    }
-                }
-                new_statements.push_back(std::move(stmt));
-                break;
-            }
-
-            case StmtType::Ds: {
-                // Ds
-                auto ds = static_cast<const DsStatement*>(stmt.get());
-                if (ds->size_expr) {
-                    auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                    if (val.has_value()) {
-                        pc += val.value();
-                    }
-                }
-                new_statements.push_back(std::move(stmt));
-                break;
-            }
-
-            case StmtType::Data: {
-                // Data
-                auto data = static_cast<const DataStatement*>(stmt.get());
-                uint16_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
-                pc += static_cast<uint16_t>(data->elements.size() * bytes_per_elem);
-                new_statements.push_back(std::move(stmt));
-                break;
-            }
-
-            case StmtType::Fill: {
-                // Fill
-                // Transform FillStatement -> DataStatement
-                auto fill = static_cast<const FillStatement*>(stmt.get());
-                if (fill->byte_expr && fill->length_expr) {
-                    auto byt = EvaluateExpr(fill->byte_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                    auto len = EvaluateExpr(fill->length_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-
-                    if (byt.has_value() && len.has_value()) {
-                        std::vector<std::unique_ptr<ExprNode>> elems;
-                        auto b = byt.value();
-
-                        for (auto i = 0; i < len.value(); ++i) {
-                            elems.push_back( std::make_unique<NumberExpr>(static_cast<uint8_t>(b)));
-                        }
-
-                        // Create DataStatement preserving line & source string metadata
-                        auto data_stmt = std::make_unique<DataStatement>(
-                            fill->file, fill->line, DataWidth::Byte, std::move(elems)
-                        );
-                        pc += static_cast<uint16_t>(elems.size());
-                        new_statements.push_back(std::move(data_stmt));
-                    }
-                    else {
-                        // Keep FillStatement for next pass if expressions couldn't resolve yet
-                        new_statements.push_back(std::move(stmt));
-                    }
-                }
-                break;
-            }
-
-            case StmtType::Instruction: {
-                // Instruction
-                auto inst = static_cast<InstructionStatement*>(stmt.get());
-                const OpCodeInfo* info = FindOpCodeInfo(inst->mnemonic);
-                if (!info) {
-                    throw std::runtime_error(
-                    std::format("Unknown opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
-                }
-
-                auto mode_it = info->mode_to_opcode.find(inst->mode);
-                if (mode_it == info->mode_to_opcode.end()) {
-                    if (inst->mode == RULE_TYPE::Op_Implied) {
-                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
-                        if (mode_it == info->mode_to_opcode.end()) {
-                            throw std::runtime_error(
-                                std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
-                            }
-                        }
-                        else {
-                            throw std::runtime_error(
-                            std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
-                        }
-                    }
-                    auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
-                    if (val.has_value()) {
-                        int64_t evaluated = val.value();
-                        if (inst->mode == RULE_TYPE::Op_Relative) {
-                            int64_t offset = evaluated - (static_cast<int64_t>(pc) + 2);
-                        
-                            if (offset < -128 || offset > 127) {
-                                // wait for all symbols to resolve first
-                                wait_clean = true;
-                            }
-				            // wait passes to resolve first
-                            if (clean && (offset < -128 || offset > 127)) {
-							     auto target = evaluated;
-							     if (offset > 0) {
-								     target += 3; // add jump island jmp $xxxx
-							     }
-							     std::string skip_label = std::format("@__island{}", ++ island_counter);
-
-                                auto it = inverted_branches.find(inst->mnemonic);
-                                if (it != inverted_branches.end()) {
-                                    std::cout << 
-                                    "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " << 
-                                    "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
-
-                                    // 1. Create the JMP statement FIRST by moving the original target expression
-                                    auto jmp_inst = std::make_unique<InstructionStatement>(
-                                        stmt->file,
-                                        stmt->line,
-                                        "jmp",
-                                        RULE_TYPE::Op_Absolute,
-                                        std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
-                                    );
-
-                                    // 2. create inverted branch
-                                    auto branch_inst = std::make_unique<InstructionStatement>(
-                                        stmt->file,
-                                        stmt->line,
-                                        it->second,
-                                        RULE_TYPE::Op_Relative,
-                                        std::make_unique<SymbolExpr>(skip_label)
-                                    );
-
-                                    // 3. create the target label
-                                    auto label_inst = std::make_unique<LabelStatement>(
-                                        stmt->file,
-                                        stmt->line,
-                                        skip_label
-                                    );
-
-                                    // 4. adjust the pc
-                                    pc += GetInstructionSize(RULE_TYPE::Op_Relative);
-                                    pc += GetInstructionSize(RULE_TYPE::Op_Absolute);
-
-                                    // 5. Push the new branch first, followed immediately by the new JMP and label
-                                    new_statements.push_back(std::move(branch_inst));
-                                    new_statements.push_back(std::move(jmp_inst));
-                                    new_statements.push_back(std::move(label_inst));
-
-                                    break;
-                                }
-                            }
-                        }
-                        else { // range check and optimize for page zero
-                            if (!options.ignore_size && ((evaluated < 0 || evaluated > 0xFFFF))) {
-                                throw std::runtime_error(
-                                    std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst->mnemonic, pc,  src_mgr.GetFileName(inst->file), inst->line)
-                                );
-                            }
-                            RULE_TYPE want_mode = inst->mode;
-                            if (evaluated <= 0xFF) {
-                                if (inst->mode == Op_Absolute) want_mode = Op_ZeroPage;
-                                else if (inst->mode == Op_AbsoluteX) want_mode = Op_ZeroPageX;
-                                else if (inst->mode == Op_AbsoluteY) want_mode = Op_ZeroPageY;
-
-                                if (want_mode != inst->mode) {
-                                    mode_it = info->mode_to_opcode.find(want_mode);
-                                    if (mode_it != info->mode_to_opcode.end()) {
-                                        inst->mode = want_mode;
-                                    }
-                                }
-                            }
-                            else {
-                                if (inst->mode == Op_ZeroPage) want_mode = Op_Absolute;
-                                else if (inst->mode == Op_ZeroPageX) want_mode = Op_AbsoluteX;
-                                else if (inst->mode == Op_ZeroPageY) want_mode = Op_AbsoluteY;
-
-                                if (want_mode != inst->mode) {
-                                    mode_it = info->mode_to_opcode.find(want_mode);
-                                    if (mode_it != info->mode_to_opcode.end()) {
-                                        inst->mode = want_mode;
-                                    }
-                                    else {
-                                        throw std::runtime_error(
-                                            std::format("Operand out of range for '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line)
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-                pc += GetInstructionSize(inst->mode);
-                new_statements.push_back(std::move(stmt));
-                break;
-            }
-
-            case StmtType::Print: {
-                // Print
-                new_statements.push_back(std::move(stmt));
-                break;
-            }
-
-            default: {
-                throw std::runtime_error(
-                    std::format("Unknown statement at ${:04X}  File: {} Line: {}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
-                );
-                // never going to get here. Place holder If we want warning instead of error
-                // new_statements.push_back(std::move(stmt));
-                break;
-            }
-        }
+    size_t st_index = 0;
+    while (st_index < statements.size()) {
+        ProcessStatement(statements, new_statements, st_index, anonymous_labels, src_mgr);
     }
-
     statements = std::move(new_statements);
     return changed;
 }
@@ -396,7 +492,7 @@ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
 
 void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
 
-    uint16_t pc = start_pc_;
+    pc = start_pc_;
     std::ostringstream listing;
 
     listing << "\n========================================================================================================================\n";
@@ -476,17 +572,17 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 load_address_set = true;
             }
 
-			if (binary_output.size() + load_address < pc) {
-				auto bytes = pc - load_address - binary_output.size();
-				std::vector<uint8_t> ds_data(bytes, 0);
-				std::cout << "Warning inserting " << bytes << " bytes.\n";
-				binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
-			}
-			else if (binary_output.size() + load_address > pc) {
-				throw std::runtime_error(
-					std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
-				);
-			}
+            if (binary_output.size() + load_address < pc) {
+                auto bytes = pc - load_address - binary_output.size();
+                std::vector<uint8_t> ds_data(bytes, 0);
+                std::cout << "Warning inserting " << bytes << " bytes.\n";
+                binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
+            }
+            else if (binary_output.size() + load_address > pc) {
+                throw std::runtime_error(
+                    std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
+                );
+            }
             binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
             pc += emitted_bytes.size();
         };
@@ -585,7 +681,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     file_last_printed_line[stmt->file] = stmt->line;
                     break;
                 }
- 
+
                 std::string dir_keyword = (data->width == DataWidth::Byte) ? ".byte" : ".word";
                 size_t elems_per_chunk = (data->width == DataWidth::Byte) ? 4 : 2;
                 size_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
@@ -611,16 +707,17 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 break;
             }
 
+
+            case StmtType::While: {
+                // file_last_printed_line[stmt->file] = stmt->line;    
+                break;
+            }
+            
             case StmtType::Ds: {
                 // .ds Directives
-                auto ds = static_cast<const DsStatement*>(stmt.get());
-                auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                if (printstate) {
-                    emit_listing_row(pc, "", ".ds");
-                }
-                else {
-                    file_last_printed_line[stmt->file] = stmt->line;
-                }
+               auto ds = static_cast<const DsStatement*>(stmt.get());
+               auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+               file_last_printed_line[stmt->file] = stmt->line;
                 if (val.has_value()) {
                     pc += static_cast<uint16_t>(val.value());
                 }
