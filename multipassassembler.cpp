@@ -69,6 +69,8 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +" passes.");
     }
 
+
+
     parent_scope="GLOBAL_";
     EmitFinalPass(statements, anonymous_labels, src_mgr);
 }
@@ -90,6 +92,7 @@ void printstatements(std::vector<std::unique_ptr<Statement>>& statements) {
                 case Print: std::cout << "Print\n"; break;
                 case While: std::cout << "While\n"; break;
                 case Wend: std::cout << "Wend\n"; break;
+                case Var: std::cout << "Var\n"; break;
                 case Unknown: std::cout << "Unknown\n"; break; 
 
             }
@@ -151,13 +154,26 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
            // Org
             auto org = static_cast<const OrgStatement*>(stmt.get());
             if (org->address_expr) {
-                auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val.has_value()) pc = static_cast<uint16_t>(val.value());
             }
             new_statements.push_back(std::move(stmt));
             break;
         }
 
+        case StmtType::Var: {
+            // Var
+            auto var_stmt = static_cast<const VarStatement*>(stmt.get());            
+            for (const auto& [name, expr]: var_stmt->vars) {
+                auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (val.has_value()) {
+                    vars_.Define(name, val.value());
+                }
+            }
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+        
         case StmtType::Equ: {
             // Equ
             auto equ = static_cast<const EquStatement*>(stmt.get());
@@ -166,7 +182,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 if (equ->is_local()) {
                     name = GetMangledSymbol(name, parent_scope);
                 }
-                auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val.has_value()) {
                     changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()));
                 }
@@ -179,7 +195,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             // Ds
             auto ds = static_cast<const DsStatement*>(stmt.get());
             if (ds->size_expr) {
-                auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val.has_value()) {
                     pc += val.value();
                 }
@@ -202,8 +218,8 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             // Transform FillStatement -> DataStatement
             auto fill = static_cast<const FillStatement*>(stmt.get());
             if (fill->byte_expr && fill->length_expr) {
-                auto byt = EvaluateExpr(fill->byte_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
-                auto len = EvaluateExpr(fill->length_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                auto byt = EvaluateExpr(fill->byte_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                auto len = EvaluateExpr(fill->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
                 if (byt.has_value() && len.has_value()) {
                     std::vector<std::unique_ptr<ExprNode>> elems;
@@ -227,7 +243,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             }
             break;
         }
-
+        
         case StmtType::While: {
             auto while_statement = static_cast<WhileStatement*>(stmt.get());
 
@@ -251,7 +267,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             const int MAX_ITERATIONS = 3; // Infinite loop safeguard
 
             while (iteration_count < MAX_ITERATIONS) {
-                auto condition = EvaluateExpr(while_statement->condition_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                auto condition = EvaluateExpr(while_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
                 if (!condition.has_value()) {
                     throw std::runtime_error(
@@ -312,7 +328,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                         std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
                     }
                 }
-                auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
+                auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val.has_value()) {
                     int64_t evaluated = val.value();
                     if (inst->mode == RULE_TYPE::Op_Relative) {
@@ -491,6 +507,7 @@ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
 }
 
 void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
+    std::cout << "Emit output\n";
 
     pc = start_pc_;
     std::ostringstream listing;
@@ -612,7 +629,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 // 2. Org Directives (*= $XXXX)
                 auto org = static_cast<const OrgStatement*>(stmt.get());
                 if (org->address_expr) {
-                    auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                     if (!val.has_value()) {
                         throw std::runtime_error(
                             std::format("Invalid value File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
@@ -634,7 +651,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 auto equ = static_cast<const EquStatement*>(stmt.get());
                 uint16_t v = 0;
                 if (equ->value_expr) {
-                    auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                     if (!val.has_value()) {
                         throw std::runtime_error(
                             std::format("Invalid value File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
@@ -660,7 +677,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
                 for (const auto& expr : data->elements) {
                     if (!expr) continue;
-                    auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+                    auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                     int64_t v = val.value_or(0);
 
                     if (data->width == DataWidth::Byte) {
@@ -716,7 +733,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             case StmtType::Ds: {
                 // .ds Directives
                auto ds = static_cast<const DsStatement*>(stmt.get());
-               auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, parent_scope, pc);
+               auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                file_last_printed_line[stmt->file] = stmt->line;
                 if (val.has_value()) {
                     pc += static_cast<uint16_t>(val.value());
@@ -724,6 +741,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 break;
             }
 
+            case StmtType::Var: {
+            }
+            
             case StmtType::Instruction: {
                 // 5. Instruction / Opcode Statement
                 auto inst_stmt = static_cast<const InstructionStatement*>(stmt.get());
@@ -756,7 +776,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 std::string operand_str;
 
                 if (inst_stmt->operand) {
-                    auto eval_result = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, parent_scope, pc);
+                    auto eval_result = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
                     if (!eval_result.has_value()) {
                         std::cout << listing.str();

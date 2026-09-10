@@ -15,6 +15,7 @@
 class MultiPassAssembler {
 private:
     SymbolTable symbols_;
+    SymbolTable vars_;
     Options options;
     bool changed = false;
     bool wait_clean = false;

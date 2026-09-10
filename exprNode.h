@@ -114,8 +114,8 @@ public:
     }
 };
 
-inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vector<AnonymousLabel>& anonymous_labels, const SymbolTable& symbols,
-        const std::string& parent_scope, uint16_t pc ) {
+inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vector<AnonymousLabel>& anonymous_labels, 
+    const SymbolTable& symbols, const SymbolTable& vars, const std::string& parent_scope, uint16_t pc ) {
     if (!node) return std::nullopt;
 
     auto node_type = node->expr_type;
@@ -129,6 +129,10 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
         case ExprType::Symbol: {
             auto sym = static_cast<const SymbolExpr*>(node);
             auto name = sym->name;
+
+            auto val = vars.Lookup(name);
+            if (val.has_value()) return static_cast<int64_t>(val.value());
+
             if (sym->name[0] == '@') {
                 name = GetMangledSymbol(name, parent_scope);
             }
@@ -149,7 +153,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
             auto un = dynamic_cast<const UnaryExpr*>(node);
 
             if (!un->operand) return std::nullopt;
-            auto val = EvaluateExpr(un->operand.get(), anonymous_labels, symbols, parent_scope, pc);
+            auto val = EvaluateExpr(un->operand.get(), anonymous_labels, symbols, vars, parent_scope, pc);
             if (!val) return std::nullopt;
             switch ((TokenKind)un->op) {
                 case TokenKind::Minus:
@@ -173,8 +177,8 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
 
             auto bin = dynamic_cast<const BinaryExpr*>(node);
             if (!bin->lhs || !bin->rhs) return std::nullopt;
-            auto lhs = EvaluateExpr(bin->lhs.get(), anonymous_labels, symbols, parent_scope, pc);
-            auto rhs = EvaluateExpr(bin->rhs.get(), anonymous_labels, symbols, parent_scope, pc);
+            auto lhs = EvaluateExpr(bin->lhs.get(), anonymous_labels, symbols, vars, parent_scope, pc);
+            auto rhs = EvaluateExpr(bin->rhs.get(), anonymous_labels, symbols, vars, parent_scope, pc);
             if (!lhs || !rhs) return std::nullopt;
 
             switch ((TokenKind)bin->op) {
