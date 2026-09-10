@@ -471,6 +471,54 @@ public:
                     ifdef_stack.pop_back(); // Close the block
                 }
 
+                else if (dir == ".var") {
+                    std::vector<std::pair<std::string, std::unique_ptr<ExprNode>>> pairs;
+
+                    do {
+                        // Consume separator comma if present
+                        if (TokIs(TokenKind::Comma)) {
+                            ConsumeToken();
+                        }
+
+                        if (TokIs(TokenKind::Identifier)) {
+                            std::string sym_name = ConsumeToken().text;
+                            std::unique_ptr<ExprNode> expr_node = nullptr;
+
+                            if (TokIs(TokenKind::Equal)) {
+                                ConsumeToken(); // consume '='
+                                auto val_expr = ParseExpression();
+                                
+                                if (val_expr.isInvalid()) {
+                                    throw std::runtime_error(
+                                        std::format("Invalid expression for variable '{}' at line {}", sym_name, dir_tok.line));
+                                }
+                                
+                                expr_node = val_expr.move();
+                            } else {
+                                // Default value for uninitialized variable (0)
+                                expr_node = std::make_unique<NumberExpr>(0);
+                            }
+
+                            // Correctly construct pair inside vector and register symbol
+                            pairs.emplace_back(sym_name, std::move(expr_node));
+                            definedSyms.Define(sym_name, 1);
+                        } else {
+                            throw std::runtime_error(
+                                std::format("Expected variable identifier in .var directive at line {}", dir_tok.line));
+                        }
+                    } while (TokIs(TokenKind::Comma));
+
+                    statements.push_back(std::make_unique<VarStatement>(dir_tok.file, dir_tok.line, std::move(pairs)));
+                }
+
+                else if (dir == ".error") {
+                    std::string msg = ".error encountred";
+                    if (TokIs(TokenKind::StringLiteral)) {
+                        msg = Tok.text;
+                    }
+                    throw std::runtime_error(msg);
+                }
+
                 else {
                     std::cout << "Warning Unknown directive '" << dir << "'  File: " << src_mgr.GetFileName(dir_tok.file) << " Line: " << dir_tok.line << "\n";
                 }

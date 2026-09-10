@@ -16,6 +16,7 @@ enum StmtType {
     Print,
     While,
     Wend,
+    Var,
     Unknown
 };
 
@@ -128,6 +129,28 @@ struct EquStatement : Statement {
 
     std::unique_ptr<Statement> clone() const override {
         return std::make_unique<EquStatement>(file, line, name, CloneExpr(value_expr));
+    }
+};
+
+struct VarStatement : Statement {
+    // Note: Requires 3 closing angle brackets `>>>` at the end
+    std::vector<std::pair<std::string, std::unique_ptr<ExprNode>>> vars;
+
+    VarStatement(int file, int line, std::vector<std::pair<std::string, std::unique_ptr<ExprNode>>> vars)
+        : Statement(file, line, StmtType::Var), vars(std::move(vars)) {}
+
+    std::unique_ptr<Statement> clone() const override {
+        std::vector<std::pair<std::string, std::unique_ptr<ExprNode>>> cloned_vars;
+        cloned_vars.reserve(vars.size());
+
+        for (const auto& [name, expr] : vars) {
+            cloned_vars.emplace_back(
+                name,
+                expr ? expr->clone() : nullptr // Deep-copy expression if present
+            );
+        }
+
+        return std::make_unique<VarStatement>(file, line, std::move(cloned_vars));
     }
 };
 

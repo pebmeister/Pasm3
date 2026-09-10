@@ -60,6 +60,10 @@ public:
         trace_syms_.erase(name);
     }
 	
+    void clear() {
+        symbols_.clear();
+    }
+
     bool Define(const std::string& name, uint16_t val) {		
 
 		if (trace_syms_.contains(name)) { 
