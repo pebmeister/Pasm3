@@ -1,24 +1,30 @@
     .org $C000
 
-   .var x, y = 6
-   ; .while 1 ; x < y
-   ;     sta $C000, x
-   ;     nop
-       ; x = x + 2
-   ; .wend
-	
-	.ifndef RED
-		.error "RED should be defined on the command line"
-	.endif
-	
+    .var xx = 2, yy = 16
+
+    .byte xx
+    .word yy
+
+    xx = xx + 1
+    yy = yy - 2
+
+    .byte xx
+    .word yy
+
     ldx RED
     bne @end
-    @start
-    ; .ds 130
+    @start   
 
     rts
     beq @start
   
-	* = *
+    .while 1
+        sta $C000 + xx, x
+        nop
+    .wend
+
 	nop
-	@end
+    
+    @end
+
+    rts

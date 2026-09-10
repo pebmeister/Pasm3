@@ -69,14 +69,12 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +" passes.");
     }
 
-
-
     parent_scope="GLOBAL_";
     EmitFinalPass(statements, anonymous_labels, src_mgr);
 }
 
-void printstatements(std::vector<std::unique_ptr<Statement>>& statements) {
-    auto i = 0;
+void printstatements(const std::vector<std::unique_ptr<Statement>>& statements) {
+    auto i = 1;
     for (auto& stmt: statements) {
         std::cout << i++ << " ";
         if (!stmt) std::cout << "nullOpt\n";
@@ -94,7 +92,6 @@ void printstatements(std::vector<std::unique_ptr<Statement>>& statements) {
                 case Wend: std::cout << "Wend\n"; break;
                 case Var: std::cout << "Var\n"; break;
                 case Unknown: std::cout << "Unknown\n"; break; 
-
             }
         }                        
     }
@@ -162,13 +159,23 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
         }
 
         case StmtType::Var: {
-            // Var
             auto var_stmt = static_cast<const VarStatement*>(stmt.get());            
-            for (const auto& [name, expr]: var_stmt->vars) {
-                auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val.has_value()) {
-                    vars_.Define(name, val.value());
+            for (const auto& [name, expr] : var_stmt->vars) {
+                int64_t initial_val = 0;
+
+                if (expr) {
+                    auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                    if (val.has_value()) {
+                        initial_val = val.value();
+                    } else {
+                        // If expression fails during pass evaluation, report error or default
+                        throw std::runtime_error(
+                            std::format("Invalid initializer expression for variable '{}' at line {}", name, var_stmt->line));
+                    }
                 }
+
+                // CRITICAL: Always register 'name' in vars_, even if 0, so vars_.Lookup(name) succeeds
+                vars_.Define(name, static_cast<uint16_t>(initial_val));
             }
             new_statements.push_back(std::move(stmt));
             break;
@@ -184,7 +191,12 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
                 auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val.has_value()) {
-                    changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()));
+                    if (vars_.Lookup(name)) {
+                        vars_.Define(name, static_cast<uint16_t>(val.value()));
+                    }
+                    else {
+                        changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()));
+                    }
                 }
             }
             new_statements.push_back(std::move(stmt));
@@ -303,7 +315,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             }
             break;
         }
-
 
         case StmtType::Instruction: {
             // Instruction
@@ -458,6 +469,8 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
 bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
   
+    vars_.clear();
+    
     changed = false;
     std::vector<std::unique_ptr<Statement>> new_statements;
     new_statements.reserve(statements.size());
@@ -507,8 +520,7 @@ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
 }
 
 void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
-    std::cout << "Emit output\n";
-
+    vars_.clear();
     pc = start_pc_;
     std::ostringstream listing;
 
@@ -658,6 +670,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         );
                     }
                     v = static_cast<uint16_t>(val.value());
+                    if (vars_.Lookup(equ->name)) {
+                        vars_.Define(equ->name, v);
+                    }
                 }
                 if (printstate) {
                     emit_listing_row(v, "", std::format("{} = ${:04X}", equ->name, v));
@@ -742,13 +757,38 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             }
 
             case StmtType::Var: {
+                auto var_stmt = static_cast<const VarStatement*>(stmt.get());            
+                for (const auto& [name, expr] : var_stmt->vars) {
+                    int64_t initial_val = 0;
+
+                    if (expr) {
+                        auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                        if (val.has_value()) {
+                            initial_val = val.value();
+                        } else {
+                            throw std::runtime_error(
+                                std::format("Invalid initializer expression for variable '{}' at line {}", name, var_stmt->line));
+                        }
+                    }
+
+                    // Upsert initial value into vars_
+                    vars_.Define(name, static_cast<uint16_t>(initial_val));
+                }
+
+                if (printstate) {
+                    // Keeps line alignment intact in the listing output
+                    emit_listing_row(pc, "", "var");
+                } else {
+                    file_last_printed_line[stmt->file] = stmt->line;
+                }
+                break;
             }
-            
+
             case StmtType::Instruction: {
                 // 5. Instruction / Opcode Statement
                 auto inst_stmt = static_cast<const InstructionStatement*>(stmt.get());
 
-                auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
+                const auto* info = FindOpCodeInfo(inst_stmt->mnemonic);
                 if (!info) {
                     throw std::runtime_error(
                         std::format("Invalid mnemonic {} File: {}  Line:{}", inst_stmt->mnemonic, src_mgr.GetFileName(stmt->file), stmt->line)
