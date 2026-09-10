@@ -5,7 +5,7 @@
     .byte xx
     .word yy
 
-    xx = xx + 1
+    xx = xx + 7
     yy = yy - 2
 
     .byte xx
@@ -18,9 +18,10 @@
     rts
     beq @start
   
-    .while 1
+    .while xx
         sta $C000 + xx, x
         nop
+        xx = xx -1
     .wend
 
 	nop

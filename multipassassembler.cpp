@@ -276,7 +276,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             // 2. Unroll loop iterations into new_statements for THIS pass
             int iteration_count = 0;
-            const int MAX_ITERATIONS = 3; // Infinite loop safeguard
+            const int MAX_ITERATIONS = 20; // Infinite loop safeguard
 
             while (iteration_count < MAX_ITERATIONS) {
                 auto condition = EvaluateExpr(while_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
