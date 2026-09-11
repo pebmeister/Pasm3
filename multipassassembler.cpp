@@ -265,10 +265,20 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                 pc, src_mgr.GetFileName(while_statement->file), while_statement->line));
             }
 
-            // 1. Capture original loop body template ONCE into a clean body vector
+            // 1. Capture original loop body template ONCE (depth-aware)
             if (while_statement->statements.empty()) {
                 size_t scan_idx = st_index + 1;
-                while (scan_idx < statements.size() && statements[scan_idx] && statements[scan_idx]->stmt_type != StmtType::Wend) {
+                int depth = 1;
+
+                while (scan_idx < statements.size() && statements[scan_idx] && depth > 0) {
+                    if (statements[scan_idx]->stmt_type == StmtType::While) {
+                        depth++;
+                    } else if (statements[scan_idx]->stmt_type == StmtType::Wend) {
+                        depth--;
+                        if (depth == 0) {
+                            break; // Matched outer .wend; do not include it in body template
+                        }
+                    }
                     while_statement->statements.push_back(statements[scan_idx]->clone());
                     scan_idx++;
                 }
@@ -309,10 +319,23 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 iteration_count++;
             }
 
-            // 3. Advance driver index past the matching WEND statement
-            while (st_index < statements.size() && statements[st_index] && statements[st_index]->stmt_type != StmtType::Wend) {
-                ++st_index;
+            // 3. Advance driver index to the matching outer WEND statement (depth-aware)
+            size_t skip_idx = st_index + 1;
+            int skip_depth = 1;
+
+            while (skip_idx < statements.size() && statements[skip_idx] && skip_depth > 0) {
+                if (statements[skip_idx]->stmt_type == StmtType::While) {
+                    skip_depth++;
+                } else if (statements[skip_idx]->stmt_type == StmtType::Wend) {
+                    skip_depth--;
+                    if (skip_depth == 0) {
+                        break; // Positioned directly on the matching outer .wend
+                    }
+                }
+                skip_idx++;
             }
+            
+            st_index = skip_idx;
             break;
         }
 
