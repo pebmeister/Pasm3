@@ -38,6 +38,11 @@ compiler.addRules({
     { "[\\>]", static_cast<int>(HighByte)},
     { "(\\<){2}", static_cast<int>(Shl)},
     { "(\\>){2}", static_cast<int>(Shr)},
+    { "[=]{2}", static_cast<int>(EqualEqual)},
+    { "[!][=]", static_cast<int>(NotEqual)},
+    { "[\\<][=]", static_cast<int>(LessEqual)},
+    { "[\\>][=]", static_cast<int>(GreaterEqual)},
+
     { "[~]", static_cast<int>(Tilde)},
     { "[!]", static_cast<int>(Bang)},
     { "ORA|AND|EOR|ADC|SBC", static_cast<int>(Opcode), true},

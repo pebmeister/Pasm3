@@ -1,31 +1,23 @@
     .org $C000
 
-    .var xx = 2, yy = 16
+    .ifndef MAX
+    .error "Enter -d MAX n for fib sequence"
+    .endif
+    
+    .var t1 = 0, t2 = 1
+    .var nextTerm = t1 + t2
+    .var terms = 2
+    
+    .word t1
 
-    .byte xx
-    .word yy
+    .while terms < MAX
+        .word nextTerm
 
-    xx = xx + 7
-    yy = yy - 2
-
-    .byte xx
-    .word yy
-
-    ldx RED
-    bne @end
-    @start   
-
-    rts
-    beq @start
-  
-    .while xx
-        sta $C000 + xx, x
-        nop
-        xx = xx -1
+        terms = terms + 1
+        t1 = t2
+        t2 = nextTerm
+        nextTerm = t1 + t2        
     .wend
 
-	nop
-    
-    @end
-
     rts
+    

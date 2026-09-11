@@ -202,6 +202,25 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
                     return *lhs << *rhs;
                 case TokenKind::Shr:
                     return *lhs >> *rhs;
+                case TokenKind::GreaterEqual:
+                    return *lhs >= *rhs;
+                case TokenKind::LessEqual:
+                    return *lhs <= *rhs;                
+                case TokenKind::NotEqual:
+                    return *lhs != *rhs;
+                    
+                case TokenKind::EqualEqual:
+                case TokenKind::Equal:
+                    return *lhs == *rhs;                
+
+                case TokenKind::LowByte:
+                case TokenKind::Less:
+                    return *lhs < *rhs;                
+
+                case TokenKind::HighByte:
+                case TokenKind::Greater:
+                    return *lhs > *rhs;                
+
                 default:
                      return std::nullopt;
             }

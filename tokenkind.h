@@ -4,9 +4,9 @@
 #include <string_view>
 
 enum class TokenKind {
-    Eof=-1,
-    Invalid=-2,
-    Newline=1,
+    Eof = -1,
+    Invalid = -2,
+    Newline = 1,
     Ws,
     MacroArg,
     Semicolon,
@@ -29,13 +29,20 @@ enum class TokenKind {
     Caret,
     Shl,
     Shr,
-    Equal,
-    LowByte,
-    HighByte,
+    Equal,        // =
+    EqualEqual,   // ==
+    NotEqual,     // !=
+    Less,         // <
+    LessEqual,    // <=
+    Greater,      // >
+    GreaterEqual, // >=
+    LowByte,      // < (prefix)
+    HighByte,     // > (prefix)
     Tilde,
     Bang,
     Directive
 };
+
 
 extern std::map<TokenKind, std::string_view> tokmap;
 #ifdef GEN_TOKMAP
@@ -65,6 +72,12 @@ std::map<TokenKind, std::string_view> tokmap = {
     { TokenKind::Shl,"Shl"},
     { TokenKind::Shr,"Shr"},
     { TokenKind::Equal,"Equal"},
+    { TokenKind::EqualEqual, "EqualEqual" }, // ==
+    { TokenKind::NotEqual, "NotEqual" }, // !=
+    { TokenKind::Less, "Less" }, // <
+    { TokenKind::LessEqual, "LessEqual" }, // <=
+    { TokenKind::Greater, "Greater" }, // >
+    { TokenKind::GreaterEqual, "GreaterEqual" }, // >=
     { TokenKind::LowByte,"LowByte"},
     { TokenKind::HighByte,"HighByte"},
     { TokenKind::Tilde,"Tilde"},

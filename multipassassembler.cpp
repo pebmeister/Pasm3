@@ -276,7 +276,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             // 2. Unroll loop iterations into new_statements for THIS pass
             int iteration_count = 0;
-            const int MAX_ITERATIONS = 20; // Infinite loop safeguard
+            const int MAX_ITERATIONS = 64000; // Infinite loop safeguard
 
             while (iteration_count < MAX_ITERATIONS) {
                 auto condition = EvaluateExpr(while_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
@@ -288,7 +288,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
 
                 // If condition evaluates to 0 or negative, stop looping
-                if (condition.value() <= 0) {
+                if (condition.value() == 0) {
                     break; 
                 }
 
@@ -673,6 +673,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     if (vars_.Lookup(equ->name)) {
                         vars_.Define(equ->name, v);
                     }
+                    else {
+                        symbols_.Define(equ->name, v);
+                    }
                 }
                 if (printstate) {
                     emit_listing_row(v, "", std::format("{} = ${:04X}", equ->name, v));
@@ -776,12 +779,13 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 }
 
                 if (printstate) {
-                    // Keeps line alignment intact in the listing output
-                    emit_listing_row(pc, "", "var");
-                } else {
-                    file_last_printed_line[stmt->file] = stmt->line;
-                }
-                break;
+                    std::string summary = "";
+                    for (const auto& [name, expr] : var_stmt->vars) {
+                        if (!summary.empty()) summary += ", ";
+                        summary += std::format("{} = ${:04X}", name, vars_.Lookup(name).value_or(0));
+                    }
+                    emit_listing_row(pc, "", summary);
+                }                break;
             }
 
             case StmtType::Instruction: {
