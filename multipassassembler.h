@@ -18,7 +18,7 @@ private:
     SymbolTable vars_;
     Options options;
     bool changed = false;
-    bool wait_clean = false;
+    bool wait_stable = false;
     bool clean = false;
     uint16_t start_pc_;
     std::map<std::pair<int, size_t>, size_t> anon_idmap;
