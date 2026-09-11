@@ -827,12 +827,23 @@ private:
 
     static OpPrecedence GetBinaryPrecedence(int kind) {
         switch ((TokenKind)kind) {
+        case TokenKind::PipePipe:
+            return { 5, Associativity::Left };
+        case TokenKind::AmpersandAmpersand:
+            return { 8, Associativity::Left };
+
+        case TokenKind::Pipe:
+            return { 10, Associativity::Left };
+        case TokenKind::Caret:
+            return { 15, Associativity::Left };
+        case TokenKind::Ampersand:
+            return { 20, Associativity::Left };
+
         case TokenKind::Equal:
         case TokenKind::EqualEqual:
         case TokenKind::NotEqual:
             return { 21, Associativity::Left };
 
-        // Include BOTH LowByte/Less and HighByte/Greater here for infix position
         case TokenKind::Less:
         case TokenKind::LowByte:
         case TokenKind::LessEqual:
@@ -841,12 +852,6 @@ private:
         case TokenKind::GreaterEqual:
             return { 23, Associativity::Left };
 
-        case TokenKind::Pipe:
-            return { 10, Associativity::Left };
-        case TokenKind::Caret:
-            return { 15, Associativity::Left };
-        case TokenKind::Ampersand:
-            return { 20, Associativity::Left };
         case TokenKind::Shl:
         case TokenKind::Shr:
             return { 25, Associativity::Left };

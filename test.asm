@@ -8,10 +8,10 @@
     .var nextTerm = t1 + t2
     .var terms = 2
     
-    .word t1
+    .byte t1
 
-    .while terms < MAX
-        .word nextTerm
+    .while (terms < MAX) && (t2 < 255)
+        .byte nextTerm
 
         terms = terms + 1
         t1 = t2
