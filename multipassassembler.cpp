@@ -40,8 +40,9 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
 void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     pass = 1;
     changed = true;
-    clean = false;
     island_counter = 0;
+    auto stable = false;
+    auto lastpasschanged = false;
 
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
 
@@ -52,16 +53,18 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
     }
 
-    while ((changed || (wait_clean && !clean)) && pass <= max_passes) {
-        clean = !changed;
+    while ((changed || (wait_stable && !stable)) && pass <= max_passes) {
+
+        lastpasschanged = changed;
+        stable = !lastpasschanged;
 
         parent_scope="GLOBAL_";
         changed = ResolutionPass(statements, anonymous_labels, src_mgr);
         std::cout << "Pass " << pass << " complete. "
             << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
         pass++;
-        if (wait_clean && clean) {
-            wait_clean = false;
+        if (wait_stable && stable) {
+            wait_stable = false;
         }
     }
 
@@ -370,7 +373,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
                         if (offset < -128 || offset > 127) {
                             // wait for all symbols to resolve first
-                            wait_clean = true;
+                            wait_stable = true;
                         }
                         // wait passes to resolve first
                         if (clean && (offset < -128 || offset > 127)) {
@@ -468,7 +471,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
         }
 
         case StmtType::Wend: {
-            // Print
+            // Wend
             break;
         }
 
