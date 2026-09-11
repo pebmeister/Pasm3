@@ -40,7 +40,9 @@ private:
         if (id == (int)TokenKind::Eof) text = "[EOF]";
         if (id == (int)TokenKind::Invalid) text = "[INVALID]";
 
-        std::cout << msg << " '" << text << "' [" << tokmap[(TokenKind)id] << "]  :::[" << src_mgr.GetFileName(Tok.file) << " line " << Tok.line << " col " << Tok.col << "]\n";
+        std::cout << 
+            std::format("{:10} {:5} {:20} File: {} Line: {} Col: {}\n",
+                msg, text, tokmap[(TokenKind)id], src_mgr.GetFileName(Tok.file), Tok.line, Tok.col);
         return 0;
     }
 
@@ -825,33 +827,52 @@ private:
 
     static OpPrecedence GetBinaryPrecedence(int kind) {
         switch ((TokenKind)kind) {
-        case TokenKind::Equal:
-            return { 5,  Associativity::Right };
+        case TokenKind::PipePipe:
+            return { 5, Associativity::Left };
+        case TokenKind::AmpersandAmpersand:
+            return { 8, Associativity::Left };
+
         case TokenKind::Pipe:
-            return { 10, Associativity::Left  };
+            return { 10, Associativity::Left };
         case TokenKind::Caret:
-            return { 15, Associativity::Left  };
+            return { 15, Associativity::Left };
         case TokenKind::Ampersand:
-            return { 20, Associativity::Left  };
+            return { 20, Associativity::Left };
+
+        case TokenKind::Equal:
+        case TokenKind::EqualEqual:
+        case TokenKind::NotEqual:
+            return { 21, Associativity::Left };
+
+        case TokenKind::Less:
+        case TokenKind::LowByte:
+        case TokenKind::LessEqual:
+        case TokenKind::Greater:
+        case TokenKind::HighByte:
+        case TokenKind::GreaterEqual:
+            return { 23, Associativity::Left };
+
         case TokenKind::Shl:
         case TokenKind::Shr:
-            return { 25, Associativity::Left  };
+            return { 25, Associativity::Left };
         case TokenKind::Plus:
         case TokenKind::Minus:
-            return { 30, Associativity::Left  };
+            return { 30, Associativity::Left };
         case TokenKind::Star:
         case TokenKind::Slash:
         case TokenKind::Percent:
-            return { 40, Associativity::Left  };
+            return { 40, Associativity::Left };
         default:
-            return { -1, Associativity::Left  };
+            return { -1, Associativity::Left };
         }
     }
 
     static bool IsUnaryPrefix(int k) {
-        return k == static_cast<int>(TokenKind::LowByte) || k == static_cast<int>(TokenKind::HighByte) ||
-               k == static_cast<int>(TokenKind::Minus)   || k == static_cast<int>(TokenKind::Plus)     ||
-               k == static_cast<int>(TokenKind::Tilde)   || k == static_cast<int>(TokenKind::Bang);
+        // Include BOTH LowByte/Less and HighByte/Greater here for prefix position
+        return k == static_cast<int>(TokenKind::LowByte)  || k == static_cast<int>(TokenKind::Less)    ||
+               k == static_cast<int>(TokenKind::HighByte) || k == static_cast<int>(TokenKind::Greater) ||
+               k == static_cast<int>(TokenKind::Minus)    || k == static_cast<int>(TokenKind::Plus)    ||
+               k == static_cast<int>(TokenKind::Tilde)    || k == static_cast<int>(TokenKind::Bang);
     }
 
     RULE_TYPE DeduceMemoryMode(std::string mnemonic) const {

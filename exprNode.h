@@ -173,39 +173,53 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
             }
         }
         
-        case ExprType::Binary: {
 
+        case ExprType::Binary: {
             auto bin = dynamic_cast<const BinaryExpr*>(node);
             if (!bin->lhs || !bin->rhs) return std::nullopt;
+
             auto lhs = EvaluateExpr(bin->lhs.get(), anonymous_labels, symbols, vars, parent_scope, pc);
             auto rhs = EvaluateExpr(bin->rhs.get(), anonymous_labels, symbols, vars, parent_scope, pc);
             if (!lhs || !rhs) return std::nullopt;
 
             switch ((TokenKind)bin->op) {
-                case TokenKind::Plus:
-                    return *lhs + *rhs;
-                case TokenKind::Minus:
-                    return *lhs - *rhs;
-                case TokenKind::Star:
-                    return *lhs * *rhs;
-                case TokenKind::Slash:
-                    return (*rhs != 0) ? *lhs / *rhs : 0;
-                case TokenKind::Percent:
-                    return (*rhs != 0) ? *lhs % *rhs : 0;
-                case TokenKind::Ampersand:
-                    return *lhs & *rhs;
-                case TokenKind::Pipe:
-                    return *lhs | *rhs;
-                case TokenKind::Caret:
-                    return *lhs ^ *rhs;
-                case TokenKind::Shl:
-                    return *lhs << *rhs;
-                case TokenKind::Shr:
-                    return *lhs >> *rhs;
+                // --- Logical Operators ---
+                case TokenKind::AmpersandAmpersand:
+                    return (*lhs != 0 && *rhs != 0) ? 1 : 0;
+                case TokenKind::PipePipe:
+                    return (*lhs != 0 || *rhs != 0) ? 1 : 0;
+
+                // --- Comparative Operators ---
+                case TokenKind::Less:
+                case TokenKind::LowByte:
+                    return (*lhs < *rhs) ? 1 : 0;
+                case TokenKind::Greater:
+                case TokenKind::HighByte:
+                    return (*lhs > *rhs) ? 1 : 0;
+                case TokenKind::LessEqual:    return (*lhs <= *rhs) ? 1 : 0;
+                case TokenKind::GreaterEqual: return (*lhs >= *rhs) ? 1 : 0;
+                case TokenKind::EqualEqual:
+                case TokenKind::Equal:        return (*lhs == *rhs) ? 1 : 0;
+                case TokenKind::NotEqual:     return (*lhs != *rhs) ? 1 : 0;
+
+                // --- Bitwise & Arithmetic ---
+                case TokenKind::Ampersand:    return *lhs & *rhs;
+                case TokenKind::Pipe:         return *lhs | *rhs;
+                case TokenKind::Caret:        return *lhs ^ *rhs;
+                case TokenKind::Plus:         return *lhs + *rhs;
+                case TokenKind::Minus:        return *lhs - *rhs;
+                case TokenKind::Star:         return *lhs * *rhs;
+                case TokenKind::Slash:        return (*rhs != 0) ? *lhs / *rhs : 0;
+                case TokenKind::Percent:      return (*rhs != 0) ? *lhs % *rhs : 0;
+                case TokenKind::Shl:          return *lhs << *rhs;
+                case TokenKind::Shr:          return *lhs >> *rhs;
+
                 default:
-                     return std::nullopt;
+                    return std::nullopt;
             }
         }
+
+
         case ExprType::UnknownExpr:
             return std::nullopt;
     }
