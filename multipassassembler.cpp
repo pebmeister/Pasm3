@@ -376,7 +376,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                             wait_stable = true;
                         }
                         // wait passes to resolve first
-                        if (clean && (offset < -128 || offset > 127)) {
+                        if (stable && (offset < -128 || offset > 127)) {
                              auto target = evaluated;
                              if (offset > 0) {
                                  target += 3; // add jump island jmp $xxxx
