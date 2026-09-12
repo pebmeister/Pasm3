@@ -41,7 +41,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     pass = 1;
     changed = true;
     island_counter = 0;
-    auto stable = false;
+    stable - false;
     auto lastpasschanged = false;
 
     std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
