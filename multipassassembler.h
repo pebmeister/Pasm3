@@ -19,7 +19,7 @@ private:
     Options options;
     bool changed = false;
     bool wait_stable = false;
-    bool clean = false;
+    bool stable = false;
     uint16_t start_pc_;
     std::map<std::pair<int, size_t>, size_t> anon_idmap;
     std::string FormatOperand(RULE_TYPE mode, int64_t val);
