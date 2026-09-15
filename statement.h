@@ -16,6 +16,9 @@ enum StmtType {
     Print,
     While,
     Wend,
+    Repeat,
+    Until,
+    Loop,
     Var,
     Unknown
 };
@@ -184,22 +187,35 @@ struct PrintStatement : Statement {
     }
 };
 
-struct WhileStatement : Statement {
+struct LoopStatement : Statement {
     std::unique_ptr<ExprNode> condition_expr;
     std::vector<std::unique_ptr<Statement>> statements;
+    
+    StmtType loop_start_keyword;
+    StmtType loop_end_keyword;
+    bool test_at_top;
+    bool reverse_logic;
 
-    explicit WhileStatement(int file, int line, std::unique_ptr<ExprNode> expr)
-        : Statement(file, line, StmtType::While), condition_expr(std::move(expr)) {}
+    explicit LoopStatement(int file, int line, std::unique_ptr<ExprNode> expr, 
+                           StmtType start_kw, StmtType end_kw, bool test_top, bool rev_logic)
+        : Statement(file, line, StmtType::Loop), 
+          condition_expr(std::move(expr)),
+          loop_start_keyword(start_kw),
+          loop_end_keyword(end_kw),
+          test_at_top(test_top),
+          reverse_logic(rev_logic) {}
 
     std::unique_ptr<Statement> clone() const override {
-        auto cloned_while = std::make_unique<WhileStatement>(file, line, CloneExpr(condition_expr));
-        cloned_while->statements.reserve(statements.size());
+        auto cloned_loop = std::make_unique<LoopStatement>(
+            file, line, CloneExpr(condition_expr), loop_start_keyword, loop_end_keyword, test_at_top, reverse_logic);
+        
+        cloned_loop->statements.reserve(statements.size());
         for (const auto& stmt : statements) {
             if (stmt) {
-                cloned_while->statements.push_back(stmt->clone());
+                cloned_loop->statements.push_back(stmt->clone());
             }
         }
-        return cloned_while;
+        return cloned_loop;
     }
 };
 
@@ -209,5 +225,14 @@ struct WendStatement : Statement {
 
     std::unique_ptr<Statement> clone() const override {
         return std::make_unique<WendStatement>(file, line);
+    }
+};
+
+struct UntilStatement : Statement {
+    explicit UntilStatement(int file, int line)
+        : Statement(file, line, StmtType::Until) {}
+
+    std::unique_ptr<Statement> clone() const override {
+        return std::make_unique<UntilStatement>(file, line);
     }
 };
