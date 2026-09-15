@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <stack>
 
 #include "options.h"
 namespace fs = std::filesystem;
@@ -135,8 +136,10 @@ public:
     }
 
     std::vector<std::unique_ptr<Statement>> ParseProgram(SourceManager &src_mgr, std::unordered_map<std::string, MacroDef>& macros_, PasmTokenizer& tokenizer) {
+        
         std::vector<std::unique_ptr<Statement>> statements;
-
+        std::vector<LoopStatement*> repeatStack;
+        
         SymbolTable definedSyms;
         
         for (auto&[sym, val] : options.defined_symbols) {        
@@ -336,17 +339,47 @@ public:
 
                 else if (dir == ".ds") {
                     auto size_expr = ParseExpression();
-                    statements.push_back(std::make_unique<DsStatement>(Tok.file, Tok.line, size_expr.move()));
+                    statements.push_back(std::make_unique<DsStatement>(dir_tok.file, dir_tok.line, size_expr.move()));
                 }
-
                 else if (dir == ".while") {
                     auto condition_expr = ParseExpression();
-                    statements.push_back(std::make_unique<WhileStatement>(Tok.file, Tok.line, condition_expr.move()));
+                    statements.push_back(std::make_unique<LoopStatement>(
+                        dir_tok.file, dir_tok.line, condition_expr.move(), 
+                        StmtType::While, StmtType::Wend, 
+                        true, false));
+                }
+                else if (dir == ".wend") {
+                    statements.push_back(std::make_unique<WendStatement>(dir_tok.file, dir_tok.line));
+                }
+                else if (dir == ".repeat") {
+                    // 1. Create LoopStatement at .repeat position with a null condition for now
+                    auto loop_stmt = std::make_unique<LoopStatement>(
+                        Tok.file, Tok.line, nullptr, 
+                        StmtType::Repeat, StmtType::Until, 
+                        false, true);
+
+                    // 2. Keep pointer on stack so .until can attach the expression later
+                    repeatStack.push_back(loop_stmt.get());
+
+                    statements.push_back(std::move(loop_stmt));
+                }
+                else if (dir == ".until") {
+                    if (repeatStack.empty()) {
+                        throw std::runtime_error(std::format(".until without matching .repeat at File: {} Line: {}", 
+                                                             src_mgr.GetFileName(Tok.file), Tok.line));
+                    }
+
+                    auto condition_expr = ParseExpression();
+                    auto* loop_stmt = repeatStack.back();
+                    repeatStack.pop_back();
+
+                    // 3. Attach expression to the LoopStatement sitting at .repeat
+                    loop_stmt->condition_expr = condition_expr.move();
+
+                    // 4. Push end marker
+                    statements.push_back(std::make_unique<UntilStatement>(Tok.file, Tok.line));
                 }
 
-                else if (dir == ".wend") {
-                    statements.push_back(std::make_unique<WendStatement>(Tok.file, Tok.line));
-                }
 
                 // Inside ParseProgram() or your directive handler:
                 else if (dir == ".include" || dir == ".inc") {
