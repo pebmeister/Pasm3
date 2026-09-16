@@ -48,6 +48,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 
     for (auto&sym : options.traced_symbols) {
         symbols_.Trace(sym);
+        vars_.Trace(sym);
     }
     for (auto&[sym, val] : options.defined_symbols) {
         changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
@@ -74,33 +75,6 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 
     parent_scope="GLOBAL_";
     EmitFinalPass(statements, anonymous_labels, src_mgr);
-}
-
-void printstatements(const std::vector<std::unique_ptr<Statement>>& statements) {
-    auto i = 1;
-    for (auto& stmt: statements) {
-        std::cout << i++ << " ";
-        if (!stmt) std::cout << "nullOpt\n";
-        else {
-            switch (stmt->stmt_type) {
-                case Label: std::cout << "Label\n"; break;
-                case Org: std::cout << "Org\n"; break;
-                case Equ: std::cout << "Equ\n"; break;
-                case Ds: std::cout << "Ds\n"; break;
-                case Data: std::cout << "Data\n"; break;
-                case Fill: std::cout << "Fill\n"; break;
-                case Instruction: std::cout << "Instruction\n"; break;
-                case Print: std::cout << "Print\n"; break;
-                case Loop: std::cout << "Loop\n"; break;
-                case While: std::cout << "While\n"; break;
-                case Wend: std::cout << "Wend\n"; break;
-                case Repeat: std::cout << "Repeat\n"; break;
-                case Until: std::cout << "Until\n"; break;
-                case Var: std::cout << "Var\n"; break;
-                case Unknown: std::cout << "Unknown\n"; break; 
-            }
-        }                        
-    }
 }
 
 void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>>& statements, std::vector<std::unique_ptr<Statement>>&new_statements, size_t& st_index, 
@@ -146,7 +120,17 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 else if (!lbl->is_anon()) {
                     parent_scope = name;
                 }
-                changed |= symbols_.Define(name, pc);
+                if (vars_.Lookup(name)) {
+
+                    throw std::runtime_error(
+                        std::format("should not be a label at ${:04X} File: {} Line: {}", 
+                                    pc, src_mgr.GetFileName(lbl->file), lbl->line));
+
+
+                }
+                else {
+                    changed |= symbols_.Define(name, pc);
+                }
                 new_statements.push_back(std::move(stmt));
             }
             break;
@@ -195,7 +179,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     name = GetMangledSymbol(name, parent_scope);
                 }
                 auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val.has_value()) {
+                if (val.has_value()) {                   
                     if (vars_.Lookup(name)) {
                         vars_.Define(name, static_cast<uint16_t>(val.value()));
                     }
@@ -260,9 +244,8 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             }
             break;
         }
-        
-        // Assuming this is dispatched for your loop starting keywords
-        case StmtType::Loop: // or whatever your start keywords are
+                
+        case StmtType::Loop: 
         {
             auto loop_statement = static_cast<LoopStatement*>(stmt.get());
 
@@ -272,18 +255,28 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                 pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
             }
 
+            // Helper lambda to check if a statement is a loop start
+            auto is_loop_start = [&](const std::unique_ptr<Statement>& s) {
+                return s->stmt_type == StmtType::Loop || s->stmt_type == loop_statement->loop_start_keyword;
+            };
+
+            // Helper lambda to check if a statement is a loop end
+            auto is_loop_end = [&](const std::unique_ptr<Statement>& s) {
+                return s->stmt_type == StmtType::Wend || s->stmt_type == loop_statement->loop_end_keyword;
+            };
+
             // 1. Capture original loop body template ONCE (depth-aware)
             if (loop_statement->statements.empty()) {
                 size_t scan_idx = st_index + 1;
                 int depth = 1;
 
                 while (scan_idx < statements.size() && statements[scan_idx] && depth > 0) {
-                    if (statements[scan_idx]->stmt_type == loop_statement->loop_start_keyword) {
+                    if (is_loop_start(statements[scan_idx])) {
                         depth++;
-                    } else if (statements[scan_idx]->stmt_type == loop_statement->loop_end_keyword) {
+                    } else if (is_loop_end(statements[scan_idx])) {
                         depth--;
                         if (depth == 0) {
-                            break; // Matched outer end keyword; do not include it in body template
+                            break; // Matched outer end keyword
                         }
                     }
                     loop_statement->statements.push_back(statements[scan_idx]->clone());
@@ -293,11 +286,9 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             // 2. Unroll loop iterations into new_statements for THIS pass
             int iteration_count = 0;
-            const int MAX_ITERATIONS = 64000; // Infinite loop safeguard
+            const int MAX_ITERATIONS = 64000;
 
             while (iteration_count < MAX_ITERATIONS) {
-                
-                // IF TEST AT TOP (e.g., While loops)
                 if (loop_statement->test_at_top) {
                     auto condition = EvaluateExpr(loop_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
@@ -307,15 +298,13 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                         pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
                     }
 
-                    // If condition evaluates to 0 or negative, stop looping
                     auto v = condition.value();
-                    auto truth = loop_statement->reverse_logic ? v != 0 : v == 0;
-                    if (truth) {
+                    auto exitloop = loop_statement->reverse_logic ? v != 0 : v == 0;
+                    if (exitloop) {
                         break; 
                     }
                 }
 
-                // Create a FRESH clone of the template body for this iteration
                 std::vector<std::unique_ptr<Statement>> iteration_body;
                 for (const auto& body_stmt : loop_statement->statements) {
                     if (body_stmt) {
@@ -323,13 +312,11 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     }
                 }
 
-                // Process this iteration's statements directly into new_statements
                 size_t inner_index = 0;
                 while (inner_index < iteration_body.size()) {
                     ProcessStatement(iteration_body, new_statements, inner_index, anonymous_labels, src_mgr);
                 }
 
-                // IF TEST AT BOTTOM (e.g., Do/Repeat loops)
                 if (!loop_statement->test_at_top) {
                     auto condition = EvaluateExpr(loop_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
@@ -339,7 +326,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                         pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
                     }
 
-                    // If condition evaluates to 0 or negative, stop looping
                     auto v = condition.value();
                     auto truth = loop_statement->reverse_logic ? v != 0 : v == 0;
                     if (truth) {
@@ -350,17 +336,23 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 iteration_count++;
             }
 
+            if (iteration_count >= MAX_ITERATIONS) {
+                throw std::runtime_error(
+                    std::format("infinite loop detected at ${:04X} File: {} Line: {}", 
+                                pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
+            }
+
             // 3. Advance driver index to the matching outer end statement (depth-aware)
             size_t skip_idx = st_index + 1;
             int skip_depth = 1;
 
             while (skip_idx < statements.size() && statements[skip_idx] && skip_depth > 0) {
-                if (statements[skip_idx]->stmt_type == loop_statement->loop_start_keyword) {
+                if (is_loop_start(statements[skip_idx])) {
                     skip_depth++;
-                } else if (statements[skip_idx]->stmt_type == loop_statement->loop_end_keyword) {
+                } else if (is_loop_end(statements[skip_idx])) {
                     skip_depth--;
                     if (skip_depth == 0) {
-                        break; // Positioned directly on the matching outer end keyword
+                        break;
                     }
                 }
                 skip_idx++;
@@ -369,6 +361,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             st_index = skip_idx;
             break;
         }
+
         
         case StmtType::Instruction: {
             // Instruction
@@ -450,7 +443,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                 new_statements.push_back(std::move(branch_inst));
                                 new_statements.push_back(std::move(jmp_inst));
                                 new_statements.push_back(std::move(label_inst));
-
                                 break;
                             }
                         }
@@ -655,15 +647,16 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 load_address_set = true;
             }
 
-            if (binary_output.size() + load_address < pc) {
+            auto sz = binary_output.size();
+            if (sz + load_address < pc) {
                 auto bytes = pc - load_address - binary_output.size();
                 std::vector<uint8_t> ds_data(bytes, 0);
                 std::cout << "Warning inserting " << bytes << " bytes.\n";
                 binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
             }
-            else if (binary_output.size() + load_address > pc) {
+            else if (sz + load_address > pc) {
                 throw std::runtime_error(
-                    std::format("Can not move PC backwards and insert data File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
+                    std::format("Can not move PC backwards and insert data PC {}  File: {}  Line:{}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
                 );
             }
             binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
@@ -724,6 +717,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         );
                     }
                     v = static_cast<uint16_t>(val.value());
+                    
                     if (vars_.Lookup(equ->name)) {
                         vars_.Define(equ->name, v);
                     }
@@ -796,12 +790,10 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 break;
             }
 
-
-            case StmtType::While: {
-                // file_last_printed_line[stmt->file] = stmt->line;    
+            case StmtType::Wend:
+            case StmtType::Until:
                 break;
-            }
-            
+                
             case StmtType::Ds: {
                 // .ds Directives
                auto ds = static_cast<const DsStatement*>(stmt.get());

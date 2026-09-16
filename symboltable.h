@@ -12,6 +12,8 @@
 
 class SymbolTable {
 private:
+    std::string tablename;
+    
     struct CaseInsensitiveHash {
         using is_transparent = void;
 
@@ -52,6 +54,9 @@ private:
 	
 
 public:
+    SymbolTable(std::string name) : tablename(name) {
+    }
+
 	void Trace(const std::string& name) {
         trace_syms_.insert(name);
     }
@@ -67,7 +72,7 @@ public:
     bool Define(const std::string& name, uint16_t val) {		
 
 		if (trace_syms_.contains(name)) { 
-            std::cout << "[SYM TRACE] " << name << " -> $" 
+            std::cout << "[" << tablename << " TRACE] " << name << " -> $" 
                       << std::hex << std::uppercase << val << std::dec << std::nouppercase << "\n";
         }
 		
