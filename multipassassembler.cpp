@@ -125,8 +125,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     throw std::runtime_error(
                         std::format("should not be a label at ${:04X} File: {} Line: {}", 
                                     pc, src_mgr.GetFileName(lbl->file), lbl->line));
-
-
                 }
                 else {
                     changed |= symbols_.Define(name, pc);
@@ -362,7 +360,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             break;
         }
 
-        
         case StmtType::Instruction: {
             // Instruction
             auto inst = static_cast<InstructionStatement*>(stmt.get());
@@ -891,9 +888,15 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         auto sz = GetInstructionSize(inst_stmt->mode);
                         switch (sz) {
                             case 2:
+                                if (val < -128 || val > 255) {
+                                    throw std::runtime_error(std::format("Operand value out of range: val is {} File: {} Line: {}", val, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                                }
                                 emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
                                 break;
                             case 3:
+                                if (val & ~0xFFFF) {
+                                    throw std::runtime_error(std::format("Operand value out of range: val is {} File: {} Line: {}", val, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                                }
                                 emitted_bytes.push_back(static_cast<uint8_t>(val & 0xFF));
                                 emitted_bytes.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
                                 break;

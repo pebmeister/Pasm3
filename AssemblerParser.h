@@ -242,8 +242,8 @@ public:
                     }
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, DataWidth::Byte, std::move(elems)));
                 }
-                else if (dir == ".byte" || dir == ".text" || dir == ".word") {
-                    DataWidth w = (dir == ".byte" || dir == ".text") ? DataWidth::Byte : DataWidth::Word;
+                else if (dir == ".byte" || dir == ".db" || dir == ".text" || dir == ".word") {
+                    DataWidth w = (dir == ".byte" || dir == ".db" || dir == ".text") ? DataWidth::Byte : DataWidth::Word;
                     std::vector<std::unique_ptr<ExprNode>> elems;
 
                     do {
