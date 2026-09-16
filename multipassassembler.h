@@ -14,8 +14,9 @@
 
 class MultiPassAssembler {
 private:
-    SymbolTable symbols_;
-    SymbolTable vars_;
+    SymbolTable symbols_ = SymbolTable("SYM");
+    SymbolTable vars_ = SymbolTable("VAR");
+    
     Options options;
     bool changed = false;
     bool wait_stable = false;

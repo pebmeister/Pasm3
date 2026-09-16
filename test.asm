@@ -6,20 +6,58 @@
 
     .print push
     .print off
+   
+    .print on
+    .text "FIBINACHI SEQUENCE"
+    .print off
     
-    .var j = 0
-    .var k = 0
-    .repeat
+    .var t1 = 0, t2 = 1, next = 0, terms = 1
+    .while terms <= MAX
         .print on
-        .word j
+        .word t2
         .print off
-        j = j + 1
-        k = 1
-        .while (k < j)
-            .print on            
-            .word k
+        next = t1 + t2
+        t1 = t2
+        t2 = next
+        terms = terms + 1
+    .wend
+        
+    .var aa = 1
+    
+    .print on
+    .text "PYTHAGORIAN TRIPPLE"
+    .print off
+   
+   
+    .var m, n
+    .var a, b, c
+    terms = 0
+
+    m = 2
+    .while terms < MAX
+        n = 1
+        .while n < m && terms < MAX
+            ; Generates valid triples directly without needing a GCD check
+            a = (m * m) - (n * n);
+            b = 2 * m * n;
+            c = (m * m) + (n * n);
+
+            ; Optional: Ensure 'a' is always the smaller leg for clean formatting
+            .var dummy = a > b
+            .while (dummy)
+                .var  temp = a;
+                a = b;
+                b = temp
+                dummy = 0
+            .wend
+            .print on
+            .word a,b,c
             .print off
-            k = k + 1
+            terms = terms + 1
+            n = n + 1
         .wend
-    .until j == MAX
-    rts
+        m = m + 1
+    .wend
+
+    .print pop
+   

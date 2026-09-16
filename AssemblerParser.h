@@ -140,7 +140,7 @@ public:
         std::vector<std::unique_ptr<Statement>> statements;
         std::vector<LoopStatement*> repeatStack;
         
-        SymbolTable definedSyms;
+        SymbolTable definedSyms = SymbolTable("DEF");
         
         for (auto&[sym, val] : options.defined_symbols) {        
             definedSyms.Define(sym, 1);
