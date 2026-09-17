@@ -99,6 +99,8 @@ add_executable(pasm_parser
     opcodedict.cpp
 	multipassassembler.cpp
 	utilities.cpp
+	d64.cpp
+	geos.cpp
 	anonymouslabel.h
 	exprNode.h
 	findanonlabel.h
@@ -115,6 +117,10 @@ add_executable(pasm_parser
 	macrodef.h
 	utilities.h
 	AssemblerParser.h
+	d64.h
+	d64_types.h
+	geos.h
+	
     "${GENERATED_TOKENIZER_HEADER}"
 )
 
