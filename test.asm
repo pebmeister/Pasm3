@@ -43,13 +43,11 @@
             c = (m * m) + (n * n);
 
             ; Optional: Ensure 'a' is always the smaller leg for clean formatting
-            .var dummy = a > b
-            .while (dummy)
+            .if a > b
                 .var  temp = a;
                 a = b;
                 b = temp
-                dummy = 0
-            .wend
+            .endif
             .print on
             .word a,b,c
             .print off

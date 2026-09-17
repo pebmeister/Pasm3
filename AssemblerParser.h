@@ -482,28 +482,37 @@ public:
                 }
                 else if (dir == ".else") {
                     if (ifdef_stack.empty()) {
-                        throw std::runtime_error("Unexpected .else without .ifdef");
+                        statements.push_back(std::make_unique<ElseStatement>(dir_tok.file, dir_tok.line));
                     }
+                    else {
+                        bool if_was_true = ifdef_stack.back();
+                        ConsumeToken(); // Consume ".else"
 
-                    bool if_was_true = ifdef_stack.back();
-                    ConsumeToken(); // Consume ".else"
-
-                    if (if_was_true) {
-                        // The IF block executed, so we MUST skip this ELSE block
-                        SkipToElseOrEndif(); // Will land on .endif
-                        ConsumeToken();      // Consume ".endif"
-                        ifdef_stack.pop_back(); // Close the block
-                    } else {
-                        // The IF block was false, so we are currently parsing this ELSE block.
-                        // Just let the parser continue naturally!
+                        if (if_was_true) {
+                            // The IF block executed, so we MUST skip this ELSE block
+                            SkipToElseOrEndif(); // Will land on .endif
+                            ConsumeToken();      // Consume ".endif"
+                            ifdef_stack.pop_back(); // Close the block
+                        } else {
+                            // The IF block was false, so we are currently parsing this ELSE block.
+                            // Just let the parser continue naturally!
+                        }
                     }
                 }
                 else if (dir == ".endif") {
                     if (ifdef_stack.empty()) {
-                        throw std::runtime_error("Unexpected .endif without .ifdef");
+                        statements.push_back(std::make_unique<EndIfStatement>(dir_tok.file, dir_tok.line));
                     }
-                    ConsumeToken(); // Consume ".endif"
-                    ifdef_stack.pop_back(); // Close the block
+                    else {
+                        ConsumeToken(); // Consume ".endif"
+                        ifdef_stack.pop_back(); // Close the block
+                    }
+                }
+
+
+                else if (dir == ".if") {
+                    auto condition_expr = ParseExpression();
+                    statements.push_back(std::make_unique<IfStatement>(dir_tok.file, dir_tok.line, condition_expr.move()));
                 }
 
                 else if (dir == ".var") {

@@ -487,9 +487,119 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             break;
         }
 
+        case StmtType::Until:
         case StmtType::Wend: {
             // Wend
             break;
+        }
+
+
+        case StmtType::If: {
+            auto if_stmt = static_cast<IfStatement*>(stmt.get());
+
+            if (!if_stmt->condition_expr) {
+                throw std::runtime_error(
+                    std::format("'if' condition expression missing at ${:04X} File: {} Line: {}", 
+                                pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
+            }
+
+            // 1. Capture 'then' and 'else' statement bodies (depth-aware) if not pre-populated
+            if (if_stmt->then_statements.empty() && if_stmt->else_statements.empty()) {
+                size_t scan_idx = st_index + 1;
+                int depth = 1;
+                bool in_else = false;
+
+                while (scan_idx < statements.size() && statements[scan_idx] && depth > 0) {
+                    auto st_type = statements[scan_idx]->stmt_type;
+
+                    if (st_type == StmtType::If) {
+                        depth++;
+                    } else if (st_type == StmtType::EndIf) {
+                        depth--;
+                        if (depth == 0) {
+                            break; // Matched outer endif
+                        }
+                    } else if (st_type == StmtType::Else && depth == 1) {
+                        if (in_else) {
+                            throw std::runtime_error(
+                                std::format("duplicate 'else' directive at ${:04X} File: {} Line: {}", 
+                                            pc, src_mgr.GetFileName(statements[scan_idx]->file), statements[scan_idx]->line));
+                        }
+                        in_else = true;
+                        scan_idx++;
+                        continue;
+                    }
+
+                    if (in_else) {
+                        if_stmt->else_statements.push_back(statements[scan_idx]->clone());
+                    } else {
+                        if_stmt->then_statements.push_back(statements[scan_idx]->clone());
+                    }
+                    scan_idx++;
+                }
+
+                if (depth != 0) {
+                    throw std::runtime_error(
+                        std::format("unmatched 'if' directive at ${:04X} File: {} Line: {}", 
+                                    pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
+                }
+            }
+
+            // 2. Evaluate condition expression for current pass
+            auto condition = EvaluateExpr(if_stmt->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+
+            if (!condition.has_value()) {
+                throw std::runtime_error(
+                    std::format("'if' condition could not be evaluated at ${:04X} File: {} Line: {}", 
+                                pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
+            }
+
+            // 3. Recursively process only the active branch into new_statements
+            const auto& active_branch = (condition.value() != 0) ? if_stmt->then_statements : if_stmt->else_statements;
+
+            std::vector<std::unique_ptr<Statement>> branch_body;
+            for (const auto& body_stmt : active_branch) {
+                if (body_stmt) {
+                    branch_body.push_back(body_stmt->clone());
+                }
+            }
+
+            size_t inner_index = 0;
+            while (inner_index < branch_body.size()) {
+                ProcessStatement(branch_body, new_statements, inner_index, anonymous_labels, src_mgr);
+            }
+
+            // 4. Advance driver index to matching outer 'endif'
+            size_t skip_idx = st_index + 1;
+            int skip_depth = 1;
+
+            while (skip_idx < statements.size() && statements[skip_idx] && skip_depth > 0) {
+                auto st_type = statements[skip_idx]->stmt_type;
+                if (st_type == StmtType::If) {
+                    skip_depth++;
+                } else if (st_type == StmtType::EndIf) {
+                    skip_depth--;
+                    if (skip_depth == 0) {
+                        break;
+                    }
+                }
+                skip_idx++;
+            }
+
+            st_index = skip_idx;
+            break;
+        }
+
+        case StmtType::Else: {
+            throw std::runtime_error(
+                std::format("unexpected 'else' directive without matching 'if' at ${:04X} File: {} Line: {}", 
+                            pc, src_mgr.GetFileName(stmt->file), stmt->line));
+        }
+
+        case StmtType::EndIf: {
+            throw std::runtime_error(
+                std::format("unexpected 'endif' directive without matching 'if' at ${:04X} File: {} Line: {}", 
+                            pc, src_mgr.GetFileName(stmt->file), stmt->line));
         }
 
         case StmtType::Print: {

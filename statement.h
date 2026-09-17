@@ -20,6 +20,9 @@ enum StmtType {
     Until,
     Loop,
     Var,
+    If,
+    Else,
+    EndIf,
     Unknown
 };
 
@@ -225,6 +228,48 @@ struct WendStatement : Statement {
 
     std::unique_ptr<Statement> clone() const override {
         return std::make_unique<WendStatement>(file, line);
+    }
+};
+
+struct IfStatement : Statement {
+    std::unique_ptr<ExprNode> condition_expr;
+    std::vector<std::unique_ptr<Statement>> then_statements;
+    std::vector<std::unique_ptr<Statement>> else_statements;
+ 
+    explicit IfStatement(int file, int line, std::unique_ptr<ExprNode> expr)
+        : Statement(file, line, StmtType::If), condition_expr(std::move(expr))  {}
+
+    std::unique_ptr<Statement> clone() const override {
+        auto if_clone = std::make_unique<IfStatement>(file, line, CloneExpr(condition_expr));
+        for (const auto& stmt : then_statements) {
+            if (stmt) {
+                if_clone->then_statements.push_back(stmt->clone());
+            }
+        }
+        for (const auto& stmt : else_statements) {
+            if (stmt) {
+                if_clone->else_statements.push_back(stmt->clone());
+            }
+        }
+        return if_clone;
+    }
+};
+
+struct ElseStatement : Statement {
+    explicit ElseStatement(int file, int line)
+        : Statement(file, line, StmtType::Else) {}
+
+    std::unique_ptr<Statement> clone() const override {
+        return std::make_unique<ElseStatement>(file, line);
+    }
+};
+
+struct EndIfStatement : Statement {
+    explicit EndIfStatement(int file, int line)
+        : Statement(file, line, StmtType::EndIf) {}
+
+    std::unique_ptr<Statement> clone() const override {
+        return std::make_unique<EndIfStatement>(file, line);
     }
 };
 
