@@ -10,7 +10,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # ------------------------------------------------------------------------------
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(
+    add_compile_options(        
         # Release - Maximum speed
         $<$<CONFIG:Release>:-O3>
         $<$<CONFIG:Release>:-Wall>

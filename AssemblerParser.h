@@ -7,6 +7,11 @@
 #include "options.h"
 namespace fs = std::filesystem;
 
+enum class CondKind {
+    IfDef,  // Handled at compile/parse time via token skipping
+    IfNode  // Handled at runtime/AST generation via IfStatement
+};
+
 
 enum class Associativity { Left, Right };
 
@@ -17,6 +22,13 @@ struct OpPrecedence {
 
 class AssemblerParser {
     std::vector<PasmTokenizer::Token> tokens_;
+    struct CondFrame {
+        CondKind kind;
+        bool if_was_true; // Relevant for IfDef to know if an .else block should skip
+    };
+
+    // Replace std::vector<bool> ifdef_stack with:
+    std::vector<CondFrame> cond_stack;
     size_t index_{0};
     PasmTokenizer::Token Tok;
 
@@ -90,24 +102,28 @@ public:
     }
 
     void SkipToElseOrEndif() {
-        int depth = 1; // We are currently inside 1 unclosed .ifdef block
+        int depth = 1;
 
         while (!TokIs(TokenKind::Eof)) {
             if (TokIs(TokenKind::Directive)) {
-                if (Tok.text == ".ifdef" || Tok.text == ".ifndef") {
-                    depth++; // Entering a nested block
+                std::string dir = Tok.text;
+                std::transform(dir.begin(), dir.end(), dir.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+
+                if (dir == ".ifdef" || dir == ".ifndef" || dir == ".if") {
+                    depth++;
                 }
-                else if (Tok.text == ".endif") {
-                    depth--; // Exiting a block
+                else if (dir == ".endif") {
+                    depth--;
                     if (depth == 0) {
-                        return; // Found the matching .endif!
+                        return;
                     }
                 }
-                else if (Tok.text == ".else" && depth == 1) {
-                    return; // Found the matching .else at our current level!
+                else if (dir == ".else" && depth == 1) {
+                    return;
                 }
             }
-            ConsumeToken(); // Skip the token entirely
+            ConsumeToken();
         }
 
         throw std::runtime_error("Unexpected EOF: Missing .endif");
@@ -445,71 +461,76 @@ public:
                     ConsumeToken();
                     continue;
                 }
-                else if ((dir == ".ifdef") || (dir == ".ifndef")) {
 
+                else if (dir == ".ifdef" || dir == ".ifndef") {
                     if (!TokIs(TokenKind::Identifier)) {
                         throw std::runtime_error(std::format(
-                            "Expected Identifier after .ifdef File: {} Line: {}",
-                            src_mgr.GetFileName(Tok.file), Tok.line
+                            "Expected Identifier after {} File: {} Line: {}",
+                            dir_tok.text, src_mgr.GetFileName(Tok.file), Tok.line
                         ));
                     }
 
                     auto sym = definedSyms.Lookup(Tok.text);
-                    ConsumeToken(); // Consume the identifier token
+                    ConsumeToken();
 
-                    if ((sym.has_value() && dir == ".ifdef") || (!sym.has_value() && dir == ".ifndef")) {
-                        // Condition is TRUE.
-                        // Keep parsing normally, but record that this block succeeded
-                        // so we know to skip the .else later.
-                        ifdef_stack.push_back(true);
-                    }
-                    else {
-                        // Condition is FALSE.
-                        // Skip all tokens until we hit .else or .endif
+                    bool is_true = (sym.has_value() && dir == ".ifdef") || (!sym.has_value() && dir == ".ifndef");
+
+                    if (is_true) {
+                        cond_stack.push_back({CondKind::IfDef, true});
+                    } else {
                         SkipToElseOrEndif();
-
-                        // If we landed on an .else, we must parse the else block normally.
-                        // Record that the IF portion was false.
                         if (Tok.text == ".else") {
-                            ifdef_stack.push_back(false);
+                            cond_stack.push_back({CondKind::IfDef, false});
                             ConsumeToken(); // Consume ".else"
-                        }
-                        // If we landed on .endif, just consume it and don't push to stack.
-                        else if (Tok.text == ".endif") {
+                        } else if (Tok.text == ".endif") {
                             ConsumeToken(); // Consume ".endif"
                         }
                     }
                 }
+                else if (dir == ".if") {
+                    auto condition_expr = ParseExpression();
+                    statements.push_back(std::make_unique<IfStatement>(dir_tok.file, dir_tok.line, condition_expr.move()));
+                    
+                    // Push AST-based condition frame onto stack
+                    cond_stack.push_back({CondKind::IfNode, true});
+                }
                 else if (dir == ".else") {
-                    if (ifdef_stack.empty()) {
-                        statements.push_back(std::make_unique<ElseStatement>(dir_tok.file, dir_tok.line));
+                    if (cond_stack.empty()) {
+                        throw std::runtime_error(std::format("Unmatched .else at File: {} Line: {}", 
+                            src_mgr.GetFileName(dir_tok.file), dir_tok.line));
                     }
-                    else {
-                        bool if_was_true = ifdef_stack.back();
+
+                    if (cond_stack.back().kind == CondKind::IfNode) {
+                        // Belongs to an .if node -> emit AST statement
+                        statements.push_back(std::make_unique<ElseStatement>(dir_tok.file, dir_tok.line));
+                    } else {
+                        // Belongs to an .ifdef directive
+                        bool if_was_true = cond_stack.back().if_was_true;
                         ConsumeToken(); // Consume ".else"
 
                         if (if_was_true) {
-                            // The IF block executed, so we MUST skip this ELSE block
-                            SkipToElseOrEndif(); // Will land on .endif
+                            SkipToElseOrEndif(); 
                             ConsumeToken();      // Consume ".endif"
-                            ifdef_stack.pop_back(); // Close the block
-                        } else {
-                            // The IF block was false, so we are currently parsing this ELSE block.
-                            // Just let the parser continue naturally!
+                            cond_stack.pop_back(); 
                         }
                     }
                 }
                 else if (dir == ".endif") {
-                    if (ifdef_stack.empty()) {
+                    if (cond_stack.empty()) {
+                        throw std::runtime_error(std::format("Unmatched .endif at File: {} Line: {}", 
+                            src_mgr.GetFileName(dir_tok.file), dir_tok.line));
+                    }
+
+                    if (cond_stack.back().kind == CondKind::IfNode) {
+                        // Belongs to an .if node -> emit AST statement
                         statements.push_back(std::make_unique<EndIfStatement>(dir_tok.file, dir_tok.line));
-                    }
-                    else {
+                    } else {
+                        // Belongs to an .ifdef directive
                         ConsumeToken(); // Consume ".endif"
-                        ifdef_stack.pop_back(); // Close the block
                     }
+                    
+                    cond_stack.pop_back();
                 }
-
-
                 else if (dir == ".if") {
                     auto condition_expr = ParseExpression();
                     statements.push_back(std::make_unique<IfStatement>(dir_tok.file, dir_tok.line, condition_expr.move()));
