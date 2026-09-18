@@ -16,8 +16,8 @@ class MultiPassAssembler {
 private:
     enum LoopContinueKind {
         normal,
-        break,
-        continue;
+        breakLoop,
+        continueLoop
     };
     SymbolTable symbols_ = SymbolTable("SYM");
     SymbolTable vars_ = SymbolTable("VAR");
