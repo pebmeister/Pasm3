@@ -282,6 +282,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
             }
 
+            loopControl = LoopControlKind::normal;
             // 2. Unroll loop iterations into new_statements for THIS pass
             int iteration_count = 0;
             const int MAX_ITERATIONS = 64000;
@@ -313,8 +314,19 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 size_t inner_index = 0;
                 while (inner_index < iteration_body.size()) {
                     ProcessStatement(iteration_body, new_statements, inner_index, anonymous_labels, src_mgr);
+                    if (loopControl == LoopControlKind::break_loop) {
+                        break;
+                    }
+                    else if (loopControl == LoopControlKind::continue_loop) {
+                        continue;
+                    }
                 }
-
+                if (loopControl == LoopControlKind::break_loop) {
+                    break;
+                }
+                else if (loopControl == LoopControlKind::continue_loop) {
+                    loopControl = LoopControlKind::normal;
+                }              
                 if (!loop_statement->test_at_top) {
                     auto condition = EvaluateExpr(loop_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
@@ -623,6 +635,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
   
     vars_.clear();
+    loopControl = LoopControlKind::normal;
     
     changed = false;
     std::vector<std::unique_ptr<Statement>> new_statements;
@@ -674,6 +687,7 @@ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
 
 void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     vars_.clear();
+    LoopControlKind = LoopControlKind::Normal;
     pc = start_pc_;
     std::ostringstream listing;
 
