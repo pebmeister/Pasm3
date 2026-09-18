@@ -14,11 +14,12 @@
 
 class MultiPassAssembler {
 private:
-    enum LoopContinueKind {
+    enum LoopControlKind {
         normal,
         breakLoop,
         continueLoop
     };
+    int loopControl = LoopControlKind::normal;
     SymbolTable symbols_ = SymbolTable("SYM");
     SymbolTable vars_ = SymbolTable("VAR");
     
