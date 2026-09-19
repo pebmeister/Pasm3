@@ -299,7 +299,8 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
                     auto v = condition.value();
                     auto exitloop = loop_statement->reverse_logic ? v != 0 : v == 0;
-                    if (exitloop) {
+					 exitloop |= loopControl == LoopControlKind::break_loop;
+                    if (exitloop ) {
                         break; 
                     }
                 }
@@ -313,20 +314,16 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
                 size_t inner_index = 0;
                 while (inner_index < iteration_body.size()) {
+                 
                     ProcessStatement(iteration_body, new_statements, inner_index, anonymous_labels, src_mgr);
                     if (loopControl == LoopControlKind::break_loop) {
                         break;
                     }
                     else if (loopControl == LoopControlKind::continue_loop) {
-                        continue;
+                        break;
                     }
                 }
-                if (loopControl == LoopControlKind::break_loop) {
-                    break;
-                }
-                else if (loopControl == LoopControlKind::continue_loop) {
-                    loopControl = LoopControlKind::normal;
-                }              
+
                 if (!loop_statement->test_at_top) {
                     auto condition = EvaluateExpr(loop_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
@@ -337,8 +334,9 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     }
 
                     auto v = condition.value();
-                    auto truth = loop_statement->reverse_logic ? v != 0 : v == 0;
-                    if (truth) {
+                    auto exitloop=loop_statement->reverse_logic ? v != 0 : v == 0;
+                    exitloop |= loopControl == LoopControlKind::break_loop;
+                    if (exitloop) {
                         break; 
                     }
                 }
