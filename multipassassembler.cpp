@@ -320,8 +320,13 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                         break;
                     }
                     else if (loopControl == LoopControlKind::continue_loop) {
+                        loopControl = LoopControlKind::normal;
                         break;
                     }
+                }
+                if (loopControl == LoopControlKind::break_loop) {
+                    loopControl = LoopControlKind::normal;
+                    break;
                 }
 
                 if (!loop_statement->test_at_top) {
@@ -335,7 +340,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
                     auto v = condition.value();
                     auto exitloop=loop_statement->reverse_logic ? v != 0 : v == 0;
-                    exitloop |= loopControl == LoopControlKind::break_loop;
                     if (exitloop) {
                         break; 
                     }
