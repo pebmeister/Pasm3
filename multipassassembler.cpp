@@ -687,7 +687,7 @@ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
 
 void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     vars_.clear();
-    loopControl = LoopControlKind::Normal;
+    loopControl = LoopControlKind::normal;
     pc = start_pc_;
     std::ostringstream listing;
 
