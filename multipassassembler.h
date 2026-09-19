@@ -16,8 +16,8 @@ class MultiPassAssembler {
 private:
     enum LoopControlKind {
         normal,
-        breakLoop,
-        continueLoop
+        break_loop,
+        continue_loop
     };
     int loopControl = LoopControlKind::normal;
     SymbolTable symbols_ = SymbolTable("SYM");
