@@ -299,7 +299,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
                     auto v = condition.value();
                     auto exitloop = loop_statement->reverse_logic ? v != 0 : v == 0;
-					 exitloop |= loopControl == LoopControlKind::break_loop;
                     if (exitloop ) {
                         break; 
                     }
