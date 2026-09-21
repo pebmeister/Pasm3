@@ -13,6 +13,11 @@
 #include "options.h"
 
 /**
+ * @file multipassassembler.h
+ * @author Paul Baxter
+*/
+
+/**
  * @class MultiPassAssembler
  * @brief Orchestrates multi-pass symbol resolution, AST transformations, and code generation.
  * @author Paul Baxter

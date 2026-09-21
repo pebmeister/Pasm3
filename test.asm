@@ -6,25 +6,7 @@
 
     .print push
     .print off
-   
-    
-    .print on
-    .text "BREAK TEST"
-    .print off
-    .var break_index = 5
-    .var i = 0
-    .while 1        
-        .print on
-        .word i
-        .print off
-        
-        .if i >= break_index
-            .break;
-        .endif
-        i = i + 1
-    .wend
-    
-    
+  
     .print on
     .text "FIBINACHI SEQUENCE"
     .print off
@@ -45,7 +27,6 @@
     .text "PYTHAGORIAN TRIPPLE"
     .print off
    
-   
     .var m, n
     .var a, b, c
     terms = 0
@@ -53,7 +34,7 @@
     m = 2
     .while terms < MAX
         n = 1
-        .while n < m && terms < MAX
+        .while n < m
             ; Generates valid triples directly without needing a GCD check
             a = (m * m) - (n * n);
             b = 2 * m * n;
@@ -69,6 +50,9 @@
             .word a,b,c
             .print off
             terms = terms + 1
+            .if terms >= MAX
+                .break
+            .endif
             n = n + 1
         .wend
         m = m + 1

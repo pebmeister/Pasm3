@@ -1,25 +1,19 @@
-// Written by Paul Baxter
+/**
+ * @file main.cpp
+ * @brief Main entry point for the PASM 6502 multi-pass assembler CLI tool.
+ * @author Paul Baxter
+ * @details Handles command-line option parsing, source loading, tokenization,
+ *          parsing, multi-pass binary assembly, and binary/PRG output generation.
+ */
 
-#include <iostream>
-#include <memory>
-#include <string>
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <cstdint>
-#include <cctype>
-#include <optional>
-#include <algorithm>
-#include <iomanip>
-#include <sstream>
-#include <utility>
-#include <format>
-#include <fstream>
-#include <sstream>
-#include <exception>
-#include <stack>
 #include <chrono>
+#include <exception>
 #include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #define GEN_RULEMAP
 #include "ruletype.h"
@@ -29,30 +23,35 @@
 #include "tokenkind.h"
 #undef GEN_TOKMAP
 
-#include "opcodedict.h"
+#include "AssemblerParser.h"
 #include "PasmTokenizer.hpp"
 #include "anonymouslabel.h"
-#include "multipassassembler.h"
-#include "symboltable.h"
-#include "sourceManager.h"
-
-#include "getmangledsymbol.h"
-#include "opcodeinfo.h"
-
-#include "exprNode.h"
 #include "macrodef.h"
-#include "utilities.h"
-#include "AssemblerParser.h"
+#include "multipassassembler.h"
 #include "options.h"
+#include "sourceManager.h"
+#include "utilities.h"
+#include "macrodef.h"
 
+/**
+ * @brief Application entry point for the 6502 cross-assembler.
+ * 
+ * Parses CLI flags (`-o`, `-c64`, `-i`, `-st`, `-d`), loads source files,
+ * tokenizes and parses code statements, builds symbol tables over multiple
+ * passes, and outputs binary files and listings.
+ * 
+ * @param argc Count of command-line arguments.
+ * @param argv Array of command-line argument strings.
+ * @return int Returns 0 on successful assembly, or non-zero on invalid usage or runtime exceptions.
+ */
 int main(int argc, char* argv[])
 {
     Options options;
     
     auto arg = 1;
     
-    while(arg < argc) {
-        std::string arg_str = std::string(argv[arg]);		
+    while (arg < argc) {
+        std::string arg_str = std::string(argv[arg]);        
         if (arg_str[0] != '-') {
             options.input_filenames.push_back(argv[arg]);
         }
@@ -101,7 +100,7 @@ int main(int argc, char* argv[])
                 ss << std::dec << val;
             }
             ss >> symval;
-            options.defined_symbols.push_back({sym, symval} );
+            options.defined_symbols.push_back({sym, symval});
         }
         else {  
             std::cout << "Unknown option '" << arg_str << "'\n";

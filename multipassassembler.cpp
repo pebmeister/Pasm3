@@ -12,6 +12,11 @@
 #include "utilities.h"
 
 /**
+ * @file multipassassembler.cpp
+ * @author Paul Baxter
+*/
+
+/**
  * @brief Maps 6502 addressing modes to their byte length.
  * @param mode Addressing mode (`RULE_TYPE`).
  * @return Instruction byte count (1 to 3).

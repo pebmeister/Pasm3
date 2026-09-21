@@ -1,51 +1,60 @@
-#include <iomanip>
-#include <sstream>
-#include <utility>
+/**
+ * @file assembler_utils.cpp
+ * @brief Utility functions for file loading, tokenization, and relative anonymous label resolution.
+ * @author Paul Baxter
+ */
+
+#include <chrono>
+#include <exception>
 #include <format>
 #include <fstream>
-#include <sstream>
-#include <exception>
-#include <stack>
-#include <chrono>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
+#include <stack>
+#include <utility>
 
-
-#include "opcodedict.h"
+#include "AssemblerParser.h"
 #include "PasmTokenizer.hpp"
 #include "anonymouslabel.h"
-#include "multipassassembler.h"
-#include "symboltable.h"
-#include "sourceManager.h"
 #include "getmangledsymbol.h"
-#include "opcodeinfo.h"
-
-#include "exprNode.h"
 #include "macrodef.h"
-#include "utilities.h"
-#include "AssemblerParser.h"
+#include "multipassassembler.h"
+#include "opcodedict.h"
+#include "opcodeinfo.h"
+#include "sourceManager.h"
+#include "symboltable.h"
 #include "utilities.h"
 
-
+/**
+ * @brief Loads a source file, tracks line numbers in the source manager, and tokenizes its contents.
+ *
+ * Manages the include stack via SourceManager, populates line-by-line source mappings
+ * for diagnostics and listing outputs, and tokenizes the accumulated file buffer.
+ *
+ * @param filepath Path to the source file on disk.
+ * @param src_mgr Reference to the active SourceManager tracking files and includes.
+ * @param tokenizer Lexer instance used to tokenize the source code text.
+ * @return std::vector<PasmTokenizer::Token> Sequence of generated tokens for the target file.
+ */
 std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
     const std::string& filepath,
     SourceManager& src_mgr,
     const PasmTokenizer& tokenizer
 ) {
-	
-	
-  src_mgr.PushInclude(filepath);
-  int fileid = src_mgr.GetOrRegisterFile(filepath);
-	
-	int lineNo = 1;
-	std::string line;
-	std::string source_code;
-	std::ifstream infile(filepath);
-	while (std::getline(infile, line)) {
-		src_mgr.source[{fileid, lineNo}] = line;
-		source_code += (line + "\n");
-		lineNo++;
-	}
-	infile.close();
+    src_mgr.PushInclude(filepath);
+    int fileid = src_mgr.GetOrRegisterFile(filepath);
+
+    int lineNo = 1;
+    std::string line;
+    std::string source_code;
+    std::ifstream infile(filepath);
+    while (std::getline(infile, line)) {
+        src_mgr.source[{fileid, lineNo}] = line;
+        source_code += (line + "\n");
+        lineNo++;
+    }
+    infile.close();
 
     auto filetokens = tokenizer.tokenize(source_code, fileid);
 
@@ -53,7 +62,24 @@ std::vector<PasmTokenizer::Token> LoadAndTokenizeFile(
     return filetokens;
 }
 
-std::optional<int> FindAnonLabel(const std::vector<AnonymousLabel>& anonymous_labels,  bool forward, int count, uint16_t pc) {
+/**
+ * @brief Resolves a relative anonymous label address ('+' or '-') relative to the current PC.
+ *
+ * Employs binary search to find the insertion boundary for the program counter (`pc`),
+ * then scans forward or backward to locate the Nth occurrence (`count`) of a '+' or '-' label.
+ *
+ * @param anonymous_labels Collection of sorted anonymous labels registered during assembly.
+ * @param forward Search direction: true for forward targets ('+'), false for backward targets ('-').
+ * @param count Relative target instance count (e.g., 2 for '++' or '--').
+ * @param pc Current program counter location.
+ * @return std::optional<int> Target address if resolved; std::nullopt if the label reference cannot be satisfied.
+ */
+std::optional<int> FindAnonLabel(
+    const std::vector<AnonymousLabel>& anonymous_labels,
+    bool forward,
+    int count,
+    uint16_t pc
+) {
     auto sz = anonymous_labels.size();
     if (sz == 0) {
         return std::nullopt;
@@ -88,10 +114,9 @@ std::optional<int> FindAnonLabel(const std::vector<AnonymousLabel>& anonymous_la
                     return lbl.address;
                 }
             }
-            start_index++; // Moved outside the if-statement to prevent infinite loops!
+            start_index++;
         }
-    }
-    else {
+    } else {
         // Searching backward: start from 'start_index - 1' and scan down to 0
         if (start_index == 0) {
             return std::nullopt; // No labels exist before the PC

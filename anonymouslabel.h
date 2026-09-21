@@ -2,6 +2,10 @@
 
 #include <cstdint>
 #include <utility>
+/**
+ * @file anonymouslabel.h
+ * @author Paul Baxter
+ */
 
 /**
  * @brief Represents an anonymous label used for localized branching.

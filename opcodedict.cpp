@@ -1,9 +1,19 @@
-// written by Paul Baxter
+/**
+ * @file opcodedict.cpp
+ * @brief Lookup table mapping token identifiers to 6502 opcode metadata.
+ * @author Paul Baxter
+ */
+
 #include "opcodedict.h"
 
-/// <summary>
-/// A mapping of 6502 CPU instruction tokens to their opcode information, including mnemonic, addressing modes, opcodes, instruction lengths, and descriptions.
-/// </summary
+/**
+ * @var opcodeDict
+ * @brief Mapping of 6502 CPU instruction tokens to their opcode specifications.
+ * 
+ * Contains detailed instruction metadata including mnemonics, supported addressing modes, 
+ * machine code opcodes, instruction cycle lengths, architecture flags (e.g., 65C02 or 
+ * illegal opcode status), and brief descriptive text.
+ */
 std::map<int, OpCodeInfo> opcodeDict = {
     {
         ORA,

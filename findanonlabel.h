@@ -5,6 +5,13 @@
 #include <vector>
 
 #include "anonymouslabel.h"
+/**
+ * @file findanonlabel.h
+ * @author Paul Baxter
+ */
+
+
+
 
 /**
  * @brief Locates the address of an anonymous label relative to the current program counter.

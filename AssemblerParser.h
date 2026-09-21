@@ -1,6 +1,7 @@
 #pragma once
 
 /**
+ * @file AssemblerParser.h
  * @author Paul Baxter
  */
 
@@ -9,8 +10,14 @@
 #include <iostream>
 #include <stack>
 
+#include "ruletype.h"
+#include "PasmTokenizer.hpp"
 #include "options.h"
-
+#include "macrodef.h"
+#include "sourceManager.h"
+#include "statement.h"
+#include "utilities.h"
+#include "opcodeinfo.h"
 
 namespace fs = std::filesystem; ///< file system namespace
 

@@ -1,5 +1,7 @@
 #pragma once
+
 #include <algorithm>
+#include "opcodedict.h"
 
 // Direct O(1) lookup by TokenKind
 inline const OpCodeInfo* FindOpCodeInfo(int kind) {
