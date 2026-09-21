@@ -1,43 +1,76 @@
 #pragma once
+
+/**
+ * @author Paul Baxter
+ */
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stack>
 
 #include "options.h"
-namespace fs = std::filesystem;
 
+
+namespace fs = std::filesystem; ///< file system namespace
+
+/**
+ * @brief Specifies the processing stage for conditional assembly directives.
+ */
 enum class CondKind {
-    IfDef,  // Handled at compile/parse time via token skipping
-    IfNode  // Handled at runtime/AST generation via IfStatement
+    IfDef,  ///< Handled at compile/parse time via token skipping (e.g., .ifdef / .ifndef).
+    IfNode  ///< Handled at runtime/AST generation via IfStatement nodes (e.g., .if).
 };
 
+/**
+ * @brief Represents operator associativity for expression parsing.
+ */
+enum class Associativity { 
+    Left,  ///< Left-to-right operator associativity.
+    Right  ///< Right-to-left operator associativity.
+};
 
-enum class Associativity { Left, Right };
-
+/**
+ * @brief Defines operator precedence and associativity rules for parser expressions.
+ */
 struct OpPrecedence {
-    int prec;
-    Associativity assoc;
+    int prec;           ///< Precedence level (higher values indicate higher binding priority).
+    Associativity assoc; ///< Operator associativity direction.
 };
 
+/**
+ * @class AssemblerParser
+ * @brief Parses token streams from assembly source code into Abstract Syntax Tree (AST) statements.
+ *
+ * Handles assembly directives, macro expansions, conditional assembly blocks, 
+ * label declarations, symbol definitions, and instruction parsing.
+ */
 class AssemblerParser {
-    std::vector<PasmTokenizer::Token> tokens_;
+private:
+    std::vector<PasmTokenizer::Token> tokens_; ///< Stream of tokens to be parsed.
+
+    /**
+     * @brief Context frame tracking nested conditional assembly directives (.if / .ifdef).
+     */
     struct CondFrame {
-        CondKind kind;
-        bool if_was_true; // Relevant for IfDef to know if an .else block should skip
+        CondKind kind;     ///< The type of conditional directive active in this frame.
+        bool if_was_true;  ///< Indicates if the preceding branch evaluated to true (determines if .else should execute).
     };
 
-    // Replace std::vector<bool> ifdef_stack with:
-    std::vector<CondFrame> cond_stack;
-    size_t index_{0};
-    PasmTokenizer::Token Tok;
+    std::vector<CondFrame> cond_stack; ///< Stack tracking active nested conditional frames.
+    size_t index_{0};                  ///< Current index position within the token stream.
+    PasmTokenizer::Token Tok;          ///< Current active lookahead token.
 
-    // Add this as a member variable in your Parser class
-    std::vector<bool> ifdef_stack;
+    std::vector<bool> ifdef_stack;     ///< Legacy stack tracking boolean evaluation states for conditional blocks.
 
-private:
-    Options options;
+    Options options;                   ///< Global assembly toolchain options and configuration settings.
 
+    /**
+     * @brief Checks whether a given identifier name matches a defined macro.
+     * @param name Name of the identifier to query (case-insensitive).
+     * @param macros_ Map of defined macros in the current compilation context.
+     * @return True if the identifier represents a registered macro, false otherwise.
+     */
     bool IsMacro(std::string name, const std::unordered_map<std::string, MacroDef>& macros_) const {
         std::transform(name.begin(), name.end(), name.begin(),
         [](unsigned char c) {
@@ -46,6 +79,12 @@ private:
         return macros_.find(name) != macros_.end();
     }
 
+    /**
+     * @brief Prints diagnostic details for the current lookahead token to stdout.
+     * @param src_mgr SourceManager instance used to resolve the source filename.
+     * @param msg Optional custom label or prefix message to display alongside output.
+     * @return Always returns 0.
+     */
     int prTok(const SourceManager &src_mgr, std::string msg="") {
         auto text = Tok.text;
         auto id = Tok.id;
@@ -60,10 +99,19 @@ private:
     }
 
 public:
+    /**
+     * @brief Constructs an AssemblerParser instance.
+     * @param tokens Vector of tokens produced by the tokenizer.
+     * @param opts Reference to assembler execution options and settings.
+     */
     explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens, Options& opts) : tokens_(std::move(tokens)), options(opts) {
         if (!tokens_.empty()) Tok = tokens_[0];
     }
 
+    /**
+     * @brief Consumes the current token, advances the stream index, and skips trailing whitespace.
+     * @return The token that was current prior to advancing.
+     */
     PasmTokenizer::Token ConsumeToken() {
         PasmTokenizer::Token prev = Tok;
         index_++;
@@ -72,10 +120,22 @@ public:
         return prev;
     }
 
+    /**
+     * @brief Checks whether the current lookahead token matches a given kind.
+     * @param kind Token type enumeration value to compare against.
+     * @return True if current token matches the specified kind, false otherwise.
+     */
     [[nodiscard]] bool TokIs(TokenKind kind) const {
         return Tok.is(static_cast<int>(kind));
     }
 
+    /**
+     * @brief Inspects upcoming tokens without consuming them.
+     * @param kind Token type enumeration value to match against.
+     * @param n Number of non-whitespace tokens ahead to inspect (default is 1).
+     * @param skipwhite Whether whitespace tokens should be ignored during lookahead (default is true).
+     * @return True if the token at offset `n` matches `kind`, false otherwise.
+     */
     [[nodiscard]] bool TokAheadIs(TokenKind kind, int n = 1, bool skipwhite = true) const {
         auto temp_index = index_;
         auto count = 0;
@@ -95,12 +155,19 @@ public:
         return false;
     }
 
+    /**
+     * @brief Advances token consumption past any consecutive whitespace tokens.
+     */
     void SkipWs() {
         while (TokIs(TokenKind::Ws)) {
             ConsumeToken();
         }
     }
 
+    /**
+     * @brief Skips tokens in non-matching conditional branches until reaching an associated `.else` or `.endif`.
+     * @throws std::runtime_error If end-of-file (EOF) is encountered before finding a matching `.endif`.
+     */
     void SkipToElseOrEndif() {
         int depth = 1;
 
@@ -128,8 +195,16 @@ public:
 
         throw std::runtime_error("Unexpected EOF: Missing .endif");
     }
-
-    // Helper to check if relative label
+    
+    /**
+     * @brief Determines if the current token sequence represents a relative anonymous label reference (e.g., '+', '++', '---').
+     *
+     * Scans consecutive identical '+' or '-' characters without skipping whitespace to count 
+     * relative forward/backward jump references.
+     *
+     * @return `std::optional<int>` containing the count of repeating sign tokens if a valid relative 
+     *         label pattern is matched, or `std::nullopt` if it represents a standard unary/binary operator.
+     */
     std::optional<int> GetRelativeLabelCount() {
 
         if (!TokIs(TokenKind::Plus) && !TokIs(TokenKind::Minus)) return std::nullopt;
@@ -150,14 +225,39 @@ public:
 
         return std::nullopt;
     }
-
-    std::vector<std::unique_ptr<Statement>> ParseProgram(SourceManager &src_mgr, std::unordered_map<std::string, MacroDef>& macros_, PasmTokenizer& tokenizer) {
-        
+    
+    /**
+     * @brief Parses a stream of tokens into a vector of Abstract Syntax Tree (AST) statements.
+     *
+     * This function serves as the primary parsing loop for the assembler. It iterates through 
+     * the tokens provided by the tokenizer, handling directives, macro definitions and expansions,
+     * symbol definitions (`EQU`), PC assignments (`* =`), labels, control-flow statements, 
+     * data declarations, and file inclusions.
+     *
+     * @param[in,out] src_mgr   Reference to the SourceManager used for file tracking, line numbers,
+     *                          and error reporting locations.
+     * @param[in,out] macros_   Unordered map storing macro definitions, keyed by lower-case macro name.
+     *                          Newly encountered macros are registered here, and existing macros are expanded.
+     * @param[in,out] tokenizer Reference to the tokenizer used to load and tokenize secondary 
+     *                          source files during `.include` processing.
+     *
+     * @return std::vector<std::unique_ptr<Statement>> A list of heap-allocated AST statement nodes
+     *                                                  representing the parsed program.
+     *
+     * @throws std::runtime_error If a syntax error, unexpected token, unclosed macro definition, 
+     *                            unmatched loop/conditional block, or file reading failure occurs.
+     */
+    std::vector<std::unique_ptr<Statement>> ParseProgram(
+        SourceManager &src_mgr, 
+        std::unordered_map<std::string, MacroDef>& macros_, 
+        PasmTokenizer& tokenizer) 
+    {        
         std::vector<std::unique_ptr<Statement>> statements;
-        std::vector<LoopStatement*> repeatStack;
+        std::vector<LoopStatement*> repeatStack; // Track active .repeat blocks for matching .until expressions
         
         SymbolTable definedSyms = SymbolTable("DEF");
         
+        // Seed the local symbol table with CLI defined symbols (-D / --define)
         for (auto&[sym, val] : options.defined_symbols) {        
             definedSyms.Define(sym, 1);
         }
@@ -167,13 +267,17 @@ public:
             std::cout << "\n";
         }
         SkipWs();
+
         while (!TokIs(TokenKind::Eof)) {
 
             if (display_tok) {
                 prTok(src_mgr);
             }
 
-            // check for a comment
+            /**
+             * @section Comments & Empty Lines
+             * Skip comments starting with ';' up to newline or EOF, and bypass blank lines.
+             */
             if (TokIs(TokenKind::Semicolon)) {
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                     ConsumeToken();
@@ -181,13 +285,15 @@ public:
                 continue;
             }
 
-            // end of line
             if (TokIs(TokenKind::Newline)) {
                 ConsumeToken();
                 continue;
             }
 
-            // 1. Symbol definition / EQU (e.g. SCREEN = $0400)
+            /**
+             * @section Symbol Definition / EQU
+             * Matches assignments such as `SYMBOL = <expr>`.
+             */
             if (TokIs(TokenKind::Identifier) && TokAheadIs(TokenKind::Equal)) {
                 std::string sym_name = ConsumeToken().text;
                 ConsumeToken(); // consume '='
@@ -197,7 +303,10 @@ public:
                 continue;
             }
 
-            // 2. PC Assignment (e.g., * = $C000)
+            /**
+             * @section Program Counter Assignment
+             * Matches origin set syntaxes such as `* = $C000`.
+             */
             if (TokIs(TokenKind::Star) && TokAheadIs(TokenKind::Equal)) {
                 ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
@@ -206,8 +315,10 @@ public:
                 continue;
             }
 
-            // 3. Labels
-            // Ensure we don't accidentally treat a macro invocation as a label
+            /**
+             * @section Standard & Relative Labels
+             * Matches explicit labels (`label:`), implicit non-macro identifiers, and relative labels (`+`, `-`).
+             */
             if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text, macros_))) {
                 std::string name = Tok.text;
                 if (!name.empty() && name.back() == ':')
@@ -218,7 +329,6 @@ public:
                 continue;
             }
 
-            // 3.5 Relative Labels
             if (TokIs(TokenKind::Minus) || TokIs(TokenKind::Plus)) {
                 Tok.id = static_cast<int>(TokenKind::Label);
                 statements.push_back(std::make_unique<LabelStatement>(Tok.file, Tok.line, std::move(Tok.text)));
@@ -226,7 +336,12 @@ public:
                 continue;
             }
 
-            // 4. Directives (.org, .byte, .word)
+            /**
+             * @section Assembler Directives
+             * Handles directives including data declaration (.byte, .word, .text), memory (.org, .ds, .fill),
+             * macro definition (.macro/.endm), control flow (.while/.repeat), conditionals (.ifdef/.if/.else),
+             * file inclusion (.include), and variables (.var).
+             */
             if (TokIs(TokenKind::Directive)) {
 
                 PasmTokenizer::Token dir_tok = ConsumeToken();
@@ -236,28 +351,33 @@ public:
                     return std::tolower(c);
                 });
 
+                // --- .org ---
                 if (dir == ".org") {
                     auto addr_expr = ParseExpression();
                     statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, addr_expr.move()));
                 }
+                
+                // --- .basic_hdr (C64 BASIC stub wrapper) ---
                 else if (dir == ".basic_hdr") {
                     auto org_addr = std::make_unique<NumberExpr>(static_cast<uint16_t>(0x0801));
                     statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, std::move(org_addr)));
 
                     std::vector<std::unique_ptr<ExprNode>> elems;
                     for (auto by: {
-                                  0x0b, 0x08,
-                                  0x0a, 0x00,
-                                  0x9e,
-                                  0x32, 0x30, 0x36, 0x31,
-                                  0x00,
-                                  0x00, 0x00
+                                  0x0b, 0x08,             // Next line pointer ($080B)
+                                  0x0a, 0x00,             // Line number 10
+                                  0x9e,                   // BASIC 'SYS' token
+                                  0x32, 0x30, 0x36, 0x31, // ASCII "2061" ($080D)
+                                  0x00,                   // Line end
+                                  0x00, 0x00              // Program end
                                 }) {
 
                         elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(by)));
                     }
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, DataWidth::Byte, std::move(elems)));
                 }
+                
+                // --- .byte, .db, .text, .word ---
                 else if (dir == ".byte" || dir == ".db" || dir == ".text" || dir == ".word") {
                     DataWidth w = (dir == ".byte" || dir == ".db" || dir == ".text") ? DataWidth::Byte : DataWidth::Word;
                     std::vector<std::unique_ptr<ExprNode>> elems;
@@ -269,16 +389,13 @@ public:
                             PasmTokenizer::Token str_tok = ConsumeToken();
                             std::string str = str_tok.text;
 
-                            // 1. Strip surrounding quotes if your tokenizer includes them in .text
                             if (str.size() >= 2 && str.front() == '"' && str.back() == '"') {
                                 str = str.substr(1, str.size() - 2);
                             }
 
-                            // 2. Expand each character in the string to a NumberExpr
                             for (size_t i = 0; i < str.length(); ++i) {
                                 char c = str[i];
 
-                                // Optional: Handle basic escape sequences (e.g., \n, \t, \0, \\)
                                 if (c == '\\' && i + 1 < str.length()) {
                                     i++;
                                     switch (str[i]) {
@@ -303,6 +420,7 @@ public:
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, w, std::move(elems)));
                 }
 
+                // --- .fill ---
                 else if (dir == ".fill") {
                     auto byteexpr = ParseExpression();
                     ConsumeToken();
@@ -311,24 +429,23 @@ public:
                     statements.push_back(std::make_unique<FillStatement>(dir_tok.file, dir_tok.line, byteexpr.move(), lenexpr.move()));
                 }
 
+                // --- .macro definition ---
                 else if (dir == ".macro") {
                     PasmTokenizer::Token name_tok = ConsumeToken();
                     if (!name_tok.is(static_cast<int>(TokenKind::Identifier))) {
                         throw std::runtime_error(std::format(".macro expected name File: {} Line: {}",  src_mgr.GetFileName(name_tok.file), name_tok.line));
                     }
 
-                    // skip to EOL
                     while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof)) {
                         ConsumeToken();
                     }
-                    // consume newline
                     ConsumeToken();
 
                     MacroDef def;
                     def.name = name_tok.text;
                     def.times_called = 0;
 
-                    // Slurp all tokens until .endm directive is reached
+                    // Slurp tokens into macro body until .endm directive
                     auto slurp = ConsumeToken();
                     while (!(slurp.is(static_cast<int>(TokenKind::Directive)) && slurp.text == ".endm")) {
                         def.body_tokens.push_back(slurp);
@@ -339,7 +456,6 @@ public:
                         throw std::runtime_error(std::format("Expected .endm to close macro definition File: {} Line: {}", src_mgr.GetFileName(name_tok.file), name_tok.line));
                     }
 
-                    // Store in map
                     std::string lower_key(def.name);
                     std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
                     [](unsigned char c) {
@@ -348,21 +464,21 @@ public:
                     macros_[lower_key] = std::move(def);
 
                     definedSyms.Define(lower_key, 1);
-
-                    // Macro definitions emit no statements into the AST
                     continue;
                 }
 
+                // --- .ds (define storage) ---
                 else if (dir == ".ds") {
                     auto size_expr = ParseExpression();
                     statements.push_back(std::make_unique<DsStatement>(dir_tok.file, dir_tok.line, size_expr.move()));
                 }
-                else if (dir == ".break") {
+                
+                // --- .break / .continue ---
+                else if (dir == ".break" || dir == ".continue") {
                     statements.push_back(std::make_unique<BreakStatement>(dir_tok.file, dir_tok.line));
                 }
-                else if (dir == ".continue") {
-                    statements.push_back(std::make_unique<BreakStatement>(dir_tok.file, dir_tok.line));
-                }
+                
+                // --- .while / .wend ---
                 else if (dir == ".while") {
                     auto condition_expr = ParseExpression();
                     statements.push_back(std::make_unique<LoopStatement>(
@@ -373,16 +489,15 @@ public:
                 else if (dir == ".wend") {
                     statements.push_back(std::make_unique<WendStatement>(dir_tok.file, dir_tok.line));
                 }
+                
+                // --- .repeat / .until ---
                 else if (dir == ".repeat") {
-                    // 1. Create LoopStatement at .repeat position with a null condition for now
                     auto loop_stmt = std::make_unique<LoopStatement>(
                         Tok.file, Tok.line, nullptr, 
                         StmtType::Repeat, StmtType::Until, 
                         false, true);
 
-                    // 2. Keep pointer on stack so .until can attach the expression later
                     repeatStack.push_back(loop_stmt.get());
-
                     statements.push_back(std::move(loop_stmt));
                 }
                 else if (dir == ".until") {
@@ -395,15 +510,11 @@ public:
                     auto* loop_stmt = repeatStack.back();
                     repeatStack.pop_back();
 
-                    // 3. Attach expression to the LoopStatement sitting at .repeat
                     loop_stmt->condition_expr = condition_expr.move();
-
-                    // 4. Push end marker
                     statements.push_back(std::make_unique<UntilStatement>(Tok.file, Tok.line));
                 }
 
-
-                // Inside ParseProgram() or your directive handler:
+                // --- .include / .inc ---
                 else if (dir == ".include" || dir == ".inc") {
                     if (!TokIs(TokenKind::StringLiteral)) {
                         throw std::runtime_error(std::format(
@@ -411,7 +522,6 @@ public:
                             src_mgr.GetFileName(Tok.file), Tok.line));
                     }
 
-                    // Remove the surrounding quotes from the filename string
                     std::string inc_filename = Tok.text.substr(1, Tok.text.size() - 2);
                     ConsumeToken();
 
@@ -429,20 +539,18 @@ public:
                             inc_filename, src_mgr.GetFileName(Tok.file), Tok.line));
                     }
 
-                    // Tokenize the included file using SourceManager
                     auto inc_tokens = LoadAndTokenizeFile(filepath, src_mgr, tokenizer);
-
-                    // Recursively parse the included tokens into AST statements
                     AssemblerParser parser(inc_tokens, options);
                     auto inc_statements = parser.ParseProgram(src_mgr, macros_, tokenizer);
 
-                    // Insert the included statements directly inline
                     for (auto& stmt : inc_statements) {
                         statements.push_back(std::move(stmt));
                     }
 
                     continue;
                 }
+
+                // --- .print ---
                 else if (dir == ".print") {
                     if (!TokIs(TokenKind::Identifier)) {
                         throw std::runtime_error(std::format("Expected Identifier after .print File: {} Line: {}", src_mgr.GetFileName(Tok.file), Tok.line));
@@ -468,6 +576,7 @@ public:
                     continue;
                 }
 
+                // --- Conditional directives (.ifdef, .ifndef, .if, .else, .endif) ---
                 else if (dir == ".ifdef" || dir == ".ifndef") {
                     if (!TokIs(TokenKind::Identifier)) {
                         throw std::runtime_error(std::format(
@@ -487,17 +596,15 @@ public:
                         SkipToElseOrEndif();
                         if (Tok.text == ".else") {
                             cond_stack.push_back({CondKind::IfDef, false});
-                            ConsumeToken(); // Consume ".else"
+                            ConsumeToken();
                         } else if (Tok.text == ".endif") {
-                            ConsumeToken(); // Consume ".endif"
+                            ConsumeToken();
                         }
                     }
                 }
                 else if (dir == ".if") {
                     auto condition_expr = ParseExpression();
                     statements.push_back(std::make_unique<IfStatement>(dir_tok.file, dir_tok.line, condition_expr.move()));
-                    
-                    // Push AST-based condition frame onto stack
                     cond_stack.push_back({CondKind::IfNode, true});
                 }
                 else if (dir == ".else") {
@@ -507,16 +614,14 @@ public:
                     }
 
                     if (cond_stack.back().kind == CondKind::IfNode) {
-                        // Belongs to an .if node -> emit AST statement
                         statements.push_back(std::make_unique<ElseStatement>(dir_tok.file, dir_tok.line));
                     } else {
-                        // Belongs to an .ifdef directive
                         bool if_was_true = cond_stack.back().if_was_true;
-                        ConsumeToken(); // Consume ".else"
+                        ConsumeToken();
 
                         if (if_was_true) {
                             SkipToElseOrEndif(); 
-                            ConsumeToken();      // Consume ".endif"
+                            ConsumeToken();      
                             cond_stack.pop_back(); 
                         }
                     }
@@ -528,25 +633,19 @@ public:
                     }
 
                     if (cond_stack.back().kind == CondKind::IfNode) {
-                        // Belongs to an .if node -> emit AST statement
                         statements.push_back(std::make_unique<EndIfStatement>(dir_tok.file, dir_tok.line));
                     } else {
-                        // Belongs to an .ifdef directive
-                        ConsumeToken(); // Consume ".endif"
+                        ConsumeToken();
                     }
                     
                     cond_stack.pop_back();
                 }
-                else if (dir == ".if") {
-                    auto condition_expr = ParseExpression();
-                    statements.push_back(std::make_unique<IfStatement>(dir_tok.file, dir_tok.line, condition_expr.move()));
-                }
 
+                // --- .var ---
                 else if (dir == ".var") {
                     std::vector<std::pair<std::string, std::unique_ptr<ExprNode>>> pairs;
 
                     do {
-                        // Consume separator comma if present
                         if (TokIs(TokenKind::Comma)) {
                             ConsumeToken();
                         }
@@ -556,7 +655,7 @@ public:
                             std::unique_ptr<ExprNode> expr_node = nullptr;
 
                             if (TokIs(TokenKind::Equal)) {
-                                ConsumeToken(); // consume '='
+                                ConsumeToken();
                                 auto val_expr = ParseExpression();
                                 
                                 if (val_expr.isInvalid()) {
@@ -566,11 +665,9 @@ public:
                                 
                                 expr_node = val_expr.move();
                             } else {
-                                // Default value for uninitialized variable (0)
                                 expr_node = std::make_unique<NumberExpr>(0);
                             }
 
-                            // Correctly construct pair inside vector and register symbol
                             pairs.emplace_back(sym_name, std::move(expr_node));
                             definedSyms.Define(sym_name, 1);
                         } else {
@@ -582,6 +679,7 @@ public:
                     statements.push_back(std::make_unique<VarStatement>(dir_tok.file, dir_tok.line, std::move(pairs)));
                 }
 
+                // --- .error ---
                 else if (dir == ".error") {
                     std::string msg = ".error encountred";
                     if (TokIs(TokenKind::StringLiteral)) {
@@ -597,9 +695,13 @@ public:
                 continue;
             }
 
-            // 4.5 Macro Expansion
+            /**
+             * @section Macro Expansion
+             * Replaces macro invocation tokens with macro body tokens, performing positional 
+             * parameter substitution (`\\1`, `\\2`) and local symbol mangling (`@`).
+             */
             if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text, macros_)) {
-
+                // ... (Macro expansion continuation)
                 auto mac_call_tok = Tok;
 
                 // 1. Save the start position of the macro call in the token stream
@@ -726,7 +828,15 @@ public:
                 continue;
             }
 
-            // 5. Opcodes
+            /**
+             * @section Instruction Parsing & Addressing Mode Resolution
+             * Parses 6502 assembly opcodes and dispatches operand token sequences to their 
+             * respective addressing modes:
+             * - Implied / Accumulator (`NOP`, `LSR A`)
+             * - Immediate (`#$FF`)
+             * - Indirect Variants (`(expr,X)`, `(expr),Y`, `(expr)`)
+             * - Absolute / Indexed (`expr`, `expr,X`, `expr,Y`)
+             */
             if (TokIs(TokenKind::Opcode)) {
 
                 PasmTokenizer::Token opcode_tok = ConsumeToken();
@@ -734,20 +844,23 @@ public:
                 RULE_TYPE mode = RULE_TYPE::Op_Implied;
                 ExprResult operand_expr;
 
+                // --- Immediate Addressing (#expr) ---
                 if (TokIs(TokenKind::Hash)) {
-                    // Immediate: #expr
                     ConsumeToken();
                     mode = RULE_TYPE::Op_Immediate;
                     operand_expr = ParseExpression();
-                } else if (TokIs(TokenKind::Newline) || TokIs(TokenKind::Eof) || TokIs(TokenKind::Semicolon)) {
-                    // Implied
+                } 
+                // --- Implied Addressing ---
+                else if (TokIs(TokenKind::Newline) || TokIs(TokenKind::Eof) || TokIs(TokenKind::Semicolon)) {
                     mode = RULE_TYPE::Op_Implied;
-                } else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
-                    // Accumulator: LSR A
+                } 
+                // --- Accumulator Addressing (e.g., ASL A, ROR A) ---
+                else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
                     ConsumeToken();
                     mode = RULE_TYPE::Op_Accumulator;
-                } else if (TokIs(TokenKind::LParen)) {
-                    // Indirect modes
+                } 
+                // --- Indirect Addressing Modes ---
+                else if (TokIs(TokenKind::LParen)) {
                     ConsumeToken(); // Consume '('
                     operand_expr = ParseExpression();
 
@@ -777,14 +890,15 @@ public:
                                 throw std::runtime_error(std::format("Expected 'Y' for Indirect Y addressing File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
                             }
                         } else {
-                            // Standard Indirect: (expr) - used by JMP
+                            // Standard Absolute Indirect: (expr) - e.g., JMP ($FFFC)
                             mode = RULE_TYPE::Op_Indirect;
                         }
                     } else {
                         throw std::runtime_error(std::format("Malformed indirect addressing mode File: {} Line {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
                     }
-                } else {
-                    // Absolute, Absolute X/Y, Relative, or Zero-Page
+                } 
+                // --- Absolute, Absolute Indexed (X/Y), Zero-Page, or Relative ---
+                else {
                     operand_expr = ParseExpression();
                     if (TokIs(TokenKind::Comma)) {
                         ConsumeToken();
@@ -798,15 +912,22 @@ public:
                             throw std::runtime_error(std::format("Expected X or Y register after comma File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
                         }
                     } else {
+                        // Fall back to mnemonic-based deduction (e.g., relative branch vs absolute jump)
                         mode = DeduceMemoryMode(mnemonic);
                     }
                 }
 
                 statements.push_back(std::make_unique<InstructionStatement>(
-                                         opcode_tok.file, opcode_tok.line, mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.move())
-                                     ));
+                    opcode_tok.file, opcode_tok.line, mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.move())
+                ));
                 continue;
             }
+
+            /**
+             * @section Parsing Fallback & Recovery
+             * Triggered when an unrecognized token sequence is encountered at statement start.
+             * Logs a syntax error and advances the token stream to prevent infinite loops.
+             */
             std::cout << "Syntax Error: Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << " File: " << src_mgr.GetFileName(Tok.file) << " Line: " << Tok.line << "\n";
             ConsumeToken();
         }
@@ -815,6 +936,16 @@ public:
     }
 
 private:
+    /**
+     * @brief Parses binary expressions using Pratt precedence-climbing parsing.
+     * 
+     * Handles binary operators according to their precedence levels and associativity rules.
+     * Continues parsing right-hand side expressions as long as incoming operators have a higher
+     * precedence than @p min_prec.
+     * 
+     * @param min_prec The minimum operator precedence required to continue climbing.
+     * @return ExprResult Containing the constructed binary AST subtree, or an error state.
+     */
     ExprResult ParseExpression(int min_prec = 0) {
         ExprResult lhs = ParsePrefixExpression();
         if (lhs.isInvalid()) return lhs;
@@ -831,13 +962,27 @@ private:
             if (rhs.isInvalid()) return ExprResult::Error();
 
             lhs = ExprResult(std::make_unique<BinaryExpr>(
-                                 op_tok.id, lhs.move(), rhs.move()
+                                op_tok.id, lhs.move(), rhs.move()
                              ));
         }
         return lhs;
     }
 
+    /**
+     * @brief Parses primary expressions, literals, unary prefix operators, and parenthesized expressions.
+     * 
+     * Evaluates primary expression atoms:
+     * - Numeric literals (Hex `$`, Binary `%`, Character `'a'`, Decimal)
+     * - Single-character string literals
+     * - Identifiers and program counter location counter (`*`)
+     * - Anonymous relative labels (`+`, `-`, `++`, `--`, etc.)
+     * - Sub-expressions enclosed in parentheses `(expr)`
+     * - Unary prefix operations (`<`, `>`, `-`, `+`, `~`, `!`)
+     * 
+     * @return ExprResult The parsed leaf or unary AST node.
+     */
     ExprResult ParsePrefixExpression() {
+        // --- Numeric Literals ($1234, %10101010, 'A', 65535) ---
         if (TokIs(TokenKind::Number)) {
             PasmTokenizer::Token t = ConsumeToken();
             int64_t val = 0;
@@ -857,27 +1002,31 @@ private:
             return ExprResult(std::make_unique<NumberExpr>(val));
         }
         
-        if (TokIs(TokenKind::StringLiteral) && (Tok.text.size()==3)) {
+        // --- Single-Character String Literal as Byte Constant ---
+        if (TokIs(TokenKind::StringLiteral) && (Tok.text.size() == 3)) {
             PasmTokenizer::Token t = ConsumeToken();
             auto val = static_cast<int64_t>(t.text[1]);
             return ExprResult(std::make_unique<NumberExpr>(val));
         }
 
+        // --- Identifiers or Location Counter (*) ---
         if (TokIs(TokenKind::Identifier) || TokIs(TokenKind::Star)) {
             PasmTokenizer::Token t = ConsumeToken();
             return ExprResult(std::make_unique<SymbolExpr>(t.text));
         }
 
+        // --- Anonymous Relative Labels (+, -, ++, --) ---
         auto anon_count = GetRelativeLabelCount();
         if (anon_count.has_value()) {
-            auto foward = Tok.id == static_cast<int>(TokenKind::Plus);
+            auto forward = Tok.id == static_cast<int>(TokenKind::Plus);
             auto count = anon_count.value();
-            for (auto i=0; i < count; ++i) {
+            for (auto i = 0; i < count; ++i) {
                 ConsumeToken();
             }
-            return ExprResult(std::make_unique<AnonLblExpr>(foward, count));
+            return ExprResult(std::make_unique<AnonLblExpr>(forward, count));
         }
 
+        // --- Grouped Parenthesized Expression ---
         if (TokIs(TokenKind::LParen)) {
             ConsumeToken();
             ExprResult expr = ParseExpression(0);
@@ -885,6 +1034,7 @@ private:
             return expr;
         }
 
+        // --- Unary Prefix Operators (<, >, -, +, ~, !) ---
         if (IsUnaryPrefix(Tok.id)) {
             PasmTokenizer::Token op_tok = ConsumeToken();
             ExprResult operand = ParseExpression(50);
@@ -894,6 +1044,15 @@ private:
         return ExprResult::Error();
     }
 
+    /**
+     * @brief Retrieves precedence rank and associativity for binary operators.
+     * 
+     * Implements a standard operator hierarchy adapted for assembly expression logic, 
+     * ranging from low-precedence logical OR (`||`) to high-precedence arithmetic (`*`, `/`, `%`).
+     * 
+     * @param kind Integer representation of the token kind (`TokenKind`).
+     * @return OpPrecedence Struct containing numeric precedence value and operator associativity.
+     */
     static OpPrecedence GetBinaryPrecedence(int kind) {
         switch ((TokenKind)kind) {
         case TokenKind::PipePipe:
@@ -936,6 +1095,16 @@ private:
         }
     }
 
+    /**
+     * @brief Checks if a token kind acts as a unary prefix operator.
+     * 
+     * Includes 6502-specific low-byte (`<`) and high-byte (`>`) extraction operators,
+     * along with standard arithmetic/bitwise unary operators.
+     * 
+     * @param k Token ID to evaluate.
+     * @return true If the token can precede a unary operand.
+     * @return false Otherwise.
+     */
     static bool IsUnaryPrefix(int k) {
         // Include BOTH LowByte/Less and HighByte/Greater here for prefix position
         return k == static_cast<int>(TokenKind::LowByte)  || k == static_cast<int>(TokenKind::Less)    ||
@@ -944,6 +1113,16 @@ private:
                k == static_cast<int>(TokenKind::Tilde)    || k == static_cast<int>(TokenKind::Bang);
     }
 
+    /**
+     * @brief Deduces whether an opcode operand defaults to Relative or Absolute addressing.
+     * 
+     * Normalizes the mnemonic case and queries opcode metadata to determine if the 
+     * operation uses relative branch offset addressing (e.g., `BNE`, `BEQ`) or falls 
+     * back to absolute memory addressing.
+     * 
+     * @param mnemonic The instruction mnemonic string (e.g., "bne", "jmp").
+     * @return RULE_TYPE Corresponding addressing mode (`Op_Relative` or `Op_Absolute`).
+     */
     RULE_TYPE DeduceMemoryMode(std::string mnemonic) const {
         std::transform(mnemonic.begin(), mnemonic.end(), mnemonic.begin(),
         [](unsigned char c) {

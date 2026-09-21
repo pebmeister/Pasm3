@@ -11,6 +11,11 @@
 #include "findanonlabel.h"
 #include "utilities.h"
 
+/**
+ * @brief Maps 6502 addressing modes to their byte length.
+ * @param mode Addressing mode (`RULE_TYPE`).
+ * @return Instruction byte count (1 to 3).
+ */
 size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
     switch (mode) {
         case RULE_TYPE::Op_Implied:
@@ -37,6 +42,13 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
     }
 }
 
+/**
+ * @brief Runs multi-pass symbol resolution until convergence or max pass limit.
+ * @param statements AST statement stream.
+ * @param anonymous_labels Anonymous label tracker.
+ * @param src_mgr Source code manager.
+ * @throws std::runtime_error On convergence failure after max_passes.
+ */
 void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     pass = 1;
     changed = true;
@@ -77,6 +89,14 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     EmitFinalPass(statements, anonymous_labels, src_mgr);
 }
 
+/**
+ * @brief Main AST worker node processor for multi-pass evaluation and branch relaxation.
+ * @param statements Original statement AST.
+ * @param new_statements Target statement queue for current pass.
+ * @param st_index Current instruction pointer within `statements`.
+ * @param anonymous_labels Anonymous label mapping.
+ * @param src_mgr Source location manager.
+ */
 void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>>& statements, std::vector<std::unique_ptr<Statement>>&new_statements, size_t& st_index, 
     std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) 
 {
@@ -645,6 +665,10 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
     st_index++;
 }
 
+/**
+ * @brief Driver loop for a single symbol resolution pass.
+ * @return True if state mutated during this pass, forcing another pass.
+ */
 bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
   
     vars_.clear();
@@ -664,8 +688,18 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
     return changed;
 }
 
-// Helper to format 6502 operands based on addressing mode
-std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
+/**
+ * @brief Formats a 6502 operand into its standard assembly string representation.
+ *
+ * Takes a target addressing mode and an evaluated numerical value, returning a formatted
+ * syntax string matching standard 6502 assembly conventions (e.g., "#$FF", "$1234,X", "($00,X)").
+ *
+ * @param mode The addressing mode of the instruction operand (`RULE_TYPE`).
+ * @param val The 64-bit evaluated numerical value or target address for the operand.
+ * @return A `std::string` containing the formatted operand representation, or an empty string 
+ *         for implied or unhandled modes.
+ */
+ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
     uint16_t v = static_cast<uint16_t>(val);
     switch (mode) {
     case RULE_TYPE::Op_Immediate:
@@ -698,6 +732,21 @@ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
     }
 }
 
+/**
+ * @brief Performs the final pass of assembly, generating binary machine code and the assembly listing.
+ *
+ * Iterates through the AST statement collection to evaluate final symbol/variable expressions, 
+ * compute relative branch offsets, emit machine code bytes into the target binary buffer, 
+ * and assemble a formatted multi-column assembly listing output (`listing_file`).
+ *
+ * @param statements A vector of unique pointers to AST `Statement` objects representing the source.
+ * @param anonymous_labels Vector of resolved anonymous label references.
+ * @param src_mgr Reference to the `SourceManager` instance for retrieving original line text and file names.
+ *
+ * @throws std::runtime_error If print stack underflows, unknown print directives are encountered,
+ *                            symbols/expressions fail to evaluate, relative branches exceed [-128, 127],
+ *                            operands exceed address size limits, or PC attempts to move backward.
+ */
 void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
     vars_.clear();
     loopControl = LoopControlKind::normal;
