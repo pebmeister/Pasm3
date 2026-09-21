@@ -249,6 +249,12 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             break;
         }
             
+        case StmtType::Continue: {
+            loopControl = LoopControlKind::continue_loop;
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+            
         case StmtType::Loop: 
         {
             auto loop_statement = static_cast<LoopStatement*>(stmt.get());
@@ -918,6 +924,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 break;
             }
 
+            case StmtType::Break:
+            case StmtType::Continue:
             case StmtType::Wend:
             case StmtType::Until:
                 break;
