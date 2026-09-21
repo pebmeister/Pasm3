@@ -23,6 +23,8 @@ enum StmtType {
     If,
     Else,
     EndIf,
+    Break,
+    Continue,
     Unknown
 };
 
@@ -279,5 +281,23 @@ struct UntilStatement : Statement {
 
     std::unique_ptr<Statement> clone() const override {
         return std::make_unique<UntilStatement>(file, line);
+    }
+};
+
+struct BreakStatement : Statement {
+    explicit BreakStatement(int file, int line)
+        : Statement(file, line, StmtType::Break) {}
+
+    std::unique_ptr<Statement> clone() const override {
+        return std::make_unique<BreakStatement>(file, line);
+    }
+};
+
+struct ContinueStatement : Statement {
+    explicit ContinueStatement(int file, int line)
+        : Statement(file, line, StmtType::Continue) {}
+
+    std::unique_ptr<Statement> clone() const override {
+        return std::make_unique<ContinueStatement>(file, line);
     }
 };

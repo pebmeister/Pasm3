@@ -7,10 +7,27 @@
     .print push
     .print off
    
+    
+    .print on
+    .text "BREAK TEST"
+    .print off
+    .var break_index = 5
+    .var i = 0
+    .while 1        
+        .print on
+        .word i
+        .print off
+        
+        .if i >= break_index
+            .break;
+        .endif
+        i = i + 1
+    .wend
+    
+    
     .print on
     .text "FIBINACHI SEQUENCE"
     .print off
-    
     .var t1 = 0, t2 = 1, next = 0, terms = 1
     .while terms <= MAX
         .print on

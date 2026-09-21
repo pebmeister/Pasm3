@@ -357,6 +357,12 @@ public:
                     auto size_expr = ParseExpression();
                     statements.push_back(std::make_unique<DsStatement>(dir_tok.file, dir_tok.line, size_expr.move()));
                 }
+                else if (dir == ".break") {
+                    statements.push_back(std::make_unique<BreakStatement>(dir_tok.file, dir_tok.line));
+                }
+                else if (dir == ".continue") {
+                    statements.push_back(std::make_unique<BreakStatement>(dir_tok.file, dir_tok.line));
+                }
                 else if (dir == ".while") {
                     auto condition_expr = ParseExpression();
                     statements.push_back(std::make_unique<LoopStatement>(

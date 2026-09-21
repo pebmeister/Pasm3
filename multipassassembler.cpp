@@ -242,7 +242,13 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             }
             break;
         }
-                
+
+        case StmtType::Break: {
+            loopControl = LoopControlKind::break_loop;
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+            
         case StmtType::Loop: 
         {
             auto loop_statement = static_cast<LoopStatement*>(stmt.get());
