@@ -84,6 +84,8 @@ set(GENERATED_TOKENIZER_HEADER
 add_custom_command(
     OUTPUT "${GENERATED_TOKENIZER_HEADER}"
     COMMAND $<TARGET_FILE:buildlexor> "${GENERATED_TOKENIZER_HEADER}"
+    # Force MSBuild FileTracker to recognize the file was created/updated
+    COMMAND ${CMAKE_COMMAND} -E touch "${GENERATED_TOKENIZER_HEADER}"
     DEPENDS buildlexor
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Running buildlexor to generate PasmTokenizer.hpp..."
