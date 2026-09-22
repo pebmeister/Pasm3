@@ -99,30 +99,32 @@ add_custom_command(
 add_executable(pasm_parser
     main.cpp
     opcodedict.cpp
-	multipassassembler.cpp
-	utilities.cpp
-	d64.cpp
-	geos.cpp
-	anonymouslabel.h
-	exprNode.h
-	findanonlabel.h
-	getmangledsymbol.h
-	multipassassembler.h
-	opcodedict.h
-	opcodeinfo.h
-	opcodes.h
-	ruletype.h
-	sourceManager.h
-	statement.h
-	symboltable.h
-	tokenkind.h
-	macrodef.h
-	utilities.h
-	AssemblerParser.h
-	d64.h
-	d64_types.h
-	geos.h
-	
+    autoloader.h
+    autoloader.cpp
+    multipassassembler.cpp
+    utilities.cpp
+    d64.cpp
+    geos.cpp
+    anonymouslabel.h
+    exprNode.h
+    findanonlabel.h
+    getmangledsymbol.h
+    multipassassembler.h
+    opcodedict.h
+    opcodeinfo.h
+    opcodes.h
+    ruletype.h
+    sourceManager.h
+    statement.h
+    symboltable.h
+    tokenkind.h
+    macrodef.h
+    utilities.h
+    AssemblerParser.h
+    d64.h
+    d64_types.h
+    geos.h
+
     "${GENERATED_TOKENIZER_HEADER}"
 )
 

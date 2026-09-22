@@ -49,9 +49,9 @@
         FREHI       = 25        ; High frequency
         FRELO       = 177       ; Low frequency
 
-        .basic_hdr
+        ; .basic_hdr
         
-        ; .org $C000
+        .org $C000
 
 Start
         jsr @Initialize         ; Initialize the game
