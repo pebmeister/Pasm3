@@ -294,7 +294,7 @@ int main(int argc, char* argv[])
                 throw std::runtime_error("Error running cart convert");
             }
         }
-      if (options.d64) {
+        if (options.d64) {
             d64 disk;
             auto name = GetUppercaseBasename(options.outfile);
 

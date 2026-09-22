@@ -1,17 +1,36 @@
 // written by Paul Baxter
+/**
+ * @file autoloader.cpp
+ * @author Paul Baxter
+ * @brief Implementation of the Commodore 64 autostart bootstrap loader generator.
+ */
+
 #include "autoloader.h"
 #include <cctype>
 #include <stdexcept>
 
+/**
+ * @brief Generates and patches the Commodore 64 autostart bootstrap loader binary.
+ * 
+ * This function constructs a raw byte array representing a 6502 machine code routine 
+ * designed to run at address $0102. It suppresses interrupts, interacts with C64 KERNAL 
+ * routines (`RESTOR`, `STROUT`, `SETNAM`, `SETLFS`, `LOAD`) to load the specified 
+ * program from disk silently, restores system vectors, and jumps directly to the 
+ * target program entry address.
+ * 
+ * @param filename The target PRG filename to load from disk.
+ * @param addr     The target execution/load address of the main program.
+ * @return std::vector<uint8_t> The complete, ready-to-write LOADER.PRG binary array.
+ */
 std::vector<uint8_t> CreateAutoLoader(const std::string& filename, uint16_t addr) {
     std::vector<uint8_t> loader_code = {
         // ----------------------------------------------------
         // Autostart Bootstrap Loader (* = $0102)
         // ----------------------------------------------------
         0x02, 0x01,            // [0, 1] preset load address
-        0xA9, 0x7F,            // [2, 3] lda #$7F (suppress irq & nmi)
-        0x8D, 0x0D, 0xDC,      // [4, 5, 6] sta $DC0D
-        0x8D, 0x0E, 0xDC,      // [7, 8, 9] sta $DC0E
+        0xA9, 0x7F,            // [2, 3] lda #$7F (suppress irq & nmi)         0x8D, 0x0D, 0xDC,      // [4, 5, 6] sta$DC0D
+        0x8D, 0x0D, 0xDC,      // [4, 5, 6] sta CIAICR
+        0x8D, 0x0E, 0xDC,      // [7, 8, 9] sta CIACRA
         0x20, 0x8A, 0xFF,      // [10, 11, 12] jsr RESTOR
 
         0xA9, 0x36,            // [13, 14] lda #36 (<MSG)
@@ -32,8 +51,8 @@ std::vector<uint8_t> CreateAutoLoader(const std::string& filename, uint16_t addr
         0x85, 0x9D,            // [38, 39] sta MSGFLG (suppress 'searching for' msg)
         0x20, 0xD5, 0xFF,      // [40, 41, 42] jsr LOAD
 
-        0xA9, 0x81,            // [43, 44] lda #$81 (restore irq & nmi)
-        0x8D, 0x0D, 0xDC,      // [45, 46, 47] sta $DC0D
+        0xA9, 0x81,            // [43, 44] lda #$81 (restore irq & nmi)         
+        0x8D, 0x0D, 0xDC,      // [45, 46, 47] sta$DC0D
         0x8D, 0x0E, 0xDC,      // [48, 49, 50] sta $DC0E
 
         0x4C, 0x00, 0x00,      // [51, 52, 53] jmp $C000 (start loaded program)
@@ -66,20 +85,22 @@ std::vector<uint8_t> CreateAutoLoader(const std::string& filename, uint16_t addr
     // 1. Update the name length byte (at index 21)
     loader_code[21] = static_cast<uint8_t>(filename.length());
 
-    // 2. Overwrite the name bytes starting at index 55
-    size_t name_offset = 55;
-    for (size_t i = 0; i < filename.length(); ++i) {
-        loader_code[name_offset + i] = static_cast<uint8_t>(std::toupper(filename[i]));
-    }
-    
-    // 3. Add the null terminator right after the filename
-    loader_code[name_offset + filename.length()] = 0x00;
-
-    // 4. Set the load address (jumps to target program entry at bytes 52-53)
+    // 2. Set the load address (jumps to target program entry at bytes 52-53)
     auto lo = static_cast<uint8_t>(addr & 0xFF); 
     auto hi = static_cast<uint8_t>((addr >> 8) & 0xFF); 
     loader_code[52] = lo;
     loader_code[53] = hi;
+
+    // 3. Overwrite the name bytes starting at index 55
+    size_t name_offset = 55;
+    for (size_t i = 0; i < filename.length(); ++i) {
+        loader_code[name_offset + i] = static_cast<uint8_t>(std::toupper(filename[i]));
+    }
+
+    // 3. Add the null terminator right after the filename
+    loader_code[name_offset + filename.length()] = 0x00;
+    
+
 
     return loader_code;
 }
