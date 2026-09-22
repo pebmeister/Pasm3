@@ -21,8 +21,6 @@
         terms = terms + 1
     .wend
         
-    .var aa = 1
-    
     .print on
     .text "PYTHAGORIAN TRIPPLE"
     .print off
@@ -40,7 +38,7 @@
             b = 2 * m * n;
             c = (m * m) + (n * n);
 
-            ; Optional: Ensure 'a' is always the smaller leg for clean formatting
+            ; Ensure 'a' is always the smaller leg for clean formatting
             .if a > b
                 .var  temp = a;
                 a = b;

@@ -14,6 +14,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 
 #define GEN_RULEMAP
 #include "ruletype.h"
@@ -32,6 +33,28 @@
 #include "sourceManager.h"
 #include "utilities.h"
 #include "macrodef.h"
+#include "d64.h"
+
+
+
+/**
+ * @brief get the uppercase bas name from a path.
+ *
+ * Used to create a Commodore64 file name 
+ */
+std::string GetUppercaseBasename(const std::string& filepath) {
+    namespace fs = std::filesystem;
+    
+    // 1. Strip directory and extension
+    std::string name = fs::path(filepath).filename().stem().string();
+    
+    // 2. Convert to uppercase
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
+        return static_cast<char>(std::toupper(c));
+    });
+    
+    return name;
+}
 
 /**
  * @brief prints help message.
@@ -41,7 +64,7 @@ void help()
 {
     std::cout <<
 R"(Usage: 
-    pasm3 [-o outfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-h] inputfile inputfile2 ...
+    pasm3 [-o outfile] [-c64] [-d64 disk] [-i directory] [-st symbol] [-d symbol value] [-h] [-cart options] inputfile inputfile2 ...
 
     -h                  Print help.
     -o outfile          Specifies the output file name.
@@ -53,13 +76,19 @@ R"(Usage:
                         Can be specified multiple times.
     -d symbol value     Defines a symbol and value.
                         Can be specified more than once.
+    -cart options       Runs cartcov on the outputfile with the specified options enclosed in quotes
+                        VICE must be installed and in the path.
+                        -o outfile MUST be specified
+    -d64 disk           Creates d64 disk and installs the output file
+                        VICE must be installed and in the path.
+                        -o outfile MUST be specified
 )";
 }
 
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-o`, `-c64`, `-i`, `-st`, `-d`)
+ * Parses CLI flags (`-o`, `-c64`, `-i`, `-st`, `-d`, `-cart`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
@@ -99,6 +128,24 @@ Options parse_args(int argc, char* argv[])
             }
             options.include.push_back(argv[arg]);
         }
+        else if (arg_str == "-cart") {
+            arg++;
+            if (arg >= argc) {
+                help();
+                throw std::runtime_error("No directory specified for -i");
+            }
+            options.cart = true;
+            options.cart_options = argv[arg];
+        }
+        else if (arg_str == "-d64") {
+            arg++;
+            if (arg >= argc) {
+                help();
+                throw std::runtime_error("No disk name specifoed for -d64");
+            }
+            options.d64 = true;
+            options.d64_diskname = argv[arg];
+        }
         else if (arg_str == "-st") {
             arg++;
             if (arg >= argc) {
@@ -137,6 +184,10 @@ Options parse_args(int argc, char* argv[])
     if (options.input_filenames.empty()) {
         help();
         throw std::runtime_error("No input file specified");
+    }
+    if (options.cart && options.outfile.length() == 0) {
+        help();
+        throw std::runtime_error("Outfile must be specified when creating a cart.");
     }
     return options;
 }
@@ -179,15 +230,20 @@ int main(int argc, char* argv[])
         std::cout << assembler.listing_file << "\n";
         
         if (options.outfile.length() > 0) {
+            if (options.c64) {
+                
+                
+                auto lo = static_cast<uint8_t>(assembler.load_address & 0xFF); 
+                auto hi = static_cast<uint8_t>((assembler.load_address >> 8) & 0xFF); 
+                // The two bytes you want to add to the start
+                uint8_t prefix[2] = {lo, hi};
+
+                // Insert the 2 bytes at the beginning of the vector
+                assembler.binary_output.insert(assembler.binary_output.begin(), std::begin(prefix), std::end(prefix));
+            }
+
             std::ofstream out(options.outfile, std::ios::out | std::ios::binary);
             auto sz = assembler.binary_output.size();
-            if (options.c64) {
-                auto lo = static_cast<unsigned char>(assembler.load_address & 0xFF); 
-                auto hi = static_cast<unsigned char>((assembler.load_address >> 8) & 0xFF); 
-                out.write(reinterpret_cast<const char*>(&lo), sizeof(unsigned char));
-                out.write(reinterpret_cast<const char*>(&hi), sizeof(unsigned char));
-                sz += 2;
-            }
             out.write(reinterpret_cast<const char*>(assembler.binary_output.data()), assembler.binary_output.size());
             out.close();
             
@@ -195,6 +251,23 @@ int main(int argc, char* argv[])
         }       
         std::chrono::duration<double> elapsed_seconds = end - begin;
         std::cout << "Elapsed time: " << elapsed_seconds.count() << " seconds\n";
+
+        if (options.cart) {
+
+            std::string command = "cartconv -i " + options.outfile + " " + options.cart_options + " -o " + options.outfile + ".crt";
+            std::cout << command << "\n";
+            int exitCode = std::system(command.c_str());
+            
+            if (exitCode != 0) {
+                throw std::runtime_error("Error running cart convert");
+            }
+        }
+        if (options.d64) {
+            d64 disk;
+            auto name = GetUppercaseBasename(options.outfile);            
+            disk.addFile(name, c64FileType(d64FileTypes::PRG), assembler.binary_output);
+            disk.save(options.d64_diskname);
+        }
     }
     catch (std::exception& ex) {
         std::cerr << "Error " << ex.what() << "\n";

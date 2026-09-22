@@ -21,8 +21,13 @@ struct Options {
     std::vector<std::string> traced_symbols;                   /**< Symbol names selected for active tracing during assembly passes. */
     std::vector<std::string> input_filenames;                  /**< Source file paths to assemble. */
     std::vector<std::pair<std::string, int>> defined_symbols;  /**< Pre-defined symbol names and integer values passed via CLI. */
+    std::string cart_options;                                  /**< Parameters to run carconv with */
+    std::string d64_diskname;                                  /**< Name of d64 disk to create if d64 is true */
     bool c64 = false;                                          /**< Flag indicating whether to generate Commodore 64 executable output (PRG format with 2-byte load address header). */
     bool verbose = false;                                      /**< Enables verbose diagnostic logging during lexing, parsing, and assembly. */
     bool warnings = true;                                      /**< Enables warning reporting during assembly. */
     bool ignore_size = true;                                   /**< Flag to ignore memory range/size boundary errors. */
+    bool cart = false;                                         /**< Flag to specify cart */
+    bool d64 = false;                                          /**< Flag to specify d64 disk */
+    
 };
