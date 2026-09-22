@@ -28,7 +28,7 @@ std::vector<uint8_t> CreateAutoLoader(const std::string& filename, uint16_t addr
         // Autostart Bootstrap Loader (* = $0102)
         // ----------------------------------------------------
         0x02, 0x01,            // [0, 1] preset load address
-        0xA9, 0x7F,            // [2, 3] lda #$7F (suppress irq & nmi)         0x8D, 0x0D, 0xDC,      // [4, 5, 6] sta$DC0D
+        0xA9, 0x7F,            // [2, 3] lda #$7F (suppress irq & nmi)
         0x8D, 0x0D, 0xDC,      // [4, 5, 6] sta CIAICR
         0x8D, 0x0E, 0xDC,      // [7, 8, 9] sta CIACRA
         0x20, 0x8A, 0xFF,      // [10, 11, 12] jsr RESTOR
@@ -52,7 +52,7 @@ std::vector<uint8_t> CreateAutoLoader(const std::string& filename, uint16_t addr
         0x20, 0xD5, 0xFF,      // [40, 41, 42] jsr LOAD
 
         0xA9, 0x81,            // [43, 44] lda #$81 (restore irq & nmi)         
-        0x8D, 0x0D, 0xDC,      // [45, 46, 47] sta$DC0D
+        0x8D, 0x0D, 0xDC,      // [45, 46, 47] sta $DC0D
         0x8D, 0x0E, 0xDC,      // [48, 49, 50] sta $DC0E
 
         0x4C, 0x00, 0x00,      // [51, 52, 53] jmp $C000 (start loaded program)
