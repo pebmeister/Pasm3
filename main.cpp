@@ -34,20 +34,41 @@
 #include "macrodef.h"
 
 /**
- * @brief Application entry point for the 6502 cross-assembler.
+ * @brief prints help message.
  * 
- * Parses CLI flags (`-o`, `-c64`, `-i`, `-st`, `-d`), loads source files,
- * tokenizes and parses code statements, builds symbol tables over multiple
- * passes, and outputs binary files and listings.
+ */
+void help()
+{
+    std::cout <<
+R"(Usage: 
+    pasm3 [-o outfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-h] inputfile inputfile2 ...
+
+    -h                  Print help.
+    -o outfile          Specifies the output file name.
+    -c64                Specifies Commodore64 program format. 
+                        It places the load address in first two bytes.
+    -i directory        Specifies include directory. Can be specified more than once.
+    -st symbol          Specifies symbol trace. Displays symbol and value and when modified.
+                        This can change because of macros etc. 
+                        Can be specified multiple times.
+    -d symbol value     Defines a symbol and value.
+                        Can be specified more than once.
+)";
+}
+
+/**
+ * @brief Parses the input arguments.
+ * 
+ * Parses CLI flags (`-o`, `-c64`, `-i`, `-st`, `-d`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
- * @return int Returns 0 on successful assembly, or non-zero on invalid usage or runtime exceptions.
+ * @return int Returns Options on successful assembly
+ * @exception throws runtime excpeption on invalid parameters
  */
-int main(int argc, char* argv[])
+Options parse_args(int argc, char* argv[])
 {
     Options options;
-    
     auto arg = 1;
     
     while (arg < argc) {
@@ -55,11 +76,15 @@ int main(int argc, char* argv[])
         if (arg_str[0] != '-') {
             options.input_filenames.push_back(argv[arg]);
         }
+        else if (arg_str == "-h") {
+            help();
+            exit(0);
+        }
         else if (arg_str == "-o") {
             arg++;
             if (arg >= argc) {
-                std::cout << "invalid output file\n";
-                return -1;
+                help();
+                throw std::runtime_error("No output file specified for -o");
             }
             options.outfile = argv[arg];
         }
@@ -69,24 +94,24 @@ int main(int argc, char* argv[])
         else if (arg_str == "-i") {
             arg++;
             if (arg >= argc) {
-                std::cout << "invalid include directory\n";
-                return -1;
+                help();
+                throw std::runtime_error("No directory specified for -i");
             }
             options.include.push_back(argv[arg]);
         }
         else if (arg_str == "-st") {
             arg++;
             if (arg >= argc) {
-                std::cout << "invalid symbol trace\n";
-                return -1;
+                help();
+                throw std::runtime_error("No symbol defined for -st");
             }
             options.traced_symbols.push_back(argv[arg]);
         }
         else if (arg_str == "-d") {
             arg++;
-            if (arg >= argc) {
-                std::cout << "invalid symbol\n";
-                return -1;
+            if ((arg + 1) >= argc) {
+                help();
+                throw std::runtime_error("No symbol or value defined for -d");
             }
             std::string sym = argv[arg];
             arg++;
@@ -102,19 +127,35 @@ int main(int argc, char* argv[])
             ss >> symval;
             options.defined_symbols.push_back({sym, symval});
         }
-        else {  
-            std::cout << "Unknown option '" << arg_str << "'\n";
-            return -1;
+        else { 
+            help();
+            throw std::runtime_error(std::format("Unknown option '{}'", arg_str));
         }
         arg++;
     }
     
     if (options.input_filenames.empty()) {
-        std::cout << "No input file specified.\n";
-        return 1;
+        help();
+        throw std::runtime_error("No input file specified");
     }
+    return options;
+}
 
+/**
+ * @brief Application entry point for the 6502 cross-assembler.
+ * 
+ * tokenizes and parses code statements, builds symbol tables over multiple
+ * passes, and outputs binary files and listings.
+ * 
+ * @param argc Count of command-line arguments.
+ * @param argv Array of command-line argument strings.
+ * @return int Returns 0 on successful assembly, or non-zero on invalid usage or runtime exceptions.
+ */
+int main(int argc, char* argv[])
+{
     try {
+        Options options = parse_args(argc, argv);
+
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
         SourceManager src_mgr;

@@ -10,9 +10,6 @@
  * @author Paul Baxter
  */
 
-
-
-
 /**
  * @brief Locates the address of an anonymous label relative to the current program counter.
  * 

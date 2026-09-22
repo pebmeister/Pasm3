@@ -182,7 +182,8 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     } else {
                         // If expression fails during pass evaluation, report error or default
                         throw std::runtime_error(
-                            std::format("Invalid initializer expression for variable '{}' at line {}", name, var_stmt->line));
+                            std::format("Invalid initializer expression for variable '{}' at File: {} Line {}", 
+                            name, src_mgr.GetFileName(var_stmt->file), var_stmt->line));
                     }
                 }
 
@@ -542,7 +543,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             // Wend
             break;
         }
-
 
         case StmtType::If: {
             auto if_stmt = static_cast<IfStatement*>(stmt.get());
@@ -1006,7 +1006,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                             initial_val = val.value();
                         } else {
                             throw std::runtime_error(
-                                std::format("Invalid initializer expression for variable '{}' at line {}", name, var_stmt->line));
+                                std::format("Invalid initializer expression for variable '{}' at File: {} line: {}", 
+                                name, src_mgr.GetFileName(var_stmt->file), var_stmt->line));
                         }
                     }
 

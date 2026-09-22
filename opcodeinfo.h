@@ -1,15 +1,37 @@
 #pragma once
 
+/**
+ * @file opcode_lookup.h
+ * @brief Provides fast, O(1) lookup utilities for retrieving opcode information.
+ */
+
 #include <algorithm>
 #include "opcodedict.h"
 
-// Direct O(1) lookup by TokenKind
+/**
+ * @brief Retrieves opcode information using a direct integer token look-up.
+ * 
+ * Performance is O(1) leveraging the underlying dictionary data structure.
+ * 
+ * @param kind The token type or identifier integer representing the opcode.
+ * @return const OpCodeInfo* Pointer to the matching opcode information struct, 
+ *         or `nullptr` if the token kind is not found.
+ */
 inline const OpCodeInfo* FindOpCodeInfo(int kind) {
     auto it = opcodeDict.find(kind);
     return (it != opcodeDict.end()) ? &it->second : nullptr;
 }
 
-// Fast O(1) lookup by string mnemonic using a lazily-built index
+/**
+ * @brief Retrieves opcode information using a string-based mnemonic query.
+ * 
+ * Case-insensitive. A reverse lookup hash map is lazily constructed on the 
+ * very first invocation of this function to maintain O(1) lookup speeds.
+ * 
+ * @param mnemonic A string view representing the assembly mnemonic (e.g., "MOV", "add").
+ * @return const OpCodeInfo* Pointer to the matching opcode information struct, 
+ *         or `nullptr` if the mnemonic does not match any known opcode.
+ */
 inline const OpCodeInfo* FindOpCodeInfo(std::string_view mnemonic) {
     // 1. Build reverse index ONCE on first function call
     static const auto mnemonic_to_kind = []() {

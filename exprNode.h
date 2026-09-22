@@ -297,7 +297,6 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
             }
         }
         
-
         case ExprType::Binary: {
             auto bin = dynamic_cast<const BinaryExpr*>(node);
             if (!bin->lhs || !bin->rhs) return std::nullopt;
@@ -342,7 +341,6 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
                     return std::nullopt;
             }
         }
-
 
         case ExprType::UnknownExpr:
             return std::nullopt;

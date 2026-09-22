@@ -1,7 +1,5 @@
-// Written by Paul Baxter
 /**
  * @file geos.h
- * @author Paul Baxter
  * @brief GEOS (Graphic Environment Operating System) file and disk support for d64lib.
  *
  * Provides structures and utilities for parsing GEOS disk formats, application Info Blocks,

@@ -9,7 +9,6 @@
  * @author Paul Baxter
  */
 
-
 /**
  * @struct MacroDef
  * @brief Represents the definition and token body of an assembler macro.

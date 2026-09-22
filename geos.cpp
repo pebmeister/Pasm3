@@ -1,6 +1,5 @@
 /**
  * @file geos.cpp
- * @author Paul Baxter
  * @brief Implementation of GEOS disk formatting, Info Block parsing, and VLIR record reading for d64lib.
  */
 
