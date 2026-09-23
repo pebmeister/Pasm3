@@ -38,30 +38,6 @@
 #include "autoloader.h"
 
 /**
- * @brief patches auto assembly code to load the given file and load address
- *
- */
- void UpdateLoaderFilename(std::vector<uint8_t>& code, const std::string& filename, uint16_t addr) {
-    // 1. Update the name length byte (at index 21)
-    code[21] = static_cast<uint8_t>(filename.length());
-
-    // 2. Overwrite the name bytes starting at index 53
-    size_t name_offset = 55;
-    for (size_t i = 0; i < filename.length(); ++i) {
-        code[name_offset + i] = static_cast<uint8_t>(std::toupper(filename[i]));
-    }
-    
-    // 3. Add the null terminator right after the filename
-    code[name_offset + filename.length()] = 0x00;
-
-    // 4. set the load address
-    auto lo = static_cast<uint8_t>(addr & 0xFF); 
-    auto hi = static_cast<uint8_t>((addr >> 8) & 0xFF); 
-    code[52] = lo;
-    code[53] = hi;
-}
-
-/**
  * @brief get the uppercase base name from a path.
  *
  * Used to create a Commodore 64 file name 
@@ -100,6 +76,7 @@ R"(Usage:
     -d symbol value     Defines a symbol and value.
                         Can be specified more than once.
     -cart options       Runs cartconv on the outputfile with the specified options enclosed in quotes
+                        load address and inputname are auto specified.
                         VICE must be installed and in the path.
                         -o outfile MUST be specified
     -d64 disk           Creates d64 disk and installs the output file
@@ -286,7 +263,8 @@ int main(int argc, char* argv[])
         std::cout << "Elapsed time: " << elapsed_seconds.count() << " seconds\n";
 
         if (options.cart) {
-            std::string command = "cartconv -i " + options.outfile + " " + options.cart_options + " -o " + options.outfile + ".crt";
+            std::string command = std::format("cartconv -i {} -l {} {} -o {}.crt", 
+                options.outfile, assembler.load_address, options.cart_options, options.outfile);
             std::cout << command << "\n";
             int exitCode = std::system(command.c_str());
             

@@ -65,7 +65,7 @@ endif()
 add_executable(buildlexor
     buildlexor/main.cpp
     buildlexor/RegexEngine.h
-	tokenkind.h
+    tokenkind.h
 )
 
 target_include_directories(buildlexor PRIVATE
@@ -93,13 +93,11 @@ add_custom_command(
 )
 
 # ------------------------------------------------------------------------------
-# 3. Build Main Executable
+# 3. Build Core Assembler Static Library
 # ------------------------------------------------------------------------------
 
-add_executable(pasm_parser
-    main.cpp
+add_library(pasm_core STATIC
     opcodedict.cpp
-    autoloader.h
     autoloader.cpp
     multipassassembler.cpp
     utilities.cpp
@@ -124,11 +122,25 @@ add_executable(pasm_parser
     d64.h
     d64_types.h
     geos.h
-
+    autoloader.h
     "${GENERATED_TOKENIZER_HEADER}"
 )
 
-target_include_directories(pasm_parser PRIVATE
+target_include_directories(pasm_core PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_BINARY_DIR}"
 )
+
+# ------------------------------------------------------------------------------
+# 4. Build Main Executable
+# ------------------------------------------------------------------------------
+
+add_executable(pasm3
+    main.cpp
+)
+add_executable(pasm_tests
+    test/test_main.cpp
+)
+
+target_link_libraries(pasm3 PRIVATE pasm_core)
+target_link_libraries(pasm_tests PRIVATE pasm_core)

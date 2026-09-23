@@ -92,7 +92,7 @@ std::vector<uint8_t> CreateAutoLoader(const std::string& filename, uint16_t addr
     loader_code[53] = hi;
 
     // 3. Overwrite the name bytes starting at index 55
-    size_t name_offset = 55;
+    constexpr size_t name_offset = 55;
     for (size_t i = 0; i < filename.length(); ++i) {
         loader_code[name_offset + i] = static_cast<uint8_t>(std::toupper(filename[i]));
     }
@@ -100,7 +100,5 @@ std::vector<uint8_t> CreateAutoLoader(const std::string& filename, uint16_t addr
     // 3. Add the null terminator right after the filename
     loader_code[name_offset + filename.length()] = 0x00;
     
-
-
     return loader_code;
 }
