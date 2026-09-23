@@ -60,30 +60,35 @@ int op_test(OP_TEST& test, int depth)
     
     constexpr int fileid = 0;
     int lineNo = 1;
-    static uint8_t opr = 0;
-    static uint16_t opr16 = 0;
+    static uint8_t opr_immediate= 0;
     int count = 0;
 
     if (depth <= 0) depth = 1;
+
+    line = std::format("; {:=>6} {:>4} {:12} {:=>6}\n", '=', test.op, rulemap[static_cast<RULE_TYPE>(test.mode)], '=');
+    src_mgr.source[{fileid, lineNo}] = line;
+    source_code += (line + "\n");
+    lineNo++;
 
     switch (test.mode) {
         case RULE_TYPE::Op_Implied:
             expected_output.push_back(test.expected);
             line = std::format("    {}", test.op);
             src_mgr.source[{fileid, lineNo}] = line;
-            source_code += (line + "\n");   
+            source_code += (line + "\n");
+            lineNo++;
             break;
             
         case RULE_TYPE::Op_Immediate:
             while (count <= 0xFF) {
                 expected_output.push_back(test.expected);
-                expected_output.push_back(opr);
+                expected_output.push_back(opr_immediate);
 
-                line = std::format("    {} #${:02X}", test.op, opr);
+                line = std::format("    {} #${:02X}", test.op, opr_immediate);
                 src_mgr.source[{fileid, lineNo}] = line;
                 source_code += (line + "\n");
                 lineNo++;
-                opr++;
+                opr_immediate++;
                 count += depth;
             }
             break;
@@ -92,9 +97,6 @@ int op_test(OP_TEST& test, int depth)
             break;
     }
     if (source_code.length() > 0) {
-
-        std::cout << 
-            std::format("; {:=>6} {:>4} {:12} {:=>6}\n", '=', test.op, rulemap[static_cast<RULE_TYPE>(test.mode)], '=');
         
         auto tokens = tokenizer.tokenize(source_code, fileid);
         AssemblerParser parser(tokens, options);
