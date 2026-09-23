@@ -60,7 +60,9 @@ int op_test(OP_TEST& test, int depth)
     
     constexpr int fileid = 0;
     int lineNo = 1;
-    uint16_t opr;
+    static uint8_t opr = 0;
+    static uint16_t opr16 = 0;
+    int count = 0;
 
     if (depth <= 0) depth = 1;
 
@@ -73,8 +75,7 @@ int op_test(OP_TEST& test, int depth)
             break;
             
         case RULE_TYPE::Op_Immediate:
-            opr = 0;
-            while (opr <= 0xFF) {
+            while (count <= 0xFF) {
                 expected_output.push_back(test.expected);
                 expected_output.push_back(opr);
 
@@ -82,7 +83,8 @@ int op_test(OP_TEST& test, int depth)
                 src_mgr.source[{fileid, lineNo}] = line;
                 source_code += (line + "\n");
                 lineNo++;
-                opr += depth;
+                opr++;
+                count += depth;
             }
             break;
             
