@@ -473,10 +473,11 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
                             auto it = inverted_branches.find(inst->mnemonic);
                             if (it != inverted_branches.end()) {
-                                std::cout <<
-                                "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " <<
-                                "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
-
+                                if (options.verbose) {
+                                    std::cout <<
+                                        "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " <<
+                                        "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
+                                }
                                 // 1. Create the JMP statement FIRST by moving the original target expression
                                 auto jmp_inst = std::make_unique<InstructionStatement>(
                                     stmt->file,
@@ -862,7 +863,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             if (sz + load_address < pc) {
                 auto bytes = pc - load_address - binary_output.size();
                 std::vector<uint8_t> ds_data(bytes, 0);
-                std::cout << "Warning inserting " << bytes << " bytes.\n";
+                if (options.verbose)  {
+                    std::cout << "Warning inserting " << bytes << " bytes.\n";
+                }
                 binary_output.insert(binary_output.end(), ds_data.begin(), ds_data.end());
             }
             else if (sz + load_address > pc) {
@@ -1083,7 +1086,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     auto eval_result = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
                     if (!eval_result.has_value()) {
-                        std::cout << listing.str();
+                        if (options.verbose) {
+                            std::cout << listing.str();
+                        }
                         throw std::runtime_error(
                             std::format("Unresolved symbol in operand for '{}' at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(stmt->file), stmt->line)
                         );
@@ -1096,7 +1101,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         
                         auto eval2_result = EvaluateExpr(inst_stmt->operand2.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                         if (!eval2_result.has_value()) {
-                            std::cout << listing.str();
+                            if (options.verbose) {
+                                std::cout << listing.str();
+                            }
                             throw std::runtime_error(
                                 std::format("Unresolved symbol in operand for '{}' at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(stmt->file), stmt->line)
                             );

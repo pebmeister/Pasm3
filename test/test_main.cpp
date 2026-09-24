@@ -68,7 +68,7 @@ int op_test(OP_TEST& test, int max, bool negative)
     static uint8_t opr_indirectx = 0;
     static uint8_t opr_indirecty = 0;
     static int16_t opr_relative = -128 + 2;
-    static int16_t opr_zprelative = -128 + 2;
+    static int16_t opr_zprelative = -128 + 3;
     static uint8_t opr_zprel_addr = 0;
     static uint16_t opr_absolute = 0x0100;
     static uint16_t opr_absolutex = 0x0100;
@@ -280,15 +280,15 @@ int op_test(OP_TEST& test, int max, bool negative)
             while (count < max) {
                 expected_output.push_back(test.expected);
                 expected_output.push_back(opr_zprel_addr);
-                expected_output.push_back(opr_zprelative -3);
+                expected_output.push_back(opr_zprelative - 3);
 
-                line = std::format("    {} ${}, * + ({})", test.op, opr_zprel_addr, opr_zprelative);
+                line = std::format("    {} ${:02X}, * + ({})", test.op, opr_zprel_addr, opr_zprelative);
                 src_mgr.source[{fileid, line_num}] = line;
                 source_code += (line + "\n");
                 line_num++;
                 opr_zprel_addr++;
                 opr_zprelative++;
-                if (opr_zprelative  >= 127) {
+                if (opr_zprelative >= 127) {
                     opr_zprelative = -128 + 3;
                 }
                 count++;
@@ -378,8 +378,6 @@ int op_test(OP_TEST& test, int max, bool negative)
             std::cout << std::format("TEST {} {} {} {}\n", test_num, test_name, (negative ? "negative" : ""), pass_str);
                 std::cout << source_code;
         }
-        return pass;
-
     }
     return pass;
 }
