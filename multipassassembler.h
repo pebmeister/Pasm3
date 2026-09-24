@@ -60,9 +60,10 @@ private:
      * @brief Formats an instruction operand into an assembly listing string.
      * @param mode Addressing mode rule (`RULE_TYPE`).
      * @param val Evaluated numeric operand value.
+     * @param val2 Evaluated numeric operand value for ZeroPageRelative.
      * @return Formatted operand text representation.
      */
-    std::string FormatOperand(RULE_TYPE mode, int64_t val);
+    std::string FormatOperand(RULE_TYPE mode, int64_t val, int64_t val2);
 
     /**
      * @brief Calculates instruction byte size based on its addressing mode.

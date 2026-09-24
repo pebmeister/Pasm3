@@ -909,7 +909,19 @@ public:
                     operand_expr = ParseExpression();
                     if (TokIs(TokenKind::Comma)) {
                         ConsumeToken();
-                        if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
+                        
+
+                        // Check if this mnemonic is a ZeroPageRelative instruction (e.g., BBR/BBS)
+                        if (DeduceMemoryMode(mnemonic) == RULE_TYPE::Op_ZeroPageRelative) {
+                            
+                            mode = RULE_TYPE::Op_ZeroPageRelative;
+                            auto second_expr = ParseExpression();
+                            
+                            statements.push_back(std::make_unique<InstructionStatement>(
+                                opcode_tok.file, opcode_tok.line, mnemonic, mode, std::unique_ptr<ExprNode>(operand_expr.move()), std::unique_ptr<ExprNode>(second_expr.move())));
+                             continue;
+                        }                                                
+                        else if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
                             ConsumeToken();
                             mode = RULE_TYPE::Op_AbsoluteX;
                         } else if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
@@ -1139,6 +1151,9 @@ private:
         const OpCodeInfo* info = FindOpCodeInfo(mnemonic);
         if (info->mode_to_opcode.contains(RULE_TYPE::Op_Relative)) {
             return RULE_TYPE::Op_Relative;
+        }
+        if (info->mode_to_opcode.contains(RULE_TYPE::Op_ZeroPageRelative)) {
+            return RULE_TYPE::Op_ZeroPageRelative;
         }
         return RULE_TYPE::Op_Absolute;
     }

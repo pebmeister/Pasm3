@@ -40,6 +40,7 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
         case RULE_TYPE::Op_AbsoluteX:
         case RULE_TYPE::Op_AbsoluteY:
         case RULE_TYPE::Op_Indirect:
+        case RULE_TYPE::Op_ZeroPageRelative:
             return 3;
 
         default:
@@ -719,11 +720,13 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
  *
  * @param mode The addressing mode of the instruction operand (`RULE_TYPE`).
  * @param val The 64-bit evaluated numerical value or target address for the operand.
+ * @param val2 The 64-bit evaluated numerical value or target address for the ZeroPageRelative operand.
  * @return A `std::string` containing the formatted operand representation, or an empty string 
  *         for implied or unhandled modes.
  */
- std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val) {
+ std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val, int64_t val2 = 0) {
     uint16_t v = static_cast<uint16_t>(val);
+    uint16_t v2 = static_cast<uint16_t>(val2);
     switch (mode) {
     case RULE_TYPE::Op_Immediate:
         return std::format("#${:02X}", v & 0xFF);
@@ -747,6 +750,8 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
         return std::format("(${:02X}),Y", v & 0xFF);
     case RULE_TYPE::Op_Relative:
         return std::format("${:04X}", v);
+    case RULE_TYPE::Op_ZeroPageRelative:
+        return std::format("${:02X}, ${:04X}", v, v2);
     case RULE_TYPE::Op_Accumulator:
         return "A";
     case RULE_TYPE::Op_Implied:
@@ -1087,7 +1092,30 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     int val = static_cast<int>(eval_result.value());
                     operand_str = FormatOperand(inst_stmt->mode, val);
 
-                    if (inst_stmt->mode == RULE_TYPE::Op_Relative) {
+                    if (inst_stmt->mode == RULE_TYPE::Op_ZeroPageRelative) {
+                        
+                        auto eval2_result = EvaluateExpr(inst_stmt->operand2.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                        if (!eval2_result.has_value()) {
+                            std::cout << listing.str();
+                            throw std::runtime_error(
+                                std::format("Unresolved symbol in operand for '{}' at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(stmt->file), stmt->line)
+                            );
+                        }
+
+                        int val2 = static_cast<int>(eval2_result.value());
+
+                        operand_str = FormatOperand(inst_stmt->mode, val, val2);
+                        
+                        int next_pc = pc + 3;
+                        int offset = val2 - next_pc;
+
+                        if (offset < -128 || offset > 127) {
+                            throw std::runtime_error(std::format("Branch out of range: offset is {} File: {} Line: {}", offset, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                        }
+                        emitted_bytes.push_back(static_cast<uint8_t>(val));
+                        emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
+                    }
+                    else if (inst_stmt->mode == RULE_TYPE::Op_Relative) {
                         int next_pc = pc + 2;
                         int offset = val - next_pc;
 
