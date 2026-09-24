@@ -78,25 +78,44 @@ int main() {
         { "[!]",                             static_cast<int>(Bang) },
 
         // --- 6502 / 65C02 / Illegal Opcodes (Case-Insensitive) ---
-        { "ORA|AND|EOR|ADC|SBC",             static_cast<int>(Opcode), true },
-        { "CMP|CPX|CPY|DEC|DEX",             static_cast<int>(Opcode), true },
-        { "DEY|INC|INX|INY|ASL",             static_cast<int>(Opcode), true },
-        { "ROL|LSR|ROR|LDA|STA",             static_cast<int>(Opcode), true },
-        { "LDX|STX|LDY|STY|STZ",             static_cast<int>(Opcode), true },
-        { "TAX|TXA|TAY|TYA|TSX",             static_cast<int>(Opcode), true },
-        { "TXS|PLA|PHA|PLP|PHP",             static_cast<int>(Opcode), true },
-        { "PHX|PHY|PLX|PLY|BRA",             static_cast<int>(Opcode), true },
-        { "BPL|BMI|BVC|BVS|BCC",             static_cast<int>(Opcode), true },
-        { "BCS|BNE|BEQ|STP|WAI",             static_cast<int>(Opcode), true },
-        { "BRK|RTI|JSR|RTS|JMP",             static_cast<int>(Opcode), true },
-        { "BIT|CLC|SEC|CLD|SED",             static_cast<int>(Opcode), true },
-        { "CLI|SEI|CLV|NOP|SLO",             static_cast<int>(Opcode), true },
-        { "RLA|SRE|RRA|SAX|LAX",             static_cast<int>(Opcode), true },
-        { "DCP|ISC|ANC|ANC2|ARR",            static_cast<int>(Opcode), true },
-        { "XAA|AXS|USBC|AHX|SHY",            static_cast<int>(Opcode), true },
-        { "SHX|TAS|LAS|TRB|TSB",             static_cast<int>(Opcode), true },
-        { "RMB[0-7]|SMB[0-7]",               static_cast<int>(Opcode), true },
-        { "BBR[0-7]|BBS[0-7]",               static_cast<int>(Opcode), true },
+        // Standard 6502 ALU and Memory Operations
+        { "ORA|AND|EOR|ADC|SBC",              static_cast<int>(Opcode), true },
+        { "CMP|CPX|CPY|DEC|DEX",              static_cast<int>(Opcode), true },
+        { "DEY|INC|INX|INY|ASL",              static_cast<int>(Opcode), true },
+        { "ROL|LSR|ROR|LDA|STA",              static_cast<int>(Opcode), true },
+        { "LDX|STX|LDY|STY",                  static_cast<int>(Opcode), true },
+
+        // 65C02 Bit Manipulation Directives
+        { "RMB[0-7]|SMB[0-7]",                static_cast<int>(Opcode), true },
+
+        // Register Transfers & Stack Operations
+        { "STZ|TAX|TXA|TAY|TYA",              static_cast<int>(Opcode), true },
+        { "TSX|TXS|PLA|PHA|PLP",              static_cast<int>(Opcode), true },
+        { "PHP|PHX|PHY|PLX|PLY",              static_cast<int>(Opcode), true },
+
+        // Control Flow & Branching
+        { "BRA|BPL|BMI|BVC|BVS",              static_cast<int>(Opcode), true },
+        { "BCC|BCS|BNE|BEQ",                  static_cast<int>(Opcode), true },
+         
+        // 65C02 Bit Branching Directives
+        { "BBR[0-7]|BBS[0-7]",                static_cast<int>(Opcode), true },
+
+        // Control & Subroutine Instructions
+        { "STP|WAI|BRK|RTI|JSR",              static_cast<int>(Opcode), true },
+        { "RTS|JMP|BIT",                      static_cast<int>(Opcode), true },
+
+        // Processor Status Flag Operations
+        { "CLC|SEC|CLD|SED|CLI",              static_cast<int>(Opcode), true },
+        { "SEI|CLV|NOP",                      static_cast<int>(Opcode), true },
+
+        // Undocumented / Illegal 6502 Opcodes
+        { "SLO|RLA|SRE|RRA|SAX",              static_cast<int>(Opcode), true },
+        { "LAX|DCP|ISC|ANC|ANC2",             static_cast<int>(Opcode), true },
+        { "ALR|ARR|XAA|AXS|USBC",             static_cast<int>(Opcode), true },
+        { "AHX|SHY|SHX|TAS|LAS",              static_cast<int>(Opcode), true },
+
+        // 65C02 Bit Test & Reset/Set
+        { "TRB|TSB",                          static_cast<int>(Opcode), true },
     });
 
     std::string classname = "PasmTokenizer";

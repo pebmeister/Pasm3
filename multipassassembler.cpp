@@ -61,7 +61,9 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     stable = false;
     auto lastpasschanged = false;
 
-    std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
+    if (options.verbose) {
+        std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
+    }
 
     for (auto&sym : options.traced_symbols) {
         symbols_.Trace(sym);
@@ -78,8 +80,10 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 
         parent_scope="GLOBAL_";
         changed = ResolutionPass(statements, anonymous_labels, src_mgr);
-        std::cout << "Pass " << pass << " complete. "
-            << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
+        if (options.verbose) {
+            std::cout << "Pass " << pass << " complete. "
+                << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
+        }
         pass++;
         if (wait_stable && stable) {
             wait_stable = false;
@@ -422,15 +426,29 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             auto mode_it = info->mode_to_opcode.find(inst->mode);
             if (mode_it == info->mode_to_opcode.end()) {
-                if (inst->mode == RULE_TYPE::Op_Implied) {
-                    mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
-                    if (mode_it == info->mode_to_opcode.end()) {
-                        throw std::runtime_error(
-                            std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
-                        }
-                    }
-                    else {
-                        throw std::runtime_error(
+                
+                switch (inst->mode) {
+                    case RULE_TYPE::Op_Implied:
+                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
+                        break;
+                        
+                    case RULE_TYPE::Op_Absolute:
+                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_ZeroPage);
+                        break;
+                     
+                    case RULE_TYPE::Op_AbsoluteX:
+                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_ZeroPageX);
+                        break;
+                     
+                    case RULE_TYPE::Op_AbsoluteY:
+                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_ZeroPageY);
+                        break;
+                     
+                    default:
+                        break;
+                }
+                if (mode_it == info->mode_to_opcode.end()) {
+                    throw std::runtime_error(
                         std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
                     }
                 }

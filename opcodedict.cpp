@@ -339,6 +339,7 @@ std::map<int, OpCodeInfo> opcodeDict = {
         {
             "ASL",
             {
+                { Op_Implied,     { 0x0A, 2} },
                 { Op_Accumulator, { 0x0A, 2} },
                 { Op_ZeroPage,    { 0x06, 5} },
                 { Op_ZeroPageX,   { 0x16, 6} },
@@ -356,6 +357,7 @@ std::map<int, OpCodeInfo> opcodeDict = {
         {
             "ROL",
             {
+                { Op_Implied,     { 0x2A, 2} },
                 { Op_Accumulator, { 0x2A, 2} },
                 { Op_ZeroPage,    { 0x26, 5} },
                 { Op_ZeroPageX,   { 0x36, 6} },
@@ -373,6 +375,7 @@ std::map<int, OpCodeInfo> opcodeDict = {
         {
             "LSR",
             {
+                { Op_Implied,     { 0x4A, 2} },
                 { Op_Accumulator, { 0x4A, 2} },
                 { Op_ZeroPage,    { 0x46, 5} },
                 { Op_ZeroPageX,   { 0x56, 6} },
@@ -390,6 +393,7 @@ std::map<int, OpCodeInfo> opcodeDict = {
         {
             "ROR",
             {
+                { Op_Implied,     { 0x6A, 2} },
                 { Op_Accumulator, { 0x6A, 2} },
                 { Op_ZeroPage,    { 0x66, 5} },
                 { Op_ZeroPageX,   { 0x76, 6} },

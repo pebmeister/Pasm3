@@ -44,7 +44,7 @@ std::map<RULE_TYPE, std::string_view> rulemap = {
     { Op_AbsoluteX, "Op_AbsoluteX" },
     { Op_ZeroPageX, "Op_ZeroPageX" },
     { Op_AbsoluteY, "Op_AbsoluteY" },
-    { Op_ZeroPageY, "Op_ZeroPage" },
+    { Op_ZeroPageY, "Op_ZeroPageY" },
     { Op_Indirect, "Op_Indirect" },
     { Op_IndirectX, "Op_IndirectX" },
     { Op_IndirectY, "Op_IndirectY" },

@@ -29,6 +29,5 @@ struct Options {
     bool ignore_size = true;                                   /**< Flag to ignore memory range/size boundary errors. */
     bool cart = false;                                         /**< Flag to specify cart */
     bool d64 = false;                                          /**< Flag to specify d64 disk */
-    bool autoloader = false;                                   /**< Flag to create auto loader used with d64 */
-    
+    bool autoloader = false;                                   /**< Flag to create auto loader used with d64 */    
 };
