@@ -140,6 +140,8 @@ add_executable(pasm3
 )
 add_executable(pasm_tests
     test/test_main.cpp
+    test/opcode_test.cpp
+    test/opcode_test.h
 )
 
 target_link_libraries(pasm3 PRIVATE pasm_core)
