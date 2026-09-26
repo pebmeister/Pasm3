@@ -59,214 +59,101 @@ int Opcode_test::op_test(OP_TEST& test, int max)
     source_code += (line + "\n");
     line_num++;
 
-    switch (test.mode) {
-        case RULE_TYPE::Op_Implied:
-            expected_output.push_back(test.expected);
+    // Helper for single-instruction modes (Implied, Accumulator)
+    auto emit_single = [&](std::string_view suffix = "") {
+        expected_output.push_back(test.expected);
+        line = suffix.empty() ? std::format("    {}", test.op) : std::format("    {} {}", test.op, suffix);
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
 
-            line = std::format("    {}", test.op);
-            src_mgr.source[{fileid, line_num}] = line;
-            source_code += (line + "\n");
-            line_num++;
-            break;
-            
-        case RULE_TYPE::Op_Immediate:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_immediate);
-
-                line = std::format("    {} #${:02X}", test.op, opr_immediate);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_immediate++;
-                count++;
-            }
-            break;
-        
-      case RULE_TYPE::Op_Absolute:
+    // Helper for repeating operand loops
+    auto emit_loop = [&](auto& opr_ref, auto format_fn, bool is_16bit) {
         while (count < max) {
             expected_output.push_back(test.expected);
-            expected_output.push_back(opr_absolute & 0xFF);
-            expected_output.push_back((opr_absolute >> 8) & 0xFF);
+            if (is_16bit) {
+                expected_output.push_back(opr_ref & 0xFF);
+                expected_output.push_back((opr_ref >> 8) & 0xFF);
+            } else {
+                expected_output.push_back(static_cast<uint8_t>(opr_ref));
+            }
 
-            line = std::format("    {} ${:04X}", test.op, opr_absolute);
+            line = std::format("    {} {}", test.op, format_fn(opr_ref));
             src_mgr.source[{fileid, line_num}] = line;
             source_code += (line + "\n");
             line_num++;
-            opr_absolute++;
-            if (opr_absolute > abs_max) {
-                opr_absolute = abs_min;
-            }
-            if (opr_absolute < abs_min) {
-                opr_absolute = abs_min;
+            
+            opr_ref++;
+            if (is_16bit) {
+                if (opr_ref > abs_max || opr_ref < abs_min) {
+                    opr_ref = abs_min;
+                }
             }
             count++;
         }
-        break;
-        
-        case RULE_TYPE::Op_ZeroPage:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_zeropage);
+    };
 
-                line = std::format("    {} ${:02X}", test.op, opr_zeropage);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_zeropage++;
-                count++;
-            }
-            break;
-        
-        case RULE_TYPE::Op_AbsoluteX:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_absolutex & 0xFF);
-                expected_output.push_back((opr_absolutex >> 8) & 0xFF);
-
-                line = std::format("    {} ${:04X},X", test.op, opr_absolutex);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_absolutex++;
-                if (opr_absolutex > abs_max) {
-                    opr_absolutex = abs_min;
-                }
-                if (opr_absolutex < abs_min) {
-                    opr_absolutex = abs_min;
-                }
-                count++;
-            }
-            break;
-
-        case RULE_TYPE::Op_ZeroPageX:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_zeropagex);
-
-                line = std::format("    {} ${:02X},X", test.op, opr_zeropagex);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_zeropagex++;
-                count++;
-            }
-            break;
-
-        case RULE_TYPE::Op_AbsoluteY:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_absolutey & 0xFF);
-                expected_output.push_back((opr_absolutey >> 8) & 0xFF);
-
-                line = std::format("    {} ${:04X},Y", test.op, opr_absolutey);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_absolutey++;
-                if (opr_absolutey > abs_max) {
-                    opr_absolutey = abs_min;
-                }
-                if (opr_absolutey < abs_min) {
-                    opr_absolutey = abs_min;
-                }
-                count++;
-            }
-            break;
-
-        case RULE_TYPE::Op_ZeroPageY:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_zeropagey);
-
-                line = std::format("    {} ${:02X},Y", test.op, opr_zeropagey);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_zeropagey++;
-                count++;
-            }
-            break;
-     
-        case RULE_TYPE::Op_Indirect:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_indirect & 0xFF);
-                expected_output.push_back((opr_indirect >> 8) & 0xFF);
-
-                line = std::format("    {} (${:04X})", test.op, opr_indirect);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_indirect++;
-                if (opr_indirect > abs_max) {
-                    opr_indirect = abs_min;
-                }
-                if (opr_indirect < abs_min) {
-                    opr_indirect = abs_min;
-                }
-                count++;
-            }
-            break;
-
-        case RULE_TYPE::Op_IndirectX:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_indirectx);
-
-                line = std::format("    {} (${:04X},X)", test.op, opr_indirectx);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_indirectx++;
-                if (opr_indirectx > abs_max) {
-                    opr_indirectx = abs_min;
-                }
-                if (opr_indirectx < abs_min) {
-                    opr_indirectx = abs_min;
-                }
-                count++;
-            }
-            break;
-            
-         case RULE_TYPE::Op_IndirectY:
-            while (count < max) {
-                expected_output.push_back(test.expected);
-                expected_output.push_back(opr_indirecty);
-
-                line = std::format("    {} (${:04X}),Y", test.op, opr_indirecty);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
-                opr_indirecty++;
-                if (opr_indirecty > abs_max) {
-                    opr_indirecty = abs_min;
-                }
-                if (opr_indirecty < abs_min) {
-                    opr_indirecty = abs_min;
-                }
-                count++;
-            }
+    switch (test.mode) {
+        case RULE_TYPE::Op_Implied:
+            emit_single();
             break;
 
         case RULE_TYPE::Op_Accumulator:
-            expected_output.push_back(test.expected);
+            emit_single("A");
+            break;
+            
+        case RULE_TYPE::Op_Immediate:
+            emit_loop(opr_immediate, [&](auto v) { return std::format("#${:02X}", v); }, false);
+            break;
+        
+        case RULE_TYPE::Op_ZeroPage:
+            emit_loop(opr_zeropage, [&](auto v) { return std::format("${:02X}", v); }, false);
+            break;
+        
+        case RULE_TYPE::Op_Absolute:
+            emit_loop(opr_absolute, [&](auto v) { return std::format("${:04X}", v); }, true);
+            break;
+        
+        case RULE_TYPE::Op_AbsoluteX:
+            emit_loop(opr_absolutex, [&](auto v) { return std::format("${:04X},X", v); }, true);
+            break;
 
-            line = std::format("    {} A", test.op);
-            src_mgr.source[{fileid, line_num}] = line;
-            source_code += (line + "\n");
-            line_num++;
+        case RULE_TYPE::Op_ZeroPageX:
+            emit_loop(opr_zeropagex, [&](auto v) { return std::format("${:02X},X", v); }, false);
+            break;
+
+        case RULE_TYPE::Op_AbsoluteY:
+            emit_loop(opr_absolutey, [&](auto v) { return std::format("${:04X},Y", v); }, true);
+            break;
+
+        case RULE_TYPE::Op_ZeroPageY:
+            emit_loop(opr_zeropagey, [&](auto v) { return std::format("${:02X},Y", v); }, false);
             break;
      
+        case RULE_TYPE::Op_Indirect:
+            emit_loop(opr_indirect, [&](auto v) { return std::format("(${:04X})", v); }, true);
+            break;
+
+        case RULE_TYPE::Op_IndirectX:
+            emit_loop(opr_indirectx, [&](auto v) { return std::format("(${:04X},X)", v); }, false);
+            break;
+            
+         case RULE_TYPE::Op_IndirectY:
+            emit_loop(opr_indirecty, [&](auto v) { return std::format("(${:04X}),Y", v); }, false);
+            break;
+     
+        
         case RULE_TYPE::Op_Relative:
             while (count < max) {
                 expected_output.push_back(test.expected);
-                expected_output.push_back(opr_relative -rel_offset);
+                expected_output.push_back(opr_relative - rel_offset);
 
                 line = std::format("    {} * + ({})", test.op, opr_relative);
                 src_mgr.source[{fileid, line_num}] = line;
                 source_code += (line + "\n");
                 line_num++;
+                
                 opr_relative++;
                 if (opr_relative >= rel_max) {
                     opr_relative = rel_min + rel_offset;
@@ -297,6 +184,7 @@ int Opcode_test::op_test(OP_TEST& test, int max)
          default:
             break;
     }
+
     if (org + expected_output.size() >= 0xFFFF) {
         throw std::runtime_error(std::format("PC exceeded. Lower max iteration."));
     }
@@ -380,6 +268,8 @@ int Opcode_test::op_test(OP_TEST& test, int max)
             ss << std::format("TEST {} {} {} {}\n", test_num, test_name, (test.negative_test ? "negative" : ""), "FAIL");
             error = ss.str();
             source = source_code;
+            
+            std::cout << source;
         }
     }
     return pass;
@@ -457,6 +347,9 @@ int Opcode_test::test(int max_iterations, int line, int col, bool exit_on_fail)
     build_opcode_tests(positive_opcode_tests, negative_opcode_tests);
     std::vector<std::vector<OP_TEST>> test_suites = { positive_opcode_tests, negative_opcode_tests };
 
+    auto total_tests = positive_opcode_tests.size() + negative_opcode_tests.size();
+    
+
     for (auto& suite : test_suites) {
         for (auto& test : suite) {
             if (op_test(test, max_iterations)) {
@@ -472,8 +365,8 @@ int Opcode_test::test(int max_iterations, int line, int col, bool exit_on_fail)
                     return 0;
                 }
             } else {
-                std::cout << std::format("{}{} {}PASSED: {}", es.pos(line, col), es.ERASE_CURSOR_EOL, 
-                    es.gr(es.BRIGHT_GREEN_FOREGROUND), passed);
+                std::cout << std::format("{}{} {}PASSED: {} of {} ", es.pos(line, col), es.ERASE_CURSOR_EOL, 
+                    es.gr(es.BRIGHT_GREEN_FOREGROUND), passed, total_tests);
             }
         }
     }
