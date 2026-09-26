@@ -67,6 +67,7 @@ R"(Usage:
 
     -h                  Print help.
     -o outfile          Specifies the output file name.
+    -v                  Specifies verbose output.
     -c64                Specifies Commodore 64 program format. 
                         It places the load address in first two bytes.
     -i directory        Specifies include directory. Can be specified more than once.
@@ -89,7 +90,7 @@ R"(Usage:
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-o`, `-c64`, `-i`, `-st`, `-d`, `-cart`, `-d64`)
+ * Parses CLI flags (`-h`, `-o`, `-v`, `-c64`, `-i`, `-st`, `-d`, `-cart`, `-d64`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
@@ -109,6 +110,9 @@ Options parse_args(int argc, char* argv[])
         else if (arg_str == "-h") {
             help();
             exit(0);
+        }
+        else if (arg_str == "-v") {
+            options.verbose = true;
         }
         else if (arg_str == "-o") {
             arg++;

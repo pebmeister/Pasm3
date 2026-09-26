@@ -26,6 +26,11 @@
 
 #include "opcode_test.h"
 
+#define DEFINE_ANSI_ES
+#include "ANSI_esc.h"
+#undef DEFINE_ANSI_ES
+
+
 struct Test_Options {
     bool test_opcode = false;
     int  opcode_max_iteration = 0xFF;
@@ -44,6 +49,9 @@ void parse_args(int argc, char* argv[], Test_Options& options)
             options.test_opcode = true;
             if (arg_num < argc) {
                 options.opcode_max_iteration = std::stoi(argv[arg_num++]);
+                if (options.opcode_max_iteration < 1) {
+                    throw std::runtime_error(std::format("invalid value for max iteratiions {}. Must be greater than zero.", options.opcode_max_iteration));
+                }
             }
         }
         else if (arg == "-all") {
@@ -57,23 +65,28 @@ void parse_args(int argc, char* argv[], Test_Options& options)
 
 int main(int argc, char* argv[])
 {    
-    Test_Options options;
-    
+    std::cout << std::format("{}{}{}", es.HIDE_CURSOR, es.HOME, es.ERASE_ALL_DISPLAY);
+
+    Test_Options options;    
+    auto line = 1;
     try {
         parse_args(argc, argv, options);
-
+        
         if (options.test_opcode) {
-            
+            std::cout << std::format("{}{}{}", es.pos(line,1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "OPCODE TEST");
+
             Opcode_test op_test;
-            op_test.test(options.opcode_max_iteration);
-            std::cout <<
-                std::format("OPCODE TEST:  {} PASSED  {} FAILED\n", op_test.passed, op_test.failed);
+            op_test.test(options.opcode_max_iteration, line, 15, true);
+            line++;
         }
     }
     catch (std::exception& ex) {
-        std::cout <<
-            ex.what();
+        std::cout << std::format("{}{}", es.pos(line + 1,1), es.gr(es.BRIGHT_RED_FOREGROUND));
+        std::cout << ex.what();
+        std::cout << std::format("{}{}{}", es.pos(line + 5,1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
         return -1;
     }
+    std::cout << std::format("{}{}{}", es.pos(line,1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
+    
     return 0;
 }

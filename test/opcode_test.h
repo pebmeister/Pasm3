@@ -8,9 +8,10 @@ private:
         std::string op;
         int mode;
         uint8_t expected;
+        bool negative_test;
     };
 
-    int op_test(OP_TEST& test, int depth, bool negative);
+    int op_test(OP_TEST& test, int depth);
     void build_opcode_tests(std::vector<OP_TEST>& positive_opcode_tests, std::vector<OP_TEST>& negative_opcode_tests);
 
     int test_num = 0;
@@ -41,6 +42,7 @@ private:
 public:
     int passed = 0;
     int failed = 0;
-
-    int test(int max_iterations);
+    std::string error;
+    std::string source;
+    int test(int max_iterations, int line, int col, bool exit_on_fail);
 };

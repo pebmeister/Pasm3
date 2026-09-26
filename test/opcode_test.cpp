@@ -25,25 +25,25 @@
 #include "autoloader.h"
 
 #include "opcode_test.h"
+#include "ANSI_esc.h"
 
 
-int Opcode_test::op_test(OP_TEST& test, int max, bool negative)
+int Opcode_test::op_test(OP_TEST& test, int max)
 {
     Options options;
+    options.verbose = false;
+
     SourceManager src_mgr;
     PasmTokenizer tokenizer;
     std::vector<uint8_t> expected_output;
     std::unordered_map<std::string, MacroDef> macros_;
-    std::vector<AnonymousLabel> anonymous_labels;
-    
+    std::vector<AnonymousLabel> anonymous_labels;    
     std::string line;
     std::string source_code;
-    
+    std::stringstream ss;
 
     int line_num = 1;
     int count = 0;
-
-    options.verbose = false;
     
     std::string test_name = std::format("{:=>6} {:>4} {:15} {:=>6}", '=', test.op, rulemap[static_cast<RULE_TYPE>(test.mode)], '=');
     line = std::format("; {}\n", test_name);
@@ -51,7 +51,9 @@ int Opcode_test::op_test(OP_TEST& test, int max, bool negative)
     source_code += (line + "\n");
     line_num++;
 
-    std::string orgline = std::format("    * = 0");
+    constexpr int org = 0x1000;
+    
+    std::string orgline = std::format("    * = {}", org);
     line = std::format("{}\n", orgline);
     src_mgr.source[{fileid, line_num}] = line;
     source_code += (line + "\n");
@@ -295,8 +297,8 @@ int Opcode_test::op_test(OP_TEST& test, int max, bool negative)
          default:
             break;
     }
-    if (expected_output.size() >= 0xFFFF) {
-        throw std::runtime_error(std::format("PC exceeded. Lower maxiteration."));
+    if (org + expected_output.size() >= 0xFFFF) {
+        throw std::runtime_error(std::format("PC exceeded. Lower max iteration."));
     }
     
     bool pass = true;
@@ -312,7 +314,7 @@ int Opcode_test::op_test(OP_TEST& test, int max, bool negative)
             
             std::vector<RULE_TYPE> false_negative_mode;
             pass = true;
-            if (negative) {
+            if (test.negative_test) {
                 pass = false;
                 
                 switch (test.mode) {
@@ -357,28 +359,27 @@ int Opcode_test::op_test(OP_TEST& test, int max, bool negative)
                     pass = expected_output == assembler.binary_output;
 
                     if (!pass) {
-                        std::cout << "expected:\n";
+                        ss << "expected:\n";
                         for (auto& eb: expected_output) {
-                            std::cout << std::format(" ${:02X} ", eb);
+                            ss << std::format(" ${:02X} ", eb);
                         }
-                        std::cout << "\n";
-                        std::cout << "actual:\n";
+                        ss << "\n";
+                        ss << "actual:\n";
                         for (auto& eb: assembler.binary_output) {
                             std::cout << std::format(" ${:02X} ", eb);
                         }
-                        std::cout << "\n";
+                        ss << "\n";                        
                     }
                 }
             }
         }
         catch (std::exception& ex) {
-            pass = negative;         
+            pass = test.negative_test;         
         }
         if (!pass) {
-            std::cout << std::format("TEST {} {} {} {}\n", test_num, test_name, (negative ? "negative" : ""), "FAIL");
-            
-            std::cout << source_code;
-            exit(0);
+            ss << std::format("TEST {} {} {} {}\n", test_num, test_name, (test.negative_test ? "negative" : ""), "FAIL");
+            error = ss.str();
+            source = source_code;
         }
     }
     return pass;
@@ -436,44 +437,45 @@ void Opcode_test::build_opcode_tests(std::vector<OP_TEST>& positive_opcode_tests
             for (int mode = RULE_TYPE::Op_Implied; mode <= RULE_TYPE::Op_ZeroPageRelative; ++mode) {
                 auto modeIt = info->mode_to_opcode.find(static_cast<RULE_TYPE>(mode));
                 if (modeIt == info->mode_to_opcode.end()) {
-                    negative_opcode_tests.push_back({op, mode, 0});
+                    negative_opcode_tests.push_back({op, mode, 0, true});
                 }
                 else {
                     auto [opcode, _] = modeIt->second;
                     
-                    positive_opcode_tests.push_back({op, mode, opcode});
+                    positive_opcode_tests.push_back({op, mode, opcode, false});
                 }
             }
         }
     }
 }
 
-
-int Opcode_test::test(int max_iterations)
+int Opcode_test::test(int max_iterations, int line, int col, bool exit_on_fail)
 {
     std::vector<OP_TEST> positive_opcode_tests;
     std::vector<OP_TEST> negative_opcode_tests;
 
     build_opcode_tests(positive_opcode_tests, negative_opcode_tests);
+    std::vector<std::vector<OP_TEST>> test_suites = { positive_opcode_tests, negative_opcode_tests };
 
-    
-    for (auto& test: positive_opcode_tests) {
-        if (op_test(test, max_iterations, false)) {
-            passed++;
-        }
-        else {
-            failed++;
+    for (auto& suite : test_suites) {
+        for (auto& test : suite) {
+            if (op_test(test, max_iterations)) {
+                passed++;
+            } else {
+                failed++;
+            }
+            if (failed > 0) {
+                std::cout << std::format("{}{} {}PASSED: {} {}FAILED: {}", es.pos(line, col), es.ERASE_CURSOR_EOL, 
+                    es.gr(es.BRIGHT_GREEN_FOREGROUND), passed, es.gr(es.BRIGHT_RED_FOREGROUND), failed);
+                    
+                if (exit_on_fail) {
+                    return 0;
+                }
+            } else {
+                std::cout << std::format("{}{} {}PASSED: {}", es.pos(line, col), es.ERASE_CURSOR_EOL, 
+                    es.gr(es.BRIGHT_GREEN_FOREGROUND), passed);
+            }
         }
     }
-    
-    for (auto& test: negative_opcode_tests) {
-        if (op_test(test, max_iterations, true)) {
-            passed++;
-        }
-        else {
-            failed++;
-        }
-    }
-    
     return failed == 0;
 }
