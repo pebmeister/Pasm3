@@ -7,6 +7,11 @@
 *.o
 *.obj
 
+# asm files
+*.bin
+*.crt
+.prg
+
 # Precompiled Headers
 *.gch
 *.pch
