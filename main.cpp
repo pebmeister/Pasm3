@@ -15,7 +15,7 @@
 #include <unordered_map>
 #include <vector>
 #include <filesystem>
-#include <format> // <-- Added for std::format
+#include <format>
 #include <cctype>
 
 #define GEN_RULEMAP
@@ -38,7 +38,7 @@
 #include "autoloader.h"
 
 /**
- * @brief get the uppercase base name from a path.
+ * @brief Get the uppercase base name from a path.
  *
  * Used to create a Commodore 64 file name 
  */
@@ -49,7 +49,7 @@ std::string GetUppercaseBasename(const std::string& filepath) {
     std::string name = fs::path(filepath).filename().stem().string();
     
     // 2. Convert to uppercase
-    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
+    std::transform(name.begin(), name.end(), name.end(), [](unsigned char c) {
         return static_cast<char>(std::toupper(c));
     });
     
@@ -57,46 +57,45 @@ std::string GetUppercaseBasename(const std::string& filepath) {
 }
 
 /**
- * @brief prints help message.
+ * @brief Prints help message.
  */
 void help()
 {
     std::cout <<
 R"(Usage: 
-    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart options] [-d64 disk] [-al]  inputfile inputfile2 ...
+    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart options] [-d64 disk] [-al] [-debug] inputfile inputfile2 ...
 
-    -h                  Print help.
-    -o outfile          Specifies the output file name.
-    -v                  Specifies verbose output.
-    -vs file            Create VICE symbol file.
-    -c64                Specifies Commodore 64 program format. 
-                        It places the load address in first two bytes.
-    -i directory        Specifies include directory. Can be specified more than once.
-    -st symbol          Specifies symbol trace. Displays symbol and value and when modified.
-                        This can change because of macros etc. 
-                        Can be specified multiple times.
-    -d symbol value     Defines a symbol and value.
-                        Can be specified more than once.
-    -cart options       Runs cartconv on the outputfile with the specified options enclosed in quotes
-                        load address and inputname are auto specified.
-                        VICE must be installed and in the path.
-                        -o outfile MUST be specified
-    -d64 disk           Creates d64 disk and installs the output file
-                        -o outfile MUST be specified
-    -al                 Creates auto loader. Can only be used with -d64
-                        -o outfile MUST be specified
-    -debug              Launch VICE monitor and debug
+    -h                 Print help.
+    -o outfile         Specifies the output file name.
+    -v                 Specifies verbose output.
+    -vs file           Create VICE symbol file.
+    -c64               Specifies Commodore 64 program format. 
+                       It places the load address in first two bytes.
+    -i directory       Specifies include directory. Can be specified more than once.
+    -st symbol         Specifies symbol trace. Displays symbol and value and when modified.
+                       Can be specified multiple times.
+    -d symbol value    Defines a symbol and value.
+                       Can be specified more than once.
+    -cart options      Runs cartconv on the outputfile with the specified options enclosed in quotes
+                       load address and inputname are auto specified.
+                       VICE must be installed and in the path.
+                       -o outfile MUST be specified
+    -d64 disk          Creates d64 disk and installs the output file
+                       -o outfile MUST be specified
+    -al                Creates auto loader. Can only be used with -d64
+                       -o outfile MUST be specified
+    -debug             Launch VICE monitor and debug
 )";
 }
 
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-h`, `-o`, `debug` `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`)
+ * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
- * @return Options Returns Options on successful assembly
+ * @return Options Returns Options on successful parsing.
  * @exception throws runtime exception on invalid parameters
  */
 Options parse_args(int argc, char* argv[])
@@ -134,7 +133,7 @@ Options parse_args(int argc, char* argv[])
             arg++;
             if (arg >= argc) {
                 help();
-                throw std::runtime_error("No name specified for -vs"); // Fixed typo
+                throw std::runtime_error("No name specified for -vs");
             }
             options.vs = true;
             options.vs_name = argv[arg];
@@ -154,7 +153,7 @@ Options parse_args(int argc, char* argv[])
             arg++;
             if (arg >= argc) {
                 help();
-                throw std::runtime_error("No options specified for -cart"); // Fixed message
+                throw std::runtime_error("No options specified for -cart");
             }
             options.cart = true;
             options.cart_options = argv[arg];
@@ -163,7 +162,7 @@ Options parse_args(int argc, char* argv[])
             arg++;
             if (arg >= argc) {
                 help();
-                throw std::runtime_error("No disk name specified for -d64"); // Fixed typo
+                throw std::runtime_error("No disk name specified for -d64");
             }
             options.d64 = true;
             options.d64_diskname = argv[arg];
@@ -213,15 +212,15 @@ Options parse_args(int argc, char* argv[])
     }
     if (options.d64 && options.outfile.length() == 0) {
         help();
-        throw std::runtime_error("Outfile must be specified when creating a d64 disk."); // Added validation
+        throw std::runtime_error("Outfile must be specified when creating a d64 disk.");
     }
-    if (options.autoloader && ! options.d64) {
+    if (options.autoloader && !options.d64) {
         help();
-        throw std::runtime_error("d64 disk must be specified when creating an autoloader."); // Added validation
+        throw std::runtime_error("d64 disk must be specified when creating an autoloader.");
     }
     if (options.debug && options.outfile.length() == 0) {
         help();
-        throw std::runtime_error("Outfile must be specified when debug is specified."); // Added validation
+        throw std::runtime_error("Outfile must be specified when debug is specified.");
     }
     return options;
 }
@@ -229,7 +228,7 @@ Options parse_args(int argc, char* argv[])
 /**
  * @brief Application entry point for the 6502 cross-assembler.
  * 
- * tokenizes and parses code statements, builds symbol tables over multiple
+ * Tokenizes and parses code statements, builds symbol tables over multiple
  * passes, and outputs binary files and listings.
  * 
  * @param argc Count of command-line arguments.
@@ -267,10 +266,8 @@ int main(int argc, char* argv[])
             if (options.c64) {
                 auto lo = static_cast<uint8_t>(assembler.load_address & 0xFF); 
                 auto hi = static_cast<uint8_t>((assembler.load_address >> 8) & 0xFF); 
-                // The two bytes you want to add to the start
                 uint8_t prefix[2] = {lo, hi};
 
-                // Insert the 2 bytes at the beginning of the vector
                 assembler.binary_output.insert(assembler.binary_output.begin(), std::begin(prefix), std::end(prefix));
             }
 
@@ -291,7 +288,7 @@ int main(int argc, char* argv[])
             int exitCode = std::system(command.c_str());
             
             if (exitCode != 0) {
-                throw std::runtime_error(std::format("Error running {}",command.c_str()));
+                throw std::runtime_error(std::format("Error running {}", command.c_str()));
             }
         }
         if (options.d64) {
@@ -311,8 +308,8 @@ int main(int argc, char* argv[])
         if (options.vs) {
             auto syms = assembler.ExportSymbols();
             std::ofstream out(options.vs_name, std::ios::out);
-            out << syms;           
-            std::cout << "Created" << options.vs_name << "\n";            
+            out << syms;            
+            std::cout << "Created " << options.vs_name << "\n";            
         }
         if (options.debug) {
             auto name = options.outfile + ".mon";
@@ -328,7 +325,7 @@ int main(int argc, char* argv[])
             }
             out.close();
             
-            std::cout << "Created" << options.vs_name << "\n";         
+            std::cout << "Created " << name << "\n"; // Fixed bug: prints the .mon name instead of vs_name
 
             std::string command = std::format("x64sc.exe -moncommands {} ", name);
             if (options.d64) {
@@ -343,12 +340,13 @@ int main(int argc, char* argv[])
             std::cout << command << "\n";
             int exitCode = std::system(command.c_str());            
             if (exitCode != 0) {
-                throw std::runtime_error(std::format("Error running {}",command.c_str()));
+                throw std::runtime_error(std::format("Error running {}", command.c_str()));
             }            
         }
     }
     catch (std::exception& ex) {
         std::cerr << "Error " << ex.what() << "\n";
+        return 1;
     }
     return 0;
 }
