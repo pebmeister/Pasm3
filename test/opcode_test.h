@@ -44,5 +44,5 @@ public:
     int failed = 0;
     std::string error;
     std::string source;
-    int test(int max_iterations, int line, int col, bool exit_on_fail);
+    int test(int max_iterations, int col, bool exit_on_fail);
 };

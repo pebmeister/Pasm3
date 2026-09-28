@@ -330,7 +330,7 @@ void Opcode_test::build_opcode_tests(std::vector<OP_TEST>& positive_opcode_tests
  * @param exit_on_fail If true, immediately terminates execution upon encountering a test failure.
  * @return int Total number of failed test cases encountered.
  */
-int Opcode_test::test(int max_iterations, int line, int col, bool exit_on_fail)
+int Opcode_test::test(int max_iterations, int col, bool exit_on_fail)
 {
     std::vector<OP_TEST> positive_opcode_tests;
     std::vector<OP_TEST> negative_opcode_tests;

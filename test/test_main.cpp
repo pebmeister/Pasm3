@@ -26,17 +26,19 @@
 #include "tokenkind.h"
 #undef GEN_TOKMAP
 
-#include "opcode_test.h"
-
 #define DEFINE_ANSI_ES
 #include "ANSI_esc.h"
 #undef DEFINE_ANSI_ES
+
+#include "opcode_test.h"
+#include "label_test.h"
 
 /**
  * @brief Holds configuration flags and parameters parsed from command-line arguments.
  */
 struct Test_Options {
     bool test_opcode = false;             ///< Flag indicating whether to execute opcode verification tests.
+    bool test_labels = false;             ///< Flag indicating whether to execute label verification tests.
     int  opcode_max_iteration = 0xFF;     ///< Maximum operand loop iterations per addressing mode test.
 };
 
@@ -93,30 +95,38 @@ int main(int argc, char* argv[])
 
     Test_Options options;    
     Opcode_test op_test;
-    auto line = 1;
+    Label_test lab_test;
+    
     int result = 0;
     try {
         if (argc > 1) {
             parse_args(argc, argv, options);
         }
         else {
-            options.test_opcode = true;
+            options.test_opcode = false;
+            options.test_labels = true;
         }
         
         if (options.test_opcode) {
             std::cout << std::format("{}{}", es.gr(es.BRIGHT_YELLOW_FOREGROUND), "OPCODE TEST");
-            result = op_test.test(options.opcode_max_iteration, line, 15, true);
-            line++;
+            result = op_test.test(options.opcode_max_iteration, 15, true);
         }
+        if (result) {
+            std::cout << std::format("\n{}{}{}{}{}", es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+            return -1;
+        }
+
+        if (options.test_labels) {
+            std::cout << std::format("{}{}", es.gr(es.BRIGHT_YELLOW_FOREGROUND), "LABEL TEST");
+            result = lab_test.test();
+        }
+
+
     }
     catch (std::exception& ex) {
         std::cout << std::format("\n{}{}{}{}", 
             es.gr(es.BRIGHT_RED_FOREGROUND), ex.what(), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
         result = -1;
-    }
-    if (result) {
-        std::cout << std::format("\n{}{}{}{}{}", es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
-        return -1;
     }
     std::cout << std::format("\n{}{}{}", es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
     return 0;

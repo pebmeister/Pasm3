@@ -141,6 +141,9 @@ add_executable(pasm3
 add_executable(pasm_tests
     test/test_main.cpp
     test/opcode_test.cpp
+    test/label_test.cpp
+    test/opcode_test.h
+    test/label_test.h
     test/ANSI_esc.h    
 )
 
