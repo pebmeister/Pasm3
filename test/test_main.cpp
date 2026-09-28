@@ -114,10 +114,10 @@ int main(int argc, char* argv[])
             es.gr(es.BRIGHT_RED_FOREGROUND), ex.what(), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
     }
     if (!result) {
-        std::cout << std::format("{}{}{}", es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
+        std::cout << std::format("\n{}{}{}", es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
     }
     else {
-        std::cout << std::format("{}{}{}{}{}", es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+        std::cout << std::format("\n{}{}{}{}{}", es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
         return -1;
     }
     return 0;
