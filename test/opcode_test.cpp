@@ -1,3 +1,11 @@
+/**
+ * @file opcode_test.cpp
+ * @author Paul Baxter
+ * @brief Implements automated unit testing routines for 6502/65C02 opcodes and addressing modes in Pasm3.
+ * @version 1.0
+ * @date 2026-09-28
+ */
+
 #include <chrono>
 #include <exception>
 #include <fstream>
@@ -27,7 +35,17 @@
 #include "opcode_test.h"
 #include "ANSI_esc.h"
 
-
+/**
+ * @brief Executes an assembly and validation test for a single opcode and addressing mode combination.
+ * 
+ * Constructs synthesized source code lines for the specified test rule, tokenizes and parses them, 
+ * runs the multi-pass assembler, and compares the resulting binary output against expected values 
+ * or validates expected error behavior for negative tests.
+ * 
+ * @param test Reference to the OP_TEST structure defining the opcode, rule type, expected bytecode, and flags.
+ * @param max Maximum number of operand iterations/loops to perform during test code generation.
+ * @return int Returns true (1) if the test passes successfully, or false (0) if a mismatch or unexpected exception occurs.
+ */
 int Opcode_test::op_test(OP_TEST& test, int max)
 {
     Options options;
@@ -218,7 +236,7 @@ int Opcode_test::op_test(OP_TEST& test, int max)
                     case RULE_TYPE::Op_ZeroPageY:
                         false_negative_mode.push_back(RULE_TYPE::Op_AbsoluteY);
                         break;
-                     
+                   
                      case RULE_TYPE::Op_Absolute:
                         false_negative_mode.push_back(RULE_TYPE::Op_Relative);
                         break;
@@ -227,9 +245,9 @@ int Opcode_test::op_test(OP_TEST& test, int max)
                         false_negative_mode.push_back(RULE_TYPE::Op_Absolute);
                         false_negative_mode.push_back(RULE_TYPE::Op_ZeroPage);
                         break;
-                     
+                   
                    default:
-                        break;                        
+                        break;                
                 }
                 auto info  = FindOpCodeInfo(test.op);
                 if (info != NULL) {
@@ -237,8 +255,8 @@ int Opcode_test::op_test(OP_TEST& test, int max)
                         auto modeIt = info->mode_to_opcode.find(static_cast<RULE_TYPE>(mode));
                         if (modeIt != info->mode_to_opcode.end()) {
                             pass = true;
-                            break;                               
-                        }         
+                            break;                                
+                        }          
                     }
                 }                
             }
@@ -254,7 +272,7 @@ int Opcode_test::op_test(OP_TEST& test, int max)
                         ss << "\n";
                         ss << "actual:\n";
                         for (auto& eb: assembler.binary_output) {
-                            std::cout << std::format(" ${:02X} ", eb);
+                            ss << std::format(" ${:02X} ", eb);
                         }
                         ss << "\n";                        
                     }
@@ -265,16 +283,23 @@ int Opcode_test::op_test(OP_TEST& test, int max)
             pass = test.negative_test;         
         }
         if (!pass) {
-            ss << std::format("TEST {} {} {} {}\n", test_num, test_name, (test.negative_test ? "negative" : ""), "FAIL");
             error = ss.str();
             source = source_code;
-            
-            std::cout << source;
         }
     }
     return pass;
 }
 
+/**
+ * @brief Populates positive and negative test case collections for all supported 6502/65C02 opcodes.
+ * 
+ * Iterates through the comprehensive table of instructions—including standard ALU, branch, bit 
+ * manipulation, stack, and undocumented/illegal opcodes—and builds corresponding test vectors 
+ * categorized by valid and invalid addressing modes.
+ * 
+ * @param positive_opcode_tests Vector to store valid opcode/addressing-mode test configurations.
+ * @param negative_opcode_tests Vector to store invalid/unsupported addressing-mode test configurations.
+ */
 void Opcode_test::build_opcode_tests(std::vector<OP_TEST>& positive_opcode_tests, std::vector<OP_TEST>& negative_opcode_tests)
 {
     std::vector<std::string> ops = {
@@ -339,6 +364,18 @@ void Opcode_test::build_opcode_tests(std::vector<OP_TEST>& positive_opcode_tests
     }
 }
 
+/**
+ * @brief Executes the full opcode test suite and reports live progress to the console.
+ * 
+ * Runs both positive and negative test suites, updating the pass/fail counters and rendering 
+ * ANSI-escaped progress information at the designated console position.
+ * 
+ * @param max_iterations Maximum operand iterations per addressing mode test.
+ * @param line Terminal row coordinate for live output rendering.
+ * @param col Terminal column coordinate for live output rendering.
+ * @param exit_on_fail If true, immediately terminates execution upon encountering a test failure.
+ * @return int Total number of failed test cases encountered.
+ */
 int Opcode_test::test(int max_iterations, int line, int col, bool exit_on_fail)
 {
     std::vector<OP_TEST> positive_opcode_tests;
@@ -349,20 +386,19 @@ int Opcode_test::test(int max_iterations, int line, int col, bool exit_on_fail)
 
     auto total_tests = positive_opcode_tests.size() + negative_opcode_tests.size();
     
-
     for (auto& suite : test_suites) {
         for (auto& test : suite) {
             if (op_test(test, max_iterations)) {
                 passed++;
             } else {
                 failed++;
-            }
-            if (failed > 0) {
+            }            
+            if (failed) {
                 std::cout << std::format("{}{} {}PASSED: {:4} {}FAILED: {}", es.pos(line, col), es.ERASE_CURSOR_EOL, 
                     es.gr(es.BRIGHT_GREEN_FOREGROUND), passed, es.gr(es.BRIGHT_RED_FOREGROUND), failed);
                     
                 if (exit_on_fail) {
-                    return 0;
+                    return failed;
                 }
             } else {
                 std::cout << std::format("{}{} {}PASSED: {:4} of {} ", es.pos(line, col), es.ERASE_CURSOR_EOL, 
@@ -370,5 +406,5 @@ int Opcode_test::test(int max_iterations, int line, int col, bool exit_on_fail)
             }
         }
     }
-    return failed == 0;
+    return failed;
 }

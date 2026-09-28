@@ -23,6 +23,7 @@ struct Options {
     std::vector<std::pair<std::string, int>> defined_symbols;  /**< Pre-defined symbol names and integer values passed via CLI. */
     std::string cart_options;                                  /**< Parameters to run carconv with */
     std::string d64_diskname;                                  /**< Name of d64 disk to create if d64 is true */
+    std::string vs_name;                                        /**< Name of voce symbol file */
     bool c64 = false;                                          /**< Flag indicating whether to generate Commodore 64 executable output (PRG format with 2-byte load address header). */
     bool verbose = false;                                      /**< Enables verbose diagnostic logging during lexing, parsing, and assembly. */
     bool warnings = true;                                      /**< Enables warning reporting during assembly. */
@@ -30,4 +31,6 @@ struct Options {
     bool cart = false;                                         /**< Flag to specify cart */
     bool d64 = false;                                          /**< Flag to specify d64 disk */
     bool autoloader = false;                                   /**< Flag to create auto loader used with d64 */    
+    bool vs = false;                                           /**< Flag to create VICE symbols */    
+    bool debug = false;                                        /**< Flag to debug with VICE */    
 };

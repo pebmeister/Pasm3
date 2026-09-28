@@ -63,11 +63,12 @@ void help()
 {
     std::cout <<
 R"(Usage: 
-    pasm3 [-o outfile] [-c64] [-d64 disk] [-al] [-i directory] [-st symbol] [-d symbol value] [-h] [-cart options] inputfile inputfile2 ...
+    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart options] [-d64 disk] [-al]  inputfile inputfile2 ...
 
     -h                  Print help.
     -o outfile          Specifies the output file name.
     -v                  Specifies verbose output.
+    -vs file            Create VICE symbol file.
     -c64                Specifies Commodore 64 program format. 
                         It places the load address in first two bytes.
     -i directory        Specifies include directory. Can be specified more than once.
@@ -84,13 +85,14 @@ R"(Usage:
                         -o outfile MUST be specified
     -al                 Creates auto loader. Can only be used with -d64
                         -o outfile MUST be specified
+    -debug              Launch VICE monitor and debug
 )";
 }
 
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-h`, `-o`, `-v`, `-c64`, `-i`, `-st`, `-d`, `-cart`, `-d64`)
+ * Parses CLI flags (`-h`, `-o`, `debug` `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
@@ -114,6 +116,9 @@ Options parse_args(int argc, char* argv[])
         else if (arg_str == "-v") {
             options.verbose = true;
         }
+        else if (arg_str == "-debug") {
+            options.debug = true;
+        }
         else if (arg_str == "-o") {
             arg++;
             if (arg >= argc) {
@@ -124,6 +129,15 @@ Options parse_args(int argc, char* argv[])
         }
         else if (arg_str == "-c64") {
             options.c64 = true;
+        }
+        else if (arg_str == "-vs") {
+            arg++;
+            if (arg >= argc) {
+                help();
+                throw std::runtime_error("No name specified for -vs"); // Fixed typo
+            }
+            options.vs = true;
+            options.vs_name = argv[arg];
         }
         else if (arg_str == "-al") {
             options.autoloader = true;
@@ -205,6 +219,10 @@ Options parse_args(int argc, char* argv[])
         help();
         throw std::runtime_error("d64 disk must be specified when creating an autoloader."); // Added validation
     }
+    if (options.debug && options.outfile.length() == 0) {
+        help();
+        throw std::runtime_error("Outfile must be specified when debug is specified."); // Added validation
+    }
     return options;
 }
 
@@ -258,7 +276,7 @@ int main(int argc, char* argv[])
 
             std::ofstream out(options.outfile, std::ios::out | std::ios::binary);
             auto sz = assembler.binary_output.size();
-            out.write(reinterpret_cast<const char*>(assembler.binary_output.data()), assembler.binary_output.size());
+            out.write(reinterpret_cast<const char*>(assembler.binary_output.data()), sz);
             out.close();
             
             std::cout << "Wrote " << sz << " bytes to " << options.outfile << "\n";
@@ -273,7 +291,7 @@ int main(int argc, char* argv[])
             int exitCode = std::system(command.c_str());
             
             if (exitCode != 0) {
-                throw std::runtime_error("Error running cart convert");
+                throw std::runtime_error(std::format("Error running {}",command.c_str()));
             }
         }
         if (options.d64) {
@@ -289,6 +307,44 @@ int main(int argc, char* argv[])
             disk.addFile(name, c64FileType(d64FileTypes::PRG), assembler.binary_output);
             disk.save(options.d64_diskname);
             std::cout << "Added " << name << ".PRG to disk " << options.d64_diskname << "\n";
+        }
+        if (options.vs) {
+            auto syms = assembler.ExportSymbols();
+            std::ofstream out(options.vs_name, std::ios::out);
+            out << syms;           
+            std::cout << "Created" << options.vs_name << "\n";            
+        }
+        if (options.debug) {
+            auto name = options.outfile + ".mon";
+            std::ofstream out(name, std::ios::out);
+            if (options.vs) {
+                out << std::format("load_labels \"{}\"\n", options.vs_name);
+            }
+            if (options.cart)  {
+                out << std::format("break {:04X}\n", assembler.load_address + 9);
+            }
+            else {
+                out << std::format("break {:04X}\n", assembler.load_address);
+            }
+            out.close();
+            
+            std::cout << "Created" << options.vs_name << "\n";         
+
+            std::string command = std::format("x64sc.exe -moncommands {} ", name);
+            if (options.d64) {
+                command += options.d64_diskname;
+            }
+            else if (options.cart) {
+                command += "-cartcrt " + options.outfile + ".crt";
+            }
+            else {                
+                command += options.outfile;
+            }
+            std::cout << command << "\n";
+            int exitCode = std::system(command.c_str());            
+            if (exitCode != 0) {
+                throw std::runtime_error(std::format("Error running {}",command.c_str()));
+            }            
         }
     }
     catch (std::exception& ex) {

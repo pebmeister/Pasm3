@@ -10,11 +10,15 @@
 # asm files
 *.bin
 *.crt
-.prg
+*.prg
+*.vs
+*.mon
+*.d64
 
 # Precompiled Headers
 *.gch
 *.pch
+
 
 # Linker files
 *.ilk

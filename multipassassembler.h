@@ -95,6 +95,13 @@ public:
     std::string listing_file;      ///< Assembled output listing text stream.
 
     /**
+     * @brief Exports the symbols in the symbol table
+     */
+    std::string ExportSymbols() {
+        return symbols_.Export();
+    }
+
+    /**
      * @brief Constructs a new MultiPassAssembler object with developer configuration options.
      * @param opts Reference to assembly options specifying start address, defines, and debug flags.
      */

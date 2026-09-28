@@ -947,7 +947,9 @@ public:
              * Triggered when an unrecognized token sequence is encountered at statement start.
              * Logs a syntax error and advances the token stream to prevent infinite loops.
              */
-            std::cout << "Syntax Error: Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << " File: " << src_mgr.GetFileName(Tok.file) << " Line: " << Tok.line << "\n";
+            if (options.verbose) {
+                std::cout << "Syntax Error: Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << " File: " << src_mgr.GetFileName(Tok.file) << " Line: " << Tok.line << "\n";
+            }
             ConsumeToken();
         }
 

@@ -118,7 +118,22 @@ public:
     void clear() {
         symbols_.clear();
     }
-
+    
+    /**
+     * @brief Exports the symbol values in the table.
+     * @details provide VICE compatable symbols.
+     * @return std::string containing the exported_symbols
+     *
+     */
+    std::string Export() {
+        std::string out;
+        
+        for (const auto& [sym, value] : symbols_) {
+            out += std::format("al C:{:04X} .{}\n", value, sym);
+        }
+        return out;
+    }
+    
     /**
      * @brief Defines or updates a symbol value in the table.
      * @details Logs a diagnostic trace message if the symbol is present in the trace watchlist.
