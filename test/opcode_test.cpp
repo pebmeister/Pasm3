@@ -348,14 +348,14 @@ int Opcode_test::test(int max_iterations, int line, int col, bool exit_on_fail)
                 failed++;
             }            
             if (failed) {
-                std::cout << std::format("{}{} {}PASSED: {:4} {}FAILED: {}", es.pos(line, col), es.ERASE_CURSOR_EOL, 
+                std::cout << std::format("{}{} {}PASSED: {:4} {}FAILED: {}", es.column(col), es.ERASE_CURSOR_EOL, 
                     es.gr(es.BRIGHT_GREEN_FOREGROUND), passed, es.gr(es.BRIGHT_RED_FOREGROUND), failed);
                     
                 if (exit_on_fail) {
                     return failed;
                 }
             } else {
-                std::cout << std::format("{}{} {}PASSED: {:4} of {} ", es.pos(line, col), es.ERASE_CURSOR_EOL, 
+                std::cout << std::format("{}{} {}PASSED: {:4} of {} ", es.column(col), es.ERASE_CURSOR_EOL, 
                     es.gr(es.BRIGHT_GREEN_FOREGROUND), passed, total_tests);
             }
         }

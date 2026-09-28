@@ -146,3 +146,22 @@ add_executable(pasm_tests
 
 target_link_libraries(pasm3 PRIVATE pasm_core)
 target_link_libraries(pasm_tests PRIVATE pasm_core)
+
+# ------------------------------------------------------------------------------
+# 5. Testing Configuration (CTest & Auto-execution)
+# ------------------------------------------------------------------------------
+
+enable_testing()
+
+# Register pasm_tests with CTest so you can run 'ctest --output-on-failure'
+add_test(NAME UnitTests COMMAND pasm_tests)
+
+# Automatically run the unit tests right after the pasm_tests executable is built
+add_custom_command(
+    TARGET pasm_tests
+    POST_BUILD
+    COMMAND pasm_tests
+    COMMENT "Running PASM unit test suite..."
+    VERBATIM
+)
+

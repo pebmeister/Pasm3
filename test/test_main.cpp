@@ -89,31 +89,35 @@ void parse_args(int argc, char* argv[], Test_Options& options)
  */
 int main(int argc, char* argv[])
 {    
-    std::cout << std::format("{}{}{}", es.HIDE_CURSOR, es.HOME, es.ERASE_ALL_DISPLAY);
+    std::cout << std::format("{}", es.HIDE_CURSOR);
 
     Test_Options options;    
     Opcode_test op_test;
     auto line = 1;
     int result = 0;
     try {
-        parse_args(argc, argv, options);
+        if (argc > 1) {
+            parse_args(argc, argv, options);
+        }
+        else {
+            options.test_opcode = true;
+        }
         
         if (options.test_opcode) {
-            std::cout << std::format("{}{}{}", es.pos(line,1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "OPCODE TEST");
+            std::cout << std::format("{}{}", es.gr(es.BRIGHT_YELLOW_FOREGROUND), "OPCODE TEST");
             result = op_test.test(options.opcode_max_iteration, line, 15, true);
             line++;
         }
     }
     catch (std::exception& ex) {
-        std::cout << std::format("{}{}", es.pos(line + 6,1), es.gr(es.BRIGHT_RED_FOREGROUND));
-        std::cout << ex.what();
-        std::cout << std::format("{}{}", es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
+        std::cout << std::format("\n{}{}{}{}", 
+            es.gr(es.BRIGHT_RED_FOREGROUND), ex.what(), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
     }
     if (!result) {
-        std::cout << std::format("{}{}{}", es.pos(line + 6,1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
+        std::cout << std::format("{}{}{}", es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
     }
     else {
-        std::cout << std::format("{}{}{}{}{}", es.pos(line + 6,1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+        std::cout << std::format("{}{}{}{}{}", es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
         return -1;
     }
     return 0;
