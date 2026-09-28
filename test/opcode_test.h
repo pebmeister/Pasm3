@@ -5,7 +5,7 @@
 class Opcode_test {
 private:
     struct OP_TEST {
-        std::string op;
+        std::string_view op;
         int mode;
         uint8_t expected;
         bool negative_test;

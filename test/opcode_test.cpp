@@ -302,63 +302,17 @@ int Opcode_test::op_test(OP_TEST& test, int max)
  */
 void Opcode_test::build_opcode_tests(std::vector<OP_TEST>& positive_opcode_tests, std::vector<OP_TEST>& negative_opcode_tests)
 {
-    std::vector<std::string> ops = {
-        // Standard 6502 ALU and Memory Operations
-        "ORA", "AND", "EOR", "ADC", "SBC",
-        "CMP", "CPX", "CPY", "DEC", "DEX",
-        "DEY", "INC", "INX", "INY", "ASL",
-        "ROL", "LSR", "ROR", "LDA", "STA",
-        "LDX", "STX", "LDY", "STY",
-
-        // 65C02 Bit Manipulation Directives
-        "RMB0", "RMB1", "RMB2", "RMB3", "RMB4", "RMB5", "RMB6", "RMB7",
-        "SMB0", "SMB1", "SMB2", "SMB3", "SMB4", "SMB5", "SMB6", "SMB7",
-
-        // Register Transfers & Stack Operations
-        "STZ", "TAX", "TXA", "TAY", "TYA",
-        "TSX", "TXS", "PLA", "PHA", "PLP",
-        "PHP", "PHX", "PHY", "PLX", "PLY",
-
-        // Control Flow & Branching
-        "BRA", "BPL", "BMI", "BVC", "BVS",
-        "BCC", "BCS", "BNE", "BEQ",
-
-        // 65C02 Bit Branching Directives
-        "BBR0", "BBR1", "BBR2", "BBR3", "BBR4", "BBR5", "BBR6", "BBR7",
-        "BBS0", "BBS1", "BBS2", "BBS3", "BBS4", "BBS5", "BBS6", "BBS7",
-
-        // Control & Subroutine Instructions
-        "STP", "WAI", "BRK", "RTI", "JSR", 
-        "RTS", "JMP", "BIT",
-
-        // Processor Status Flag Operations
-        "CLC", "SEC", "CLD", "SED", "CLI",
-        "SEI", "CLV", "NOP",
-
-        // Undocumented / Illegal 6502 Opcodes
-        "SLO", "RLA", "SRE", "RRA", "SAX",
-        "LAX", "DCP", "ISC", "ANC", "ANC2",
-        "ALR", "ARR", "XAA", "AXS", "USBC",
-        "AHX", "SHY", "SHX", "TAS", "LAS",
-
-        // 65C02 Bit Test & Reset/Set
-        "TRB", "TSB"
-    };
-        
-    for (auto& op : ops) {
-        auto info  = FindOpCodeInfo(op);
-        if (info != NULL) {
-            
-            for (int mode = RULE_TYPE::Op_Implied; mode <= RULE_TYPE::Op_ZeroPageRelative; ++mode) {
-                auto modeIt = info->mode_to_opcode.find(static_cast<RULE_TYPE>(mode));
-                if (modeIt == info->mode_to_opcode.end()) {
-                    negative_opcode_tests.push_back({op, mode, 0, true});
-                }
-                else {
-                    auto [opcode, _] = modeIt->second;
-                    
-                    positive_opcode_tests.push_back({op, mode, opcode, false});
-                }
+    for (auto&[_, info]: opcodeDict) {
+        auto& op = info.mnemonic;
+        for (int mode = RULE_TYPE::Op_Implied; mode <= RULE_TYPE::Op_ZeroPageRelative; ++mode) {
+            auto modeIt = info.mode_to_opcode.find(static_cast<RULE_TYPE>(mode));
+            if (modeIt == info.mode_to_opcode.end()) {
+                negative_opcode_tests.push_back({op, mode, 0, true});
+            }
+            else {
+                auto [opcode, _] = modeIt->second;
+                
+                positive_opcode_tests.push_back({op, mode, opcode, false});
             }
         }
     }

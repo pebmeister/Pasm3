@@ -98,7 +98,7 @@ int main() {
         { "BCC|BCS|BNE|BEQ",                  static_cast<int>(Opcode), true },
          
         // 65C02 Bit Branching Directives
-        { "BBR[0-7]|BBS[0-7]",                static_cast<int>(Opcode), true },
+        { "BBR[0-7]|BBS[0-7]|SBM[0-7]",       static_cast<int>(Opcode), true },
 
         // Control & Subroutine Instructions
         { "STP|WAI|BRK|RTI|JSR",              static_cast<int>(Opcode), true },

@@ -618,7 +618,7 @@ std::map<int, OpCodeInfo> opcodeDict = {
         SMB0, 
         OpCodeInfo
         {
-            "MBMB0",
+            "SBM0",
             {
                 { Op_ZeroPage, { 0x87, 5} }
             },
