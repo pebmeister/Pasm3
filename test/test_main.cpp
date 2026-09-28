@@ -112,13 +112,12 @@ int main(int argc, char* argv[])
     catch (std::exception& ex) {
         std::cout << std::format("\n{}{}{}{}", 
             es.gr(es.BRIGHT_RED_FOREGROUND), ex.what(), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
+        result = -1;
     }
-    if (!result) {
-        std::cout << std::format("\n{}{}{}", es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
-    }
-    else {
+    if (result) {
         std::cout << std::format("\n{}{}{}{}{}", es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
         return -1;
     }
+    std::cout << std::format("\n{}{}{}", es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
     return 0;
 }
