@@ -31,7 +31,6 @@
 #include "utilities.h"
 #include "d64.h"
 #include "autoloader.h"
-
 #include "opcode_test.h"
 #include "ANSI_esc.h"
 
@@ -60,30 +59,26 @@ int Opcode_test::op_test(OP_TEST& test, int max)
     std::string source_code;
     std::stringstream ss;
 
+    constexpr int org = 0x1000;
     int line_num = 1;
     int count = 0;
     
-    std::string test_name = std::format("{:=>6} {:>4} {:15} {:=>6}", '=', test.op, rulemap[static_cast<RULE_TYPE>(test.mode)], '=');
-    line = std::format("; {}\n", test_name);
-    src_mgr.source[{fileid, line_num}] = line;
-    source_code += (line + "\n");
-    line_num++;
-
-    constexpr int org = 0x1000;
+    // helper to add a line of source code
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
     
-    std::string orgline = std::format("    * = {}", org);
-    line = std::format("{}\n", orgline);
-    src_mgr.source[{fileid, line_num}] = line;
-    source_code += (line + "\n");
-    line_num++;
+    add_line(std::format("; {:=>6} {:>4} {:15} {:=>6}", '=', test.op, rulemap[static_cast<RULE_TYPE>(test.mode)], '='));    
+    add_line();
+    add_line(std::format("    * = {}", org));
+    add_line();
 
     // Helper for single-instruction modes (Implied, Accumulator)
     auto emit_single = [&](std::string_view suffix = "") {
         expected_output.push_back(test.expected);
-        line = suffix.empty() ? std::format("    {}", test.op) : std::format("    {} {}", test.op, suffix);
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
+        add_line(suffix.empty() ? std::format("    {}", test.op) : std::format("    {} {}", test.op, suffix));
     };
 
     // Helper for repeating operand loops
@@ -97,10 +92,7 @@ int Opcode_test::op_test(OP_TEST& test, int max)
                 expected_output.push_back(static_cast<uint8_t>(opr_ref));
             }
 
-            line = std::format("    {} {}", test.op, format_fn(opr_ref));
-            src_mgr.source[{fileid, line_num}] = line;
-            source_code += (line + "\n");
-            line_num++;
+            add_line(std::format("    {} {}", test.op, format_fn(opr_ref)));
             
             opr_ref++;
             if (is_16bit) {
@@ -167,10 +159,7 @@ int Opcode_test::op_test(OP_TEST& test, int max)
                 expected_output.push_back(test.expected);
                 expected_output.push_back(opr_relative - rel_offset);
 
-                line = std::format("    {} * + ({})", test.op, opr_relative);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
+                add_line(std::format("    {} * + ({})", test.op, opr_relative));
                 
                 opr_relative++;
                 if (opr_relative >= rel_max) {
@@ -186,10 +175,8 @@ int Opcode_test::op_test(OP_TEST& test, int max)
                 expected_output.push_back(opr_zprel_addr);
                 expected_output.push_back(opr_zprelative - zp_rel_offset);
 
-                line = std::format("    {} ${:02X}, * + ({})", test.op, opr_zprel_addr, opr_zprelative);
-                src_mgr.source[{fileid, line_num}] = line;
-                source_code += (line + "\n");
-                line_num++;
+                add_line(std::format("    {} ${:02X}, * + ({})", test.op, opr_zprel_addr, opr_zprelative));
+
                 opr_zprel_addr++;
                 opr_zprelative++;
                 if (opr_zprelative >= rel_max) {

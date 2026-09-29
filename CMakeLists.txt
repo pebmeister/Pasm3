@@ -167,4 +167,3 @@ add_custom_command(
     COMMENT "Running PASM unit test suite..."
     VERBATIM
 )
-
