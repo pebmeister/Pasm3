@@ -37,6 +37,16 @@
 #include "d64.h"
 #include "autoloader.h"
 
+
+std::string RemoveExtension(const std::string filepath) {
+    namespace fs = std::filesystem;
+    
+    fs::path p(filepath);
+    p.replace_extension(""); // Clears the extension while keeping directories
+    
+    return p.string();
+}
+
 /**
  * @brief Get the uppercase base name from a path.
  *
@@ -45,11 +55,13 @@
 std::string GetUppercaseBasename(const std::string& filepath) {
     namespace fs = std::filesystem;
     
+    fs::path p(filepath);
+
     // 1. Strip directory and extension
-    std::string name = fs::path(filepath).filename().stem().string();
+    std::string name = p.filename().stem().string();
     
-    // 2. Convert to uppercase
-    std::transform(name.begin(), name.end(), name.end(), [](unsigned char c) {
+    // 2. Convert to uppercase in-place (note name.begin() as the 3rd argument)
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
         return static_cast<char>(std::toupper(c));
     });
     
@@ -150,13 +162,15 @@ Options parse_args(int argc, char* argv[])
             options.include.push_back(argv[arg]);
         }
         else if (arg_str == "-cart") {
-            arg++;
-            if (arg >= argc) {
-                help();
-                throw std::runtime_error("No options specified for -cart");
+            if (arg >= argc || argv[arg + 1][0] == '-' ) {
+                options.cart = true;
+                options.cart_options = "-t normal -p";
             }
-            options.cart = true;
-            options.cart_options = argv[arg];
+            else {
+                options.cart = true;
+                options.cart_options = argv[arg];
+                arg++;
+            }
         }
         else if (arg_str == "-d64") {
             arg++;
@@ -201,27 +215,41 @@ Options parse_args(int argc, char* argv[])
         }
         arg++;
     }
-    
+  
     if (options.input_filenames.empty()) {
         help();
         throw std::runtime_error("No input file specified");
     }
+    std::string fname = options.input_filenames[0];
+    std::string base_name = RemoveExtension(fname);
+    
     if (options.cart && options.outfile.length() == 0) {
-        help();
-        throw std::runtime_error("Outfile must be specified when creating a cart.");
+        options.outfile = base_name + ".bin";        
     }
-    if (options.d64 && options.outfile.length() == 0) {
-        help();
-        throw std::runtime_error("Outfile must be specified when creating a d64 disk.");
+    else if (options.outfile.length() == 0) {
+        options.outfile = options.c64 ? base_name + ".prg" : base_name + ".bin";        
+        if (options.autoloader) {
+            namespace fs = std::filesystem;
+            fs::path p(fname);
+            
+            // Get just the uppercase filename without path or extension (e.g., "MYCODE")
+            auto upper_name = GetUppercaseBasename(fname);
+            
+            // Rebuild the output path cleanly in the same directory with the uppercase name
+            options.outfile = (p.parent_path() / (upper_name + ".prg")).string();
+            
+            std::cout << options.outfile << "\n";
+        }
     }
     if (options.autoloader && !options.d64) {
-        help();
-        throw std::runtime_error("d64 disk must be specified when creating an autoloader.");
+        options.d64 = true;
+        options.d64_diskname = base_name + ".d64";
     }
-    if (options.debug && options.outfile.length() == 0) {
-        help();
-        throw std::runtime_error("Outfile must be specified when debug is specified.");
+    if (options.debug && !options.vs) {
+        options.vs = true;
+        options.vs_name = base_name + ".vs";
     }
+    
     return options;
 }
 

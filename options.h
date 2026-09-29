@@ -15,7 +15,7 @@
  * @brief Holds assembler execution options, input/output paths, and symbol definitions.
  */
 struct Options {
-    uint16_t start_addr;                                       /**< Starting origin address for code generation (e.g., $C000). */
+    uint16_t start_addr = 0xc000;                                       /**< Starting origin address for code generation (e.g., $C000). */
     std::string outfile;                                       /**< Path to the output binary file. */
     std::vector<std::string> include;                          /**< List of search directory paths for included files. */
     std::vector<std::string> traced_symbols;                   /**< Symbol names selected for active tracing during assembly passes. */

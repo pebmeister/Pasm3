@@ -38,7 +38,7 @@ int Label_test::test(int col)
     
     add_line(std::format("    * = {}", org));
 
-    constexpr size_t num_global_labels = 10;
+    constexpr size_t num_global_labels = 10000;
     constexpr size_t bytes_per_labels = 2;
 
     std::vector<uint8_t> expected_output;
