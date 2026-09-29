@@ -57,6 +57,8 @@ void parse_args(int argc, char* argv[], Test_Options& options);
  */
 void parse_args(int argc, char* argv[], Test_Options& options)
 {
+    options.test_opcode = false;
+    options.test_labels = false;
     auto arg_num = 1;
     while (arg_num < argc) {
         std::string arg = std::string(argv[arg_num++]);
@@ -70,8 +72,12 @@ void parse_args(int argc, char* argv[], Test_Options& options)
                 }
             }
         }
+        else if (arg == "-label") {
+            options.test_labels = true;
+        }
         else if (arg == "-all") {
             options.test_opcode = true;
+            options.test_labels = true;
         }
         else {
             throw std::runtime_error(std::format("Unknown command line option {}", arg));
@@ -99,35 +105,31 @@ int main(int argc, char* argv[])
     
     int result = 0;
     try {
+        options.test_opcode = true;
+        options.test_labels = true;
+
         if (argc > 1) {
             parse_args(argc, argv, options);
         }
-        else {
-            options.test_opcode = false;
-            options.test_labels = true;
-        }
         
         if (options.test_opcode) {
-            std::cout << std::format("{}{}", es.gr(es.BRIGHT_YELLOW_FOREGROUND), "OPCODE TEST");
-            result = op_test.test(options.opcode_max_iteration, 15, true);
+            std::cout << std::format("{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "OPCODE TEST");
+            result = op_test.test(options.opcode_max_iteration, 15, true);        
+            if (result) {
+                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+                return -1;
+            }
         }
-        if (result) {
-            std::cout << std::format("\n{}{}{}{}{}", es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
-            return -1;
-        }
-
         if (options.test_labels) {
-            std::cout << std::format("{}{}", es.gr(es.BRIGHT_YELLOW_FOREGROUND), "LABEL TEST");
-            result = lab_test.test();
+            std::cout << std::format("{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "LABEL TEST");
+            result = lab_test.test(15);
         }
-
-
     }
     catch (std::exception& ex) {
         std::cout << std::format("\n{}{}{}{}", 
             es.gr(es.BRIGHT_RED_FOREGROUND), ex.what(), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
         result = -1;
     }
-    std::cout << std::format("\n{}{}{}", es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
+    std::cout << std::format("{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
     return 0;
 }
