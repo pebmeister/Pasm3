@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
     }
     catch (std::exception& ex) {
         std::cout << std::format("{}{}{}{}{}", 
-            es.downn(1), es.gr(es.BRIGHT_RED_FOREGROUND), ex.what(), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
+            es.down(1), es.gr(es.BRIGHT_RED_FOREGROUND), ex.what(), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
         result = -1;
     }
     std::cout << std::format("{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
