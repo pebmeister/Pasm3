@@ -1,3 +1,4 @@
+#include <sstream>
 #include <format>
 #include <string>
 
