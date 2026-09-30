@@ -58,6 +58,7 @@ int main() {
         { "[%]",                             static_cast<int>(Percent) },
         { "[&]",                             static_cast<int>(Ampersand) },
         { "[&]{2}",                          static_cast<int>(AmpersandAmpersand) },
+        { "[\\/]",                           static_cast<int>(Slash) }, // <-- Add this rule       
         { "[\\(]",                           static_cast<int>(LParen) },
         { "[\\)]",                           static_cast<int>(RParen) },
         { "[\\+]",                           static_cast<int>(Plus) },

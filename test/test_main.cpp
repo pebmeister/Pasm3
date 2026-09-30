@@ -32,6 +32,7 @@
 
 #include "opcode_test.h"
 #include "label_test.h"
+#include "expression_test.h"
 
 /**
  * @brief Holds configuration flags and parameters parsed from command-line arguments.
@@ -39,6 +40,7 @@
 struct Test_Options {
     bool test_opcode = false;             ///< Flag indicating whether to execute opcode verification tests.
     bool test_labels = false;             ///< Flag indicating whether to execute label verification tests.
+    bool test_expression = false;         ///< Flag indicating whether to execute Expression verification tests.
     int  opcode_max_iteration = 0xFF;     ///< Maximum operand loop iterations per addressing mode test.
 };
 
@@ -75,9 +77,13 @@ void parse_args(int argc, char* argv[], Test_Options& options)
         else if (arg == "-label") {
             options.test_labels = true;
         }
+        else if (arg == "-expr") {
+            options.test_expression = true;
+        }        
         else if (arg == "-all") {
             options.test_opcode = true;
             options.test_labels = true;
+            options.test_expression = true;
         }
         else {
             throw std::runtime_error(std::format("Unknown command line option {}", arg));
@@ -102,11 +108,13 @@ int main(int argc, char* argv[])
     Test_Options options;    
     Opcode_test op_test;
     Label_test lab_test;
+    Expression_test ex_test;
     
     int result = 0;
     try {
         options.test_opcode = true;
         options.test_labels = true;
+        options.test_expression = true;
 
         if (argc > 1) {
             parse_args(argc, argv, options);
@@ -123,6 +131,11 @@ int main(int argc, char* argv[])
         if (options.test_labels) {
             std::cout << std::format("{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "LABEL TEST");
             result = lab_test.test(15);
+        }
+
+        if (options.test_expression) {
+            std::cout << std::format("{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "EXPR TEST");
+            result = ex_test.test(15);
         }
     }
     catch (std::exception& ex) {
