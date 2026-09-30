@@ -75,7 +75,8 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     }
 
     while ((changed || (wait_stable && !stable)) && pass <= max_passes) {
-
+        symbols_.reset_usage();
+        vars_.reset_usage();
         lastpasschanged = changed;
         stable = !lastpasschanged;
 
@@ -96,6 +97,8 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     }
 
     parent_scope="GLOBAL_";
+    symbols_.reset_usage();
+    vars_.reset_usage();
     EmitFinalPass(statements, anonymous_labels, src_mgr);
 }
 
