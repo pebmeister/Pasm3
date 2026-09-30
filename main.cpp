@@ -220,10 +220,12 @@ Options parse_args(int argc, char* argv[])
         help();
         throw std::runtime_error("No input file specified");
     }
-    std::string fname = options.input_filenames[0];
-    if (options.outfile.length()> 0) {
-        fname = options.outfile;
+
+    std::string fname = options.outfile;
+    if (frame.length() == 0) {
+        fname = options.input_filenames[0];
     }
+
     std::string base_name = RemoveExtension(fname);
     
     if (options.cart && options.outfile.length() == 0) {
@@ -343,7 +345,7 @@ int main(int argc, char* argv[])
             std::cout << "Created " << options.vs_name << "\n";            
         }
         if (options.debug) {
-            auto name = options.outfile + ".mon";
+            auto name = RemoveExtension(options.outfile) + ".mon";
             std::ofstream out(name, std::ios::out);
             if (options.vs) {
                 out << std::format("load_labels \"{}\"\n", options.vs_name);
