@@ -222,7 +222,7 @@ Options parse_args(int argc, char* argv[])
     }
 
     std::string fname = options.outfile;
-    if (frame.length() == 0) {
+    if (fname.length() == 0) {
         fname = options.input_filenames[0];
     }
 
