@@ -95,19 +95,17 @@ R"(Usage:
     -cart options      Runs cartconv on the outputfile with the specified options enclosed in quotes
                        load address and inputname are auto specified.
                        VICE must be installed and in the path.
-                       -o outfile MUST be specified
     -d64 disk          Creates d64 disk and installs the output file
-                       -o outfile MUST be specified
-    -al                Creates auto loader. Can only be used with -d64
-                       -o outfile MUST be specified
-    -debug             Launch VICE monitor and debug
+    -al                Creates auto loader. This will also created a .64 disk if -d64 is not specified
+    -debug             Launch VICE monitor and debug. Can not be used with -launch.
+    -launch            Launch in VICE. Can not be used with -debug.
 )";
 }
 
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`)
+ * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `launch`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
@@ -193,6 +191,9 @@ Options parse_args(int argc, char* argv[])
             }
             options.traced_symbols.push_back(argv[arg]);
         }
+        else if (arg_str == "-launch") {
+            options.launch = true;
+        }
         else if (arg_str == "-d") {
             arg++;
             if ((arg + 1) >= argc) {
@@ -220,6 +221,11 @@ Options parse_args(int argc, char* argv[])
         arg++;
     }
   
+    if (options.launch && options.debug) {
+        help();
+        throw std::runtime_error("Launch can not be used with debug");
+    }
+
     if (options.input_filenames.empty()) {
         help();
         throw std::runtime_error("No input file specified");
@@ -233,10 +239,10 @@ Options parse_args(int argc, char* argv[])
     std::string base_name = RemoveExtension(fname);
     
     if (options.cart && options.outfile.length() == 0) {
-        options.outfile = base_name + ".bin";        
+        options.outfile = std::format("{}.bin", base_name);        
     }
     else if (options.outfile.length() == 0) {
-        options.outfile = options.c64 ? base_name + ".prg" : base_name + ".bin";        
+        options.outfile = std::format("{}{}", base_name, (options.c64 ? ".prg" : ".bin"));        
         if (options.autoloader) {
             namespace fs = std::filesystem;
             fs::path p(fname);
@@ -246,17 +252,15 @@ Options parse_args(int argc, char* argv[])
             
             // Rebuild the output path cleanly in the same directory with the uppercase name
             options.outfile = (p.parent_path() / (upper_name + ".prg")).string();
-            
-            std::cout << options.outfile << "\n";
         }
     }
     if (options.autoloader && !options.d64) {
         options.d64 = true;
-        options.d64_diskname = base_name + ".d64";
+        options.d64_diskname = std::format("{}.d64", base_name);        
     }
     if (options.debug && !options.vs) {
         options.vs = true;
-        options.vs_name = base_name + ".vs";
+        options.vs_name = std::format("{}.vs", base_name);        
     }
     
     return options;
@@ -337,18 +341,18 @@ int main(int argc, char* argv[])
             if (options.autoloader) {
                 auto loader_code = CreateAutoLoader(name, assembler.load_address);
                 disk.addFile("LOADER", c64FileType(d64FileTypes::PRG), loader_code);
-                std::cout << "Added LOADER.PRG to disk " << options.d64_diskname << "\n";
+                std::cout << std::format("Added LOADER.PRG to disk {}\n", options.d64_diskname);
             }
             
             disk.addFile(name, c64FileType(d64FileTypes::PRG), assembler.binary_output);
             disk.save(options.d64_diskname);
-            std::cout << "Added " << name << ".PRG to disk " << options.d64_diskname << "\n";
+            std::cout << std::format("Added {}.PRG to disk {}\n", name, options.d64_diskname);
         }
         if (options.vs) {
             auto syms = assembler.ExportSymbols();
             std::ofstream out(options.vs_name, std::ios::out);
             out << syms;            
-            std::cout << "Created " << options.vs_name << "\n";            
+            std::cout << std::format("Created {}\n", options.vs_name);            
         }
         if (options.debug) {
             auto name = RemoveExtension(options.outfile) + ".mon";
@@ -356,22 +360,34 @@ int main(int argc, char* argv[])
             if (options.vs) {
                 out << std::format("load_labels \"{}\"\n", options.vs_name);
             }
-            if (options.cart)  {
-                out << std::format("break {:04X}\n", assembler.load_address + 9);
-            }
-            else {
-                out << std::format("break {:04X}\n", assembler.load_address);
-            }
-            out.close();
-            
-            std::cout << "Created " << name << "\n"; // Fixed bug: prints the .mon name instead of vs_name
+            auto load_address = options.cart ? assembler.load_address + 9 : assembler.load_address;
+            out << std::format("break {:04X}\n", load_address);
+            out.close();  
+            std::cout << std::format("Created {}\n", name);
 
             std::string command = std::format("x64sc.exe -moncommands {} ", name);
             if (options.d64) {
                 command += options.d64_diskname;
             }
             else if (options.cart) {
-                command += "-cartcrt " + RemoveExtension(options.outfile) + ".crt";
+                command += std::format("-cartcrt {}.crt", RemoveExtension(options.outfile));
+            }
+            else {                
+                command += options.outfile;
+            }
+            std::cout << command << "\n";
+            int exitCode = std::system(command.c_str());            
+            if (exitCode != 0) {
+                throw std::runtime_error(std::format("Error running {}", command.c_str()));
+            }            
+        }
+        if (options.launch) {
+            std::string command = std::format("x64sc.exe ");
+            if (options.d64) {
+                command += options.d64_diskname;
+            }
+            else if (options.cart) {
+                command += std::format("-cartcrt {}.crt", RemoveExtension(options.outfile));
             }
             else {                
                 command += options.outfile;

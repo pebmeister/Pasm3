@@ -33,4 +33,5 @@ struct Options {
     bool autoloader = false;                                   /**< Flag to create auto loader used with d64 */    
     bool vs = false;                                           /**< Flag to create VICE symbols */    
     bool debug = false;                                        /**< Flag to debug with VICE */    
+    bool launch = false;                                       /**< Flag to launch with VICE */    
 };
