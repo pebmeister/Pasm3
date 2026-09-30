@@ -221,6 +221,9 @@ Options parse_args(int argc, char* argv[])
         throw std::runtime_error("No input file specified");
     }
     std::string fname = options.input_filenames[0];
+    if (options.outfile.length()> 0) {
+        fname = options.outfile;
+    }
     std::string base_name = RemoveExtension(fname);
     
     if (options.cart && options.outfile.length() == 0) {
