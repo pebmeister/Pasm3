@@ -317,7 +317,7 @@ int main(int argc, char* argv[])
         std::cout << "Elapsed time: " << elapsed_seconds.count() << " seconds\n";
 
         if (options.cart) {
-            std::string command = std::format("cartconv -i {} -l {} {} -o {}.crt", 
+            std::string command = std::format("cartconv -i {} -l {} {} -o {}.crt"),
                 options.outfile, assembler.load_address, options.cart_options, RemoveExtension(options.outfile);
             std::cout << command << "\n";
             int exitCode = std::system(command.c_str());
