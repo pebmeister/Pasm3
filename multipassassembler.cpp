@@ -65,7 +65,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     if (options.verbose) {
         std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
     }
-
+    max_passes = options.max_pass;
     for (auto&sym : options.traced_symbols) {
         symbols_.Trace(sym);
         vars_.Trace(sym);

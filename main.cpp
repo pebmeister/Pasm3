@@ -79,7 +79,7 @@ void help()
 {
     std::cout <<
 R"(Usage: 
-    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart [options]] [-d64 disk] [-al] [-debug] [-launch] inputfile inputfile2 ...
+    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart [options]] [-d64 disk] [-al] [-debug] [-launch] [-mp maxpass] inputfile inputfile2 ...
 
     -h                 Print help.
     -o outfile         Specifies the output file name.
@@ -92,20 +92,21 @@ R"(Usage:
                        Can be specified multiple times.
     -d symbol value    Defines a symbol and value.
                        Can be specified more than once.
-    -cart [options]    Runs cartconv on the outputfile with the specified options enclosed in quotes
-                       load address and inputname are auto specified. It will use defaults if no options are set/
+    -cart [options]    Runs cartconv on the outputfile with the specified options enclosed in quotes.
+                       Load address and inputname are auto specified. It will use defaults if no options are set.
                        VICE must be installed and in the path.
-    -d64 disk          Creates d64 disk and installs the output file
-    -al                Creates auto loader. This will also create a .d64 disk if -d64 is not specified
+    -d64 disk          Creates d64 disk and installs the output file.
+    -al                Creates auto loader. This will also create a .d64 disk if -d64 is not specified.
     -debug             Launch VICE monitor and debug. Can not be used with -launch.
     -launch            Launch in VICE. Can not be used with -debug.
+    -mp maxpass        Sets the max number of passes. Default is 10.
 )";
 }
 
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `launch`)
+ * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `-launch`, `-mp`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
@@ -151,6 +152,14 @@ Options parse_args(int argc, char* argv[])
             }
             options.vs = true;
             options.vs_name = argv[arg];
+        }
+        else if (arg_str == "-mp") {
+            arg++;
+            if (arg >= argc) {
+                help();
+                throw std::runtime_error("Max pass not specified for -mp");
+            }
+            options.max_pass = std::stoi(argv[arg]);
         }
         else if (arg_str == "-al") {
             options.autoloader = true;

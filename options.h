@@ -15,7 +15,8 @@
  * @brief Holds assembler execution options, input/output paths, and symbol definitions.
  */
 struct Options {
-    uint16_t start_addr = 0xc000;                                       /**< Starting origin address for code generation (e.g., $C000). */
+    uint16_t start_addr = 0xc000;                              /**< Starting origin address for code generation (e.g., $C000). */
+    uint16_t max_pass = 10;                                    /**< Starting origin address for code generation (e.g., $C000). */
     std::string outfile;                                       /**< Path to the output binary file. */
     std::vector<std::string> include;                          /**< List of search directory paths for included files. */
     std::vector<std::string> traced_symbols;                   /**< Symbol names selected for active tracing during assembly passes. */
@@ -23,7 +24,7 @@ struct Options {
     std::vector<std::pair<std::string, int>> defined_symbols;  /**< Pre-defined symbol names and integer values passed via CLI. */
     std::string cart_options;                                  /**< Parameters to run carconv with */
     std::string d64_diskname;                                  /**< Name of d64 disk to create if d64 is true */
-    std::string vs_name;                                        /**< Name of voce symbol file */
+    std::string vs_name;                                       /**< Name of voce symbol file */
     bool c64 = false;                                          /**< Flag indicating whether to generate Commodore 64 executable output (PRG format with 2-byte load address header). */
     bool verbose = false;                                      /**< Enables verbose diagnostic logging during lexing, parsing, and assembly. */
     bool warnings = true;                                      /**< Enables warning reporting during assembly. */
