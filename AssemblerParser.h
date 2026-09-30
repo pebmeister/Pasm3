@@ -266,7 +266,7 @@ public:
         
         // Seed the local symbol table with CLI defined symbols (-D / --define)
         for (auto&[sym, val] : options.defined_symbols) {        
-            definedSyms.Define(sym, 1);
+            definedSyms.Define(sym, 1, {0, 0});
         }
         
         bool display_tok = false;
@@ -306,7 +306,7 @@ public:
                 ConsumeToken(); // consume '='
                 auto val_expr = ParseExpression();
                 statements.push_back(std::make_unique<EquStatement>(Tok.file, Tok.line, sym_name, val_expr.move()));
-                definedSyms.Define(sym_name, 1);
+                definedSyms.Define(sym_name, 1, {0, 0});
                 continue;
             }
 
@@ -470,7 +470,7 @@ public:
                     });
                     macros_[lower_key] = std::move(def);
 
-                    definedSyms.Define(lower_key, 1);
+                    definedSyms.Define(lower_key, 1, {name_tok.file, name_tok.line});
                     continue;
                 }
 
@@ -592,7 +592,7 @@ public:
                         ));
                     }
 
-                    auto sym = definedSyms.Lookup(Tok.text);
+                    auto sym = definedSyms.Lookup(Tok.text, {Tok.file, Tok.line});
                     ConsumeToken();
 
                     bool is_true = (sym.has_value() && dir == ".ifdef") || (!sym.has_value() && dir == ".ifndef");
@@ -676,7 +676,7 @@ public:
                             }
 
                             pairs.emplace_back(sym_name, std::move(expr_node));
-                            definedSyms.Define(sym_name, 1);
+                            definedSyms.Define(sym_name, 1, {Tok.file, Tok.line});
                         } else {
                             throw std::runtime_error(
                                 std::format("Expected variable identifier in .var directive at line {}", dir_tok.line));
@@ -1033,7 +1033,8 @@ private:
         // --- Identifiers or Location Counter (*) ---
         if (TokIs(TokenKind::Identifier) || TokIs(TokenKind::Star)) {
             PasmTokenizer::Token t = ConsumeToken();
-            return ExprResult(std::make_unique<SymbolExpr>(t.text));
+            std::pair<int, int>loc = {Tok.file, Tok.line};
+            return ExprResult(std::make_unique<SymbolExpr>(t.text, loc));
         }
 
         // --- Anonymous Relative Labels (+, -, ++, --) ---

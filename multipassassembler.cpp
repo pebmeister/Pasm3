@@ -71,7 +71,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         vars_.Trace(sym);
     }
     for (auto&[sym, val] : options.defined_symbols) {
-        changed |= symbols_.Define(sym, static_cast<uint16_t>(val));
+        changed |= symbols_.Define(sym, static_cast<uint16_t>(val), {0, 0});
     }
 
     while ((changed || (wait_stable && !stable)) && pass <= max_passes) {
@@ -150,14 +150,13 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 else if (!lbl->is_anon()) {
                     parent_scope = name;
                 }
-                if (vars_.Lookup(name)) {
-
+                if (vars_.Lookup(name, {lbl->file, lbl->line})) {
                     throw std::runtime_error(
                         std::format("should not be a label at ${:04X} File: {} Line: {}", 
                                     pc, src_mgr.GetFileName(lbl->file), lbl->line));
                 }
                 else {
-                    changed |= symbols_.Define(name, pc);
+                    changed |= symbols_.Define(name, pc, {lbl->file, lbl->line});
                 }
                 new_statements.push_back(std::move(stmt));
             }
@@ -193,7 +192,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
 
                 // CRITICAL: Always register 'name' in vars_, even if 0, so vars_.Lookup(name) succeeds
-                vars_.Define(name, static_cast<uint16_t>(initial_val));
+                vars_.Define(name, static_cast<uint16_t>(initial_val), {var_stmt->file, var_stmt->line});
             }
             new_statements.push_back(std::move(stmt));
             break;
@@ -209,11 +208,11 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
                 auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val.has_value()) {                   
-                    if (vars_.Lookup(name)) {
-                        vars_.Define(name, static_cast<uint16_t>(val.value()));
+                    if (vars_.Lookup(name, {equ->file, equ->line})) {
+                        vars_.Define(name, static_cast<uint16_t>(val.value()), {equ->file, equ->line});
                     }
                     else {
-                        changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()));
+                        changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()), {equ->file, equ->line});
                     }
                 }
             }
@@ -487,13 +486,14 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                     std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
                                 );
 
+                                std::pair<int, int> loc = {stmt->file, stmt->line};
                                 // 2. create inverted branch
                                 auto branch_inst = std::make_unique<InstructionStatement>(
                                     stmt->file,
                                     stmt->line,
                                     it->second,
                                     RULE_TYPE::Op_Relative,
-                                    std::make_unique<SymbolExpr>(skip_label)
+                                    std::make_unique<SymbolExpr>(skip_label, loc)
                                 );
 
                                 // 3. create the target label
@@ -932,11 +932,11 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                     v = static_cast<uint16_t>(val.value());
                     
-                    if (vars_.Lookup(equ->name)) {
-                        vars_.Define(equ->name, v);
+                    if (vars_.Lookup(equ->name, {equ->file, equ->line})) {
+                        vars_.Define(equ->name, v, {equ->file, equ->line} );
                     }
                     else {
-                        symbols_.Define(equ->name, v);
+                        symbols_.Define(equ->name, v, {equ->file, equ->line});
                     }
                 }
                 if (printstate) {
@@ -1038,14 +1038,14 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
 
                     // Upsert initial value into vars_
-                    vars_.Define(name, static_cast<uint16_t>(initial_val));
+                    vars_.Define(name, static_cast<uint16_t>(initial_val), { var_stmt->file, var_stmt->line});
                 }
 
                 if (printstate) {
                     std::string summary = "";
                     for (const auto& [name, expr] : var_stmt->vars) {
                         if (!summary.empty()) summary += ", ";
-                        summary += std::format("{} = ${:04X}", name, vars_.Lookup(name).value_or(0));
+                        summary += std::format("{} = ${:04X}", name, vars_.Lookup(name, {var_stmt->file, var_stmt->line}).value_or(0));
                     }
                     emit_listing_row(pc, "", summary);
                 }                break;

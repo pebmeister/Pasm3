@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <format>
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
@@ -16,7 +17,8 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
-
+#include <set>
+    
 /**
  * @class SymbolTable
  * @brief Case-insensitive lookup table for mapping identifiers to 16-bit address or integer values.
@@ -26,6 +28,14 @@
  */
 class SymbolTable {
 private:
+    struct SymEntry {
+        uint16_t value;
+        std::pair<int, int> defined;
+        std::vector<std::pair<int, int>> usage;
+        
+        SymEntry(uint16_t v, std::pair<int, int> loc) : value(v), defined(loc) {}
+    };
+
     std::string tablename; /**< Descriptive label for identifying this table instance in debug logs. */
 
     /**
@@ -81,7 +91,7 @@ private:
      */
     std::unordered_map<
         std::string,
-        uint16_t,
+        SymEntry,
         CaseInsensitiveHash,
         CaseInsensitiveEqual
     > symbols_;
@@ -89,6 +99,8 @@ private:
     std::unordered_set<std::string> trace_syms_; /**< Set of symbol identifiers actively configured for tracing. */
 
 public:
+    bool use_all_symbols = false;
+    
     /**
      * @brief Constructs a SymbolTable instance with a specific table name.
      * @param name Descriptive label used in diagnostic trace output.
@@ -120,6 +132,16 @@ public:
     }
     
     /**
+     * @brief Clears all symbol usage from the table.
+     * Shoul be done before every pass
+     */
+    void reset_usage() {
+        for (auto& [_, entry] : symbols_) {
+            entry.usage.clear();
+        }        
+    }
+    
+    /**
      * @brief Exports the symbol values in the table.
      * @details provide VICE compatable symbols.
      * @return std::string containing the exported_symbols
@@ -128,8 +150,10 @@ public:
     std::string Export() {
         std::string out;
         
-        for (const auto& [sym, value] : symbols_) {
-            out += std::format("al C:{:04X} .{}\n", value, sym);
+        for (const auto& [sym, entry] : symbols_) {
+            if (use_all_symbols ||entry.usage.size() > 0 ) {
+                out += std::format("al C:{:04X} .{}\n", entry.value, sym);
+            }
         }
         return out;
     }
@@ -142,7 +166,7 @@ public:
      * @return true if a new symbol was inserted or an existing symbol's value was updated;
      *         false if the symbol already exists with the exact same value.
      */
-    bool Define(const std::string& name, uint16_t val) {
+    bool Define(const std::string& name, uint16_t val, const std::pair<int, int>&location) {
         if (trace_syms_.contains(name)) {
             std::cout << "[" << tablename << " TRACE] " << name << " -> $"
                       << std::hex << std::uppercase << val << std::dec << std::nouppercase << "\n";
@@ -151,11 +175,13 @@ public:
         auto it = symbols_.find(name);
 
         if (it == symbols_.end()) {
-            symbols_.emplace(name, val);
+            SymEntry entry(val, location);
+            symbols_.emplace(name, entry);
             return true;
         }
-        if (it->second != val) {
-            it->second = val;
+        auto &entry = it->second;
+        if (entry.value != val) {
+            entry.value = val;
             return true;
         }
         return false;
@@ -166,9 +192,11 @@ public:
      * @param name The symbol name to locate.
      * @return std::optional<uint16_t> containing the value if found; otherwise, std::nullopt.
      */
-    [[nodiscard]] std::optional<uint16_t> Lookup(std::string_view name) const {
+    [[nodiscard]] std::optional<uint16_t> Lookup(std::string_view name, const std::pair<int, int>&location ) {
         if (auto it = symbols_.find(name); it != symbols_.end()) {
-            return it->second;
+            auto &entry = it->second;
+            entry.usage.push_back(location);
+            return entry.value;
         }
         return std::nullopt;
     }
@@ -178,7 +206,8 @@ public:
      */
     void print() {
         auto count = 0;
-        for (const auto& [sym, value] : symbols_) {
+        for (const auto& [sym, entry] : symbols_) {
+            auto value = entry.value;
             std::cout <<
                 std::setfill(' ') << std::setw(30) << sym <<
                 " $" << std::setfill('0') << std::setw(4) << std::hex << value <<

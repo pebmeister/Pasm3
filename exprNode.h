@@ -80,15 +80,18 @@ struct NumberExpr : ExprNode {
  */
 struct SymbolExpr : ExprNode {
     std::string name; /**< Identifier string (e.g., "LABEL", "@local", "*"). */
+    std::pair<int, int> location; /**< location of symbol */
 
     /**
      * @brief Constructs a SymbolExpr node.
      * @param n Symbol identifier string name.
+     * @param loc std::pair defining file line location.
      */
-    explicit SymbolExpr(std::string n) : ExprNode(ExprType::Symbol), name(std::move(n)) {}
+    explicit SymbolExpr(std::string n, std::pair<int, int> loc)
+        : ExprNode(ExprType::Symbol), name(std::move(n)), location(loc) {}
 
     std::unique_ptr<ExprNode> clone() const override {
-        return std::make_unique<SymbolExpr>(name);
+        return std::make_unique<SymbolExpr>(name, location);
     }
 };
 
@@ -239,7 +242,7 @@ public:
  * @return std::optional<int64_t> Evaluated result value, or std::nullopt if resolution fails.
  */
 inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vector<AnonymousLabel>& anonymous_labels, 
-    const SymbolTable& symbols, const SymbolTable& vars, const std::string& parent_scope, uint16_t pc ) {
+    SymbolTable& symbols, SymbolTable& vars, const std::string& parent_scope, uint16_t pc ) {
     if (!node) return std::nullopt;
 
     auto node_type = node->expr_type;
@@ -254,7 +257,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
             auto sym = static_cast<const SymbolExpr*>(node);
             auto name = sym->name;
 
-            auto val = vars.Lookup(name);
+            auto val = vars.Lookup(name, sym->location);
             if (val.has_value()) return static_cast<int64_t>(val.value());
 
             if (sym->name[0] == '@') {
@@ -263,7 +266,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
             else if (sym->name[0] == '*') {
                 return pc;
             }
-            val = symbols.Lookup(name);
+            val = symbols.Lookup(name, sym->location);
             if (val.has_value()) return static_cast<int64_t>(val.value());
             return std::nullopt;
         }
@@ -274,7 +277,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
         }
 
         case ExprType::Unary: {
-            auto un = dynamic_cast<const UnaryExpr*>(node);
+            auto un = static_cast<const UnaryExpr*>(node);
 
             if (!un->operand) return std::nullopt;
             auto val = EvaluateExpr(un->operand.get(), anonymous_labels, symbols, vars, parent_scope, pc);
@@ -298,7 +301,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
         }
         
         case ExprType::Binary: {
-            auto bin = dynamic_cast<const BinaryExpr*>(node);
+            auto bin = static_cast<const BinaryExpr*>(node);
             if (!bin->lhs || !bin->rhs) return std::nullopt;
 
             auto lhs = EvaluateExpr(bin->lhs.get(), anonymous_labels, symbols, vars, parent_scope, pc);
@@ -332,11 +335,22 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
                 case TokenKind::Plus:         return *lhs + *rhs;
                 case TokenKind::Minus:        return *lhs - *rhs;
                 case TokenKind::Star:         return *lhs * *rhs;
-                case TokenKind::Slash:        return (*rhs != 0) ? *lhs / *rhs : 0;
-                case TokenKind::Percent:      return (*rhs != 0) ? *lhs % *rhs : 0;
                 case TokenKind::Shl:          return *lhs << *rhs;
                 case TokenKind::Shr:          return *lhs >> *rhs;
+                case TokenKind::Slash: {
+                    if (*rhs == 0) {
+                        throw std::domain_error("Division by zero");
+                    }
+                    return (*rhs != 0) ? *lhs / *rhs : 0;
+                }
+                case TokenKind::Percent: {
+                    if (*rhs == 0) {
+                        throw std::domain_error("Modulo by zero");
+                    }               
+                    return *lhs % *rhs;
+                }
 
+                case TokenKind::Eof:
                 default:
                     return std::nullopt;
             }
