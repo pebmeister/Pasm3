@@ -37,7 +37,11 @@
 #include "d64.h"
 #include "autoloader.h"
 
-
+/**
+ * @brief Removes the extension from a path.
+ *
+ * Used to set default file names
+ */
 std::string RemoveExtension(const std::string filepath) {
     namespace fs = std::filesystem;
     
