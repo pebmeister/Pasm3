@@ -293,7 +293,9 @@ int main(int argc, char* argv[])
         assembler.Assemble(statements, anonymous_labels, src_mgr);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-        std::cout << assembler.listing_file << "\n";
+        if (options.verbose) {
+            std::cout << assembler.listing_file << "\n";
+        }
         
         if (options.outfile.length() > 0) {
             if (options.c64) {
@@ -316,7 +318,7 @@ int main(int argc, char* argv[])
 
         if (options.cart) {
             std::string command = std::format("cartconv -i {} -l {} {} -o {}.crt", 
-                options.outfile, assembler.load_address, options.cart_options, options.outfile);
+                options.outfile, assembler.load_address, options.cart_options, RemoveExtensions(options.outfile);
             std::cout << command << "\n";
             int exitCode = std::system(command.c_str());
             
@@ -365,7 +367,7 @@ int main(int argc, char* argv[])
                 command += options.d64_diskname;
             }
             else if (options.cart) {
-                command += "-cartcrt " + options.outfile + ".crt";
+                command += "-cartcrt " + RemoveExtension(options.outfile) + ".crt";
             }
             else {                
                 command += options.outfile;
