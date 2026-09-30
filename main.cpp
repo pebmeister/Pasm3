@@ -318,7 +318,7 @@ int main(int argc, char* argv[])
 
         if (options.cart) {
             std::string command = std::format("cartconv -i {} -l {} {} -o {}.crt", 
-                options.outfile, assembler.load_address, options.cart_options, RemoveExtensions(options.outfile);
+                options.outfile, assembler.load_address, options.cart_options, RemoveExtension(options.outfile);
             std::cout << command << "\n";
             int exitCode = std::system(command.c_str());
             
