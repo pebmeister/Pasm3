@@ -79,7 +79,7 @@ void help()
 {
     std::cout <<
 R"(Usage: 
-    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart options] [-d64 disk] [-al] [-debug] inputfile inputfile2 ...
+    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart [options]] [-d64 disk] [-al] [-debug] [-launch] inputfile inputfile2 ...
 
     -h                 Print help.
     -o outfile         Specifies the output file name.
@@ -92,11 +92,11 @@ R"(Usage:
                        Can be specified multiple times.
     -d symbol value    Defines a symbol and value.
                        Can be specified more than once.
-    -cart options      Runs cartconv on the outputfile with the specified options enclosed in quotes
-                       load address and inputname are auto specified.
+    -cart [options]    Runs cartconv on the outputfile with the specified options enclosed in quotes
+                       load address and inputname are auto specified. It will use defaults if no options are set/
                        VICE must be installed and in the path.
     -d64 disk          Creates d64 disk and installs the output file
-    -al                Creates auto loader. This will also created a .64 disk if -d64 is not specified
+    -al                Creates auto loader. This will also create a .d64 disk if -d64 is not specified
     -debug             Launch VICE monitor and debug. Can not be used with -launch.
     -launch            Launch in VICE. Can not be used with -debug.
 )";
