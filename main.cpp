@@ -36,285 +36,69 @@
 #include "utilities.h"
 #include "d64.h"
 #include "autoloader.h"
-
-/**
- * @brief Removes the extension from a path.
- *
- * Used to set default file names
- */
-std::string RemoveExtension(const std::string filepath) {
-    namespace fs = std::filesystem;
-    
-    fs::path p(filepath);
-    p.replace_extension(""); // Clears the extension while keeping directories
-    
-    return p.string();
-}
-
-/**
- * @brief Get the uppercase base name from a path.
- *
- * Used to create a Commodore 64 file name 
- */
-std::string GetUppercaseBasename(const std::string& filepath) {
-    namespace fs = std::filesystem;
-    
-    fs::path p(filepath);
-
-    // 1. Strip directory and extension
-    std::string name = p.filename().stem().string();
-    
-    // 2. Convert to uppercase in-place (note name.begin() as the 3rd argument)
-    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
-        return static_cast<char>(std::toupper(c));
-    });
-    
-    return name;
-}
-
-/**
- * @brief Prints help message.
- */
-void help()
-{
-    std::cout <<
-R"(Usage: 
-    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart [options]] [-d64 disk] [-al] [-debug] [-launch] [-mp maxpass] inputfile inputfile2 ...
-
-    -h                 Print help.
-    -o outfile         Specifies the output file name.
-    -v                 Specifies verbose output.
-    -vs file           Create VICE symbol file.
-    -c64               Specifies Commodore 64 program format. 
-                       It places the load address in first two bytes.
-    -i directory       Specifies include directory. Can be specified more than once.
-    -st symbol         Specifies symbol trace. Displays symbol and value and when modified.
-                       Can be specified multiple times.
-    -d symbol value    Defines a symbol and value.
-                       Can be specified more than once.
-    -cart [options]    Runs cartconv on the outputfile with the specified options enclosed in quotes.
-                       Load address and inputname are auto specified. It will use defaults if no options are set.
-                       VICE must be installed and in the path.
-    -d64 disk          Creates d64 disk and installs the output file.
-    -al                Creates auto loader. This will also create a .d64 disk if -d64 is not specified.
-    -debug             Launch VICE monitor and debug. Can not be used with -launch.
-    -launch            Launch in VICE. Can not be used with -debug.
-    -mp maxpass        Sets the max number of passes. Default is 10.
-)";
-}
-
-/**
- * @brief Parses the input arguments.
- * 
- * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `-launch`, `-mp`)
- * 
- * @param argc Count of command-line arguments.
- * @param argv Array of command-line argument strings.
- * @return Options Returns Options on successful parsing.
- * @exception throws runtime exception on invalid parameters
- */
-Options parse_args(int argc, char* argv[])
-{
-    Options options;
-    auto arg = 1;
-    
-    while (arg < argc) {
-        std::string arg_str = std::string(argv[arg]);        
-        if (arg_str[0] != '-') {
-            options.input_filenames.push_back(argv[arg]);
-        }
-        else if (arg_str == "-h") {
-            help();
-            exit(0);
-        }
-        else if (arg_str == "-v") {
-            options.verbose = true;
-        }
-        else if (arg_str == "-debug") {
-            options.debug = true;
-        }
-        else if (arg_str == "-o") {
-            arg++;
-            if (arg >= argc) {
-                help();
-                throw std::runtime_error("No output file specified for -o");
-            }
-            options.outfile = argv[arg];
-        }
-        else if (arg_str == "-c64") {
-            options.c64 = true;
-        }
-        else if (arg_str == "-vs") {
-            arg++;
-            if (arg >= argc) {
-                help();
-                throw std::runtime_error("No name specified for -vs");
-            }
-            options.vs = true;
-            options.vs_name = argv[arg];
-        }
-        else if (arg_str == "-mp") {
-            arg++;
-            if (arg >= argc) {
-                help();
-                throw std::runtime_error("Max pass not specified for -mp");
-            }
-            options.max_pass = std::stoi(argv[arg]);
-        }
-        else if (arg_str == "-al") {
-            options.autoloader = true;
-        }
-        else if (arg_str == "-i") {
-            arg++;
-            if (arg >= argc) {
-                help();
-                throw std::runtime_error("No directory specified for -i");
-            }
-            options.include.push_back(argv[arg]);
-        }
-        else if (arg_str == "-cart") {
-            if (arg >= argc || argv[arg + 1][0] == '-' ) {
-                options.cart = true;
-                options.cart_options = "-t normal -p";
-            }
-            else {
-                options.cart = true;
-                options.cart_options = argv[arg];
-                arg++;
-            }
-        }
-        else if (arg_str == "-d64") {
-            arg++;
-            if (arg >= argc) {
-                help();
-                throw std::runtime_error("No disk name specified for -d64");
-            }
-            options.d64 = true;
-            options.d64_diskname = argv[arg];
-        }
-        else if (arg_str == "-st") {
-            arg++;
-            if (arg >= argc) {
-                help();
-                throw std::runtime_error("No symbol defined for -st");
-            }
-            options.traced_symbols.push_back(argv[arg]);
-        }
-        else if (arg_str == "-launch") {
-            options.launch = true;
-        }
-        else if (arg_str == "-d") {
-            arg++;
-            if ((arg + 1) >= argc) {
-                help();
-                throw std::runtime_error("No symbol or value defined for -d");
-            }
-            std::string sym = argv[arg];
-            arg++;
-            std::string val = argv[arg];
-            int symval;
-            std::stringstream ss;
-            if (val[0] == '$') {
-                ss << std::hex << val.substr(1);
-            }
-            else {
-                ss << std::dec << val;
-            }
-            ss >> symval;
-            options.defined_symbols.push_back({sym, symval});
-        }
-        else { 
-            help();
-            throw std::runtime_error(std::format("Unknown option '{}'", arg_str));
-        }
-        arg++;
-    }
-  
-    if (options.launch && options.debug) {
-        help();
-        throw std::runtime_error("Launch can not be used with debug");
-    }
-
-    if (options.input_filenames.empty()) {
-        help();
-        throw std::runtime_error("No input file specified");
-    }
-
-    std::string fname = options.outfile;
-    if (fname.length() == 0) {
-        fname = options.input_filenames[0];
-    }
-
-    std::string base_name = RemoveExtension(fname);
-    
-    if (options.cart && options.outfile.length() == 0) {
-        options.outfile = std::format("{}.bin", base_name);        
-    }
-    else if (options.outfile.length() == 0) {
-        options.outfile = std::format("{}{}", base_name, (options.c64 ? ".prg" : ".bin"));        
-        if (options.autoloader) {
-            namespace fs = std::filesystem;
-            fs::path p(fname);
-            
-            // Get just the uppercase filename without path or extension (e.g., "MYCODE")
-            auto upper_name = GetUppercaseBasename(fname);
-            
-            // Rebuild the output path cleanly in the same directory with the uppercase name
-            options.outfile = (p.parent_path() / (upper_name + ".prg")).string();
-        }
-    }
-    if (options.autoloader && !options.d64) {
-        options.d64 = true;
-        options.d64_diskname = std::format("{}.d64", base_name);        
-    }
-    if (options.debug && !options.vs) {
-        options.vs = true;
-        options.vs_name = std::format("{}.vs", base_name);        
-    }
-    
-    return options;
-}
+#include "parseargs.h"
 
 /**
  * @brief Application entry point for the 6502 cross-assembler.
  * 
- * Tokenizes and parses code statements, builds symbol tables over multiple
- * passes, and outputs binary files and listings.
+ * Manages the high-level workflow of the assembly pipeline:
+ * - Parses command-line arguments and determines output filenames.
+ * - Tokenizes source files and generates intermediate statements.
+ * - Executes multi-pass assembly to resolve symbols and output machine code.
+ * - Handles optional C64 PRG header prepending and file output writing.
+ * - Executes post-processing steps (VICE symbol exports, D64 image creation, 
+ *   cartridge conversion via cartconv, and launching VICE emulator sessions).
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
- * @return int Returns 0 on successful assembly, or non-zero on invalid usage or runtime exceptions.
+ * @return int Returns 0 on successful assembly and post-processing, or 1 on runtime errors.
  */
 int main(int argc, char* argv[])
 {
     try {
+        /// Parse and validate command-line options.
         Options options = parse_args(argc, argv);
 
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        /// Resolve the base filename (excluding file extensions) used for output generation.
+        std::string fname = options.outfile;
+        if (fname.length() == 0) {
+            fname = options.input_filenames[0];
+        }
+        std::string base_name = RemoveExtension(fname);
 
-        SourceManager src_mgr;
-        PasmTokenizer tokenizer;
-        std::unordered_map<std::string, MacroDef> macros_;
-        std::vector<AnonymousLabel> anonymous_labels;
-        std::vector<PasmTokenizer::Token> tokens;
+        /// Start high-precision execution timer for performance metrics.
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         
+        /// Initialize assembly tracking structures, state buffers, and parser tokens.
+        SourceManager src_mgr;                               /// Tracks source file origins, include depths, and line positions.
+        PasmTokenizer tokenizer;                             /// Lexical analyzer context for PASM input files.
+        std::unordered_map<std::string, MacroDef> macros_;   /// Registry map for macro definitions encountered during parsing.
+        std::vector<AnonymousLabel> anonymous_labels;        /// Queue for tracking temporary/anonymous jump targets (e.g., +, -).
+        std::vector<PasmTokenizer::Token> tokens;            /// Aggregated token stream from all source inputs.
+        
+        /// Tokenize each input source file sequentially into a unified token stream.
         for (const auto& root_file : options.input_filenames) {
             auto file_tokens = LoadAndTokenizeFile(root_file, src_mgr, tokenizer);
             tokens.insert(tokens.end(), file_tokens.begin(), file_tokens.end());
         }
 
+        /// Parse the accumulated token stream into executable AST statements.
         AssemblerParser parser(tokens, options);
         auto statements = parser.ParseProgram(src_mgr, macros_, tokenizer);
 
+        /// Execute multi-pass assembly to resolve addresses, symbols, and output bytecode.
         MultiPassAssembler assembler(options);
         assembler.Assemble(statements, anonymous_labels, src_mgr);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
+        /// Print assembly listing file path if verbose output is requested.
         if (options.verbose) {
             std::cout << assembler.listing_file << "\n";
         }
         
+        /// Handle primary binary file generation.
         if (options.outfile.length() > 0) {
+            /// Prepend Commodore 64 2-byte PRG load address header (little-endian) if targeting C64.
             if (options.c64) {
                 auto lo = static_cast<uint8_t>(assembler.load_address & 0xFF); 
                 auto hi = static_cast<uint8_t>((assembler.load_address >> 8) & 0xFF); 
@@ -323,6 +107,7 @@ int main(int argc, char* argv[])
                 assembler.binary_output.insert(assembler.binary_output.begin(), std::begin(prefix), std::end(prefix));
             }
 
+            /// Stream assembled bytecode array directly to disk.
             std::ofstream out(options.outfile, std::ios::out | std::ios::binary);
             auto sz = assembler.binary_output.size();
             out.write(reinterpret_cast<const char*>(assembler.binary_output.data()), sz);
@@ -330,12 +115,15 @@ int main(int argc, char* argv[])
             
             std::cout << "Wrote " << sz << " bytes to " << options.outfile << "\n";
         }        
+        
+        /// Report total assembly execution time.
         std::chrono::duration<double> elapsed_seconds = end - begin;
         std::cout << "Elapsed time: " << elapsed_seconds.count() << " seconds\n";
 
+        /// Convert assembled binary into a Commodore CRT cartridge image using the external 'cartconv' tool.
         if (options.cart) {
             std::string command = std::format("cartconv -i {} -l {} {} -o {}.crt",
-                options.outfile, assembler.load_address, options.cart_options, RemoveExtension(options.outfile));
+                options.outfile, assembler.load_address, options.cart_options, base_name);
             std::cout << command << "\n";
             int exitCode = std::system(command.c_str());
             
@@ -343,10 +131,13 @@ int main(int argc, char* argv[])
                 throw std::runtime_error(std::format("Error running {}", command.c_str()));
             }
         }
+
+        /// Construct or update a Commodore D64 disk image with the generated PRG binary and optional loader.
         if (options.d64) {
             d64 disk;
             auto name = GetUppercaseBasename(options.outfile);
 
+            /// Prepend an automatic BASIC loader PRG file to launch the main binary if requested.
             if (options.autoloader) {
                 auto loader_code = CreateAutoLoader(name, assembler.load_address);
                 disk.addFile("LOADER", c64FileType(d64FileTypes::PRG), loader_code);
@@ -357,29 +148,36 @@ int main(int argc, char* argv[])
             disk.save(options.d64_diskname);
             std::cout << std::format("Added {}.PRG to disk {}\n", name, options.d64_diskname);
         }
+
+        /// Export symbol table for VICE/C64 debugger compatibility.
         if (options.vs) {
             auto syms = assembler.ExportSymbols();
             std::ofstream out(options.vs_name, std::ios::out);
             out << syms;            
             std::cout << std::format("Created {}\n", options.vs_name);            
         }
+
+        /// Generate VICE monitor breakpoint script (.mon) and launch debugging session in x64sc.
         if (options.debug) {
-            auto name = RemoveExtension(options.outfile) + ".mon";
+            auto name = base_name + ".mon";
             std::ofstream out(name, std::ios::out);
             if (options.vs) {
                 out << std::format("load_labels \"{}\"\n", options.vs_name);
             }
+            
+            /// Offset entry breakpoint past cartridge header if targeting CRT format.
             auto load_address = options.cart ? assembler.load_address + 9 : assembler.load_address;
             out << std::format("break {:04X}\n", load_address);
             out.close();  
             std::cout << std::format("Created {}\n", name);
 
+            /// Construct VICE execution command specifying monitor command script and target image.
             std::string command = std::format("x64sc.exe -moncommands {} ", name);
             if (options.d64) {
                 command += options.d64_diskname;
             }
             else if (options.cart) {
-                command += std::format("-cartcrt {}.crt", RemoveExtension(options.outfile));
+                command += std::format("-cartcrt {}.crt", base_name);
             }
             else {                
                 command += options.outfile;
@@ -390,13 +188,15 @@ int main(int argc, char* argv[])
                 throw std::runtime_error(std::format("Error running {}", command.c_str()));
             }            
         }
+
+        /// Launch the assembled executable or disk/cartridge target directly in the VICE x64sc emulator.
         if (options.launch) {
             std::string command = std::format("x64sc.exe ");
             if (options.d64) {
                 command += options.d64_diskname;
             }
             else if (options.cart) {
-                command += std::format("-cartcrt {}.crt", RemoveExtension(options.outfile));
+                command += std::format("-cartcrt {}.crt", base_name);
             }
             else {                
                 command += options.outfile;
@@ -408,6 +208,7 @@ int main(int argc, char* argv[])
             }            
         }
     }
+    /// Catch and log assembly and post-processing exceptions.
     catch (std::exception& ex) {
         std::cerr << "Error " << ex.what() << "\n";
         return 1;

@@ -475,7 +475,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
                             auto it = inverted_branches.find(inst->mnemonic);
                             if (it != inverted_branches.end()) {
-                                if (options.verbose) {
+                                if (options.warnings) {
                                     std::cout <<
                                         "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " <<
                                         "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
@@ -1015,15 +1015,25 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 
             case StmtType::Ds: {
                 // .ds Directives
-               auto ds = static_cast<const DsStatement*>(stmt.get());
-               auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-               file_last_printed_line[stmt->file] = stmt->line;
+                auto ds = static_cast<const DsStatement*>(stmt.get());
+                uint16_t current_pc = pc;
+                uint16_t count = 0;
+
+                auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val.has_value()) {
-                    pc += static_cast<uint16_t>(val.value());
+                    count = static_cast<uint16_t>(val.value());
                 }
+
+                if (printstate) {
+                    emit_listing_row(current_pc, "", std::format(".ds {}", count));
+                } else {
+                    file_last_printed_line[stmt->file] = stmt->line;
+                }
+
+                pc += count;
                 break;
             }
-
+            
             case StmtType::Var: {
                 auto var_stmt = static_cast<const VarStatement*>(stmt.get());            
                 for (const auto& [name, expr] : var_stmt->vars) {

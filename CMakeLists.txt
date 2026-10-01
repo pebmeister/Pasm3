@@ -137,7 +137,11 @@ target_include_directories(pasm_core PUBLIC
 
 add_executable(pasm3
     main.cpp
+    parseargs.cpp
+    parseargs.h
+    utilities.h    
 )
+
 add_executable(pasm_tests
     test/test_main.cpp
     test/opcode_test.cpp

@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include "PasmTokenizer.hpp"
 #include "ruletype.h"
@@ -18,6 +19,41 @@
 // Forward declarations
 struct SourceManager;
 struct AnonymousLabel;
+
+/**
+ * @brief Removes the extension from a path.
+ *
+ * Used to set default file names
+ */
+inline std::string RemoveExtension(const std::string filepath) {
+    namespace fs = std::filesystem;
+    
+    fs::path p(filepath);
+    p.replace_extension(""); // Clears the extension while keeping directories
+    
+    return p.string();
+}
+
+/**
+ * @brief Get the uppercase base name from a path.
+ *
+ * Used to create a Commodore 64 file name 
+ */
+inline std::string GetUppercaseBasename(const std::string& filepath) {
+    namespace fs = std::filesystem;
+    
+    fs::path p(filepath);
+
+    // 1. Strip directory and extension
+    std::string name = p.filename().stem().string();
+    
+    // 2. Convert to uppercase in-place (note name.begin() as the 3rd argument)
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
+        return static_cast<char>(std::toupper(c));
+    });
+    
+    return name;
+}
 
 /**
  * @brief Mangles a local label identifier by prefixing it with its parent global scope.
