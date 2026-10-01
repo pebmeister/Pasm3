@@ -32,12 +32,12 @@
  */
 class SymbolTable {
 private:
-    struct SymEntry {
+    struct SymbolEntry {
         uint16_t value;
         std::pair<int, int> defined;
         std::vector<std::pair<int, int>> usage;
         
-        SymEntry(uint16_t v, std::pair<int, int> loc) : value(v), defined(loc) {}
+        SymbolEntry(uint16_t v, std::pair<int, int> loc) : value(v), defined(loc) {}
     };
 
     std::string tablename; /**< Descriptive label for identifying this table instance in debug logs. */
@@ -95,7 +95,7 @@ private:
      */
     std::unordered_map<
         std::string,
-        SymEntry,
+        SymbolEntry,
         CaseInsensitiveHash,
         CaseInsensitiveEqual
     > symbols_;
@@ -167,15 +167,39 @@ public:
     std::string XRef() const {
         std::string out;
 
-        // Header with 5 spaces of separation before "References"
+        // 1. Collect references to symbols for sorting
+        struct SymbolRef {
+            const std::string* name;
+            const SymbolEntry* entry;
+        };
+
+        std::vector<SymbolRef> sorted_symbols;
+        sorted_symbols.reserve(symbols_.size());
+        for (const auto& [sym, entry] : symbols_) {
+            sorted_symbols.push_back({&sym, &entry});
+        }
+
+        // 2. Sort by value ascending (with name as tie-breaker for identical addresses)
+        std::sort(sorted_symbols.begin(), sorted_symbols.end(), [](const SymbolRef& a, const SymbolRef& b) {
+            if (a.entry->value != b.entry->value) {
+                return a.entry->value < b.entry->value;
+            }
+            return *a.name < *b.name;
+        });
+
+        // Header
         out += std::format("{:<30} {:<7} {:<24} {:>4}     {}\n", 
                            "Symbol", "Value", "Defined", "Refs", "References");
         out += std::string(105, '-') + "\n";
 
-        constexpr size_t REF_INDENT = 73; // 30 + 1 + 7 + 1 + 24 + 1 + 4 + 4
+        constexpr size_t REF_INDENT = 73;
         constexpr size_t MAX_WIDTH = 120;
 
-        for (const auto& [sym, entry] : symbols_) {
+        // 3. Output sorted entries
+        for (const auto& item : sorted_symbols) {
+            const std::string& sym = *item.name;
+            const auto& entry = *item.entry;
+
             if (use_all_symbols || !entry.usage.empty()) {
                 auto [def_file_id, def_line] = entry.defined;
                 std::string def_fname = std::filesystem::path(src_mgr.GetFileName(def_file_id)).filename().string();
@@ -199,59 +223,25 @@ public:
                 bool first_ref = true;
 
                 for (const auto& [use_file_id, use_line] : entry.usage) {
-                    std::string item;
+                    std::string ref_item;
                     if (use_file_id == def_file_id) {
-                        item = std::format("{}", use_line);
+                        ref_item = std::format("{}", use_line);
                     } else {
                         std::string use_fname = std::filesystem::path(src_mgr.GetFileName(use_file_id)).filename().string();
-                        item = std::format("{}:{}", use_fname, use_line);
+                        ref_item = std::format("{}:{}", use_fname, use_line);
                     }
 
                     std::string sep = first_ref ? "" : ", ";
 
-                    if (!first_ref && (current_line.length() + sep.length() + item.length() > MAX_WIDTH)) {
+                    if (!first_ref && (current_line.length() + sep.length() + ref_item.length() > MAX_WIDTH)) {
                         out += current_line + "\n";
-                        current_line = ref_padding + item;
+                        current_line = ref_padding + ref_item;
                     } else {
-                        current_line += sep + item;
+                        current_line += sep + ref_item;
                     }
                     first_ref = false;
                 }
 
-                out += current_line + "\n";
-            }
-        }
-        return out;
-    }
-
-    std::string XTRaRef() const {
-        std::string out;
-
-        for (const auto& [sym, entry] : symbols_) {
-            if (use_all_symbols || !entry.usage.empty()) {
-                // Format entry.defined as "first:second" (or format entry.defined.second if it's just line number)
-                auto&[file, line] = entry.defined;
-                auto fname = src_mgr.GetFileName(file);
-                std::string defined_str = std::format("{:<30} {}", fname, line);
-
-                auto header = std::format("{:<20} {:04X} {:<30} {:>3} ", sym, entry.value, defined_str, entry.usage.size());
-                
-                std::string current_line = header;
-                std::string padding(header.length(), ' ');
-
-                for (const auto& [file, line] : entry.usage) {
-                    // Format use.first and use.second explicitly
-                    
-                    auto fname = src_mgr.GetFileName(file);
-                    auto item = std::format("{} {} ; ", fname, line);
-
-                    if (current_line.length() + item.length() > 120 && current_line != padding) {
-                        out += current_line + "\n";
-                        current_line = padding;
-                    }
-                    current_line += item;
-                }
-                
                 out += current_line + "\n";
             }
         }
@@ -275,7 +265,7 @@ public:
         auto it = symbols_.find(name);
 
         if (it == symbols_.end()) {
-            SymEntry entry(val, location);
+            SymbolEntry entry(val, location);
             symbols_.emplace(name, entry);
             return true;
         }
