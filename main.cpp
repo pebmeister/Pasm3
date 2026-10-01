@@ -83,12 +83,12 @@ int main(int argc, char* argv[])
         }
 
         /// Parse the accumulated token stream into executable AST statements.
-        AssemblerParser parser(tokens, options);
-        auto statements = parser.ParseProgram(src_mgr, macros_, tokenizer);
+        AssemblerParser parser(tokens, options, src_mgr);
+        auto statements = parser.ParseProgram(macros_, tokenizer);
 
         /// Execute multi-pass assembly to resolve addresses, symbols, and output bytecode.
-        MultiPassAssembler assembler(options);
-        assembler.Assemble(statements, anonymous_labels, src_mgr);
+        MultiPassAssembler assembler(options, src_mgr);
+        assembler.Assemble(statements, anonymous_labels);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
         /// Print assembly listing file path if verbose output is requested.
@@ -155,6 +155,11 @@ int main(int argc, char* argv[])
             std::ofstream out(options.vs_name, std::ios::out);
             out << syms;            
             std::cout << std::format("Created {}\n", options.vs_name);            
+        }
+
+        /// Print symbol table cross refrence.
+        if (options.xfref) {
+            std::cout << assembler.ExrefSymbols();
         }
 
         /// Generate VICE monitor breakpoint script (.mon) and launch debugging session in x64sc.

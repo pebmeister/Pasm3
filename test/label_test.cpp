@@ -79,10 +79,10 @@ int Label_test::test(int col)
         std::vector<AnonymousLabel> anonymous_labels;    
 
         auto tokens = tokenizer.tokenize(source_code, fileid);
-        AssemblerParser parser(tokens, options);
-        auto statements = parser.ParseProgram(src_mgr, macros_, tokenizer);
-        MultiPassAssembler assembler(options);
-        assembler.Assemble(statements, anonymous_labels, src_mgr);
+        AssemblerParser parser(tokens, options, src_mgr);
+        auto statements = parser.ParseProgram(macros_, tokenizer);
+        MultiPassAssembler assembler(options, src_mgr);
+        assembler.Assemble(statements, anonymous_labels);
 
         if (passed) {
             passed = expected_output == assembler.binary_output;

@@ -52,10 +52,9 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
  * @brief Runs multi-pass symbol resolution until convergence or max pass limit.
  * @param statements AST statement stream.
  * @param anonymous_labels Anonymous label tracker.
- * @param src_mgr Source code manager.
  * @throws std::runtime_error On convergence failure after max_passes.
  */
-void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
+void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels) {
     pass = 1;
     changed = true;
     island_counter = 0;
@@ -81,7 +80,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         stable = !lastpasschanged;
 
         parent_scope="GLOBAL_";
-        changed = ResolutionPass(statements, anonymous_labels, src_mgr);
+        changed = ResolutionPass(statements, anonymous_labels);
         if (options.verbose) {
             std::cout << "Pass " << pass << " complete. "
                 << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
@@ -99,7 +98,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     parent_scope="GLOBAL_";
     symbols_.reset_usage();
     vars_.reset_usage();
-    EmitFinalPass(statements, anonymous_labels, src_mgr);
+    EmitFinalPass(statements, anonymous_labels);
 }
 
 /**
@@ -108,10 +107,9 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
  * @param new_statements Target statement queue for current pass.
  * @param st_index Current instruction pointer within `statements`.
  * @param anonymous_labels Anonymous label mapping.
- * @param src_mgr Source location manager.
  */
 void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>>& statements, std::vector<std::unique_ptr<Statement>>&new_statements, size_t& st_index, 
-    std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) 
+    std::vector<AnonymousLabel>& anonymous_labels) 
 {
     std::unique_ptr<Statement>&stmt = statements[st_index];    
     if (!stmt) {
@@ -359,7 +357,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 size_t inner_index = 0;
                 while (inner_index < iteration_body.size()) {
                  
-                    ProcessStatement(iteration_body, new_statements, inner_index, anonymous_labels, src_mgr);
+                    ProcessStatement(iteration_body, new_statements, inner_index, anonymous_labels);
                     if (loopControl == LoopControlKind::break_loop) {
                         break;
                     }
@@ -639,7 +637,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             size_t inner_index = 0;
             while (inner_index < branch_body.size()) {
-                ProcessStatement(branch_body, new_statements, inner_index, anonymous_labels, src_mgr);
+                ProcessStatement(branch_body, new_statements, inner_index, anonymous_labels);
             }
 
             // 4. Advance driver index to matching outer 'endif'
@@ -697,7 +695,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
  * @brief Driver loop for a single symbol resolution pass.
  * @return True if state mutated during this pass, forcing another pass.
  */
-bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
+bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels) {
   
     vars_.clear();
     loopControl = LoopControlKind::normal;
@@ -710,7 +708,7 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
 
     size_t st_index = 0;    
     while (st_index < statements.size()) {
-        ProcessStatement(statements, new_statements, st_index, anonymous_labels, src_mgr);
+        ProcessStatement(statements, new_statements, st_index, anonymous_labels);
     }
     statements = std::move(new_statements);
     return changed;
@@ -773,13 +771,12 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
  *
  * @param statements A vector of unique pointers to AST `Statement` objects representing the source.
  * @param anonymous_labels Vector of resolved anonymous label references.
- * @param src_mgr Reference to the `SourceManager` instance for retrieving original line text and file names.
  *
  * @throws std::runtime_error If print stack underflows, unknown print directives are encountered,
  *                            symbols/expressions fail to evaluate, relative branches exceed [-128, 127],
  *                            operands exceed address size limits, or PC attempts to move backward.
  */
-void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels, SourceManager &src_mgr) {
+void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, const std::vector<AnonymousLabel>& anonymous_labels) {
     vars_.clear();
     loopControl = LoopControlKind::normal;
     pc = start_pc_;
@@ -1050,7 +1047,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         }
                     }
 
-                    // Upsert initial value into vars_
+                    // Insert initial value into vars_
                     vars_.Define(name, static_cast<uint16_t>(initial_val), { var_stmt->file, var_stmt->line});
                 }
 

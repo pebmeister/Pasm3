@@ -29,6 +29,9 @@
  */
 class MultiPassAssembler {
 private:
+    SourceManager& src_mgr; //< Source manager for files.
+    Options options;       ///< Command-line options and assembler configuration.
+
     /**
      * @enum LoopControlKind
      * @brief Denotes control flow state mutations during loop expansion.
@@ -40,10 +43,9 @@ private:
     };
 
     int loopControl = LoopControlKind::normal; ///< Current loop execution control flow state.
-    SymbolTable symbols_ = SymbolTable("SYM"); ///< Table storing fixed labels and symbolic constants.
-    SymbolTable vars_ = SymbolTable("VAR");   ///< Table storing mutable assembly variables.
+    SymbolTable symbols_ = SymbolTable("SYM", src_mgr); ///< Table storing fixed labels and symbolic constants.
+    SymbolTable vars_ = SymbolTable("VAR", src_mgr);   ///< Table storing mutable assembly variables.
     
-    Options options;       ///< Command-line options and assembler configuration.
     bool changed = false;  ///< Indicates if any symbol or PC value mutated during the active pass.
     bool wait_stable = false; ///< Delay flag ensuring state consistency before final code emission.
     bool stable = false;   ///< Indicates that symbol addresses have fully converged across passes.
@@ -88,6 +90,7 @@ private:
         {"bmi", "bpl"}, {"bpl", "bmi"}
     };
 
+    
 public:
     uint16_t load_address = 0;     ///< Target starting address in memory where the binary binary payload loads.
     uint16_t pc = 0;               ///< Current program counter during AST traversal.
@@ -101,11 +104,19 @@ public:
         return symbols_.Export();
     }
 
+    std::string ExrefSymbols() {
+        return symbols_.XRef();
+    }
+
     /**
      * @brief Constructs a new MultiPassAssembler object with developer configuration options.
      * @param opts Reference to assembly options specifying start address, defines, and debug flags.
      */
-    explicit MultiPassAssembler(Options& opts) : options(opts) { start_pc_ = opts.start_addr; }  
+    explicit MultiPassAssembler(const Options& opts, SourceManager& src ) : src_mgr(src)
+    { 
+        options = std::move(opts);
+        start_pc_ = opts.start_addr; 
+    }  
 
     /**
      * @brief Drives multi-pass symbol resolution and controls final binary emission.
@@ -120,8 +131,7 @@ public:
      * @throws std::runtime_error If symbol resolution fails to converge within `max_passes`.
      */
     void Assemble(std::vector<std::unique_ptr<Statement>>& statements, 
-                  std::vector<AnonymousLabel>& anonymous_labels, 
-                  SourceManager &src_mgr);
+                  std::vector<AnonymousLabel>& anonymous_labels );
 
 private:
     /**
@@ -139,8 +149,8 @@ private:
     void ProcessStatement(std::vector<std::unique_ptr<Statement>>& statements, 
                           std::vector<std::unique_ptr<Statement>>& new_statements, 
                           size_t& st_index, 
-                          std::vector<AnonymousLabel>& anonymous_labels, 
-                          SourceManager &src_mgr);
+                          std::vector<AnonymousLabel>& anonymous_labels
+                          );
 
     /**
      * @brief Executes a single top-to-bottom pass over all AST statements.
@@ -150,8 +160,7 @@ private:
      * @return `true` if any symbol address, variable value, or instruction size mutated during the pass; `false` if converged.
      */
     bool ResolutionPass(std::vector<std::unique_ptr<Statement>>& statements, 
-                        std::vector<AnonymousLabel>& anonymous_labels, 
-                        SourceManager &src_mgr);
+                        std::vector<AnonymousLabel>& anonymous_labels);
 
     /**
      * @brief Generates executable machine code and outputs listing details during the terminal pass.
@@ -160,6 +169,5 @@ private:
      * @param[in] src_mgr Source code location context for listing display.
      */
     void EmitFinalPass(const std::vector<std::unique_ptr<Statement>>& statements, 
-                       const std::vector<AnonymousLabel>& anonymous_labels, 
-                       SourceManager &src_mgr);
+                       const std::vector<AnonymousLabel>& anonymous_labels);
 };

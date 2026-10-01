@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <format>
 #include <algorithm>
 #include <cctype>
@@ -18,6 +19,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
+
+#include "sourceManager.h"
+
     
 /**
  * @class SymbolTable
@@ -97,7 +101,8 @@ private:
     > symbols_;
 
     std::unordered_set<std::string> trace_syms_; /**< Set of symbol identifiers actively configured for tracing. */
-
+    SourceManager src_mgr;
+    
 public:
     bool use_all_symbols = false;
     
@@ -105,7 +110,7 @@ public:
      * @brief Constructs a SymbolTable instance with a specific table name.
      * @param name Descriptive label used in diagnostic trace output.
      */
-    explicit SymbolTable(std::string name) : tablename(std::move(name)) {
+    explicit SymbolTable(std::string name, const SourceManager& srcm) : tablename(std::move(name)), src_mgr(srcm) {
     }
 
     /**
@@ -157,7 +162,102 @@ public:
         }
         return out;
     }
+
     
+    std::string XRef() const {
+        std::string out;
+
+        // Header with 5 spaces of separation before "References"
+        out += std::format("{:<30} {:<7} {:<24} {:>4}     {}\n", 
+                           "Symbol", "Value", "Defined", "Refs", "References");
+        out += std::string(105, '-') + "\n";
+
+        constexpr size_t REF_INDENT = 73; // 30 + 1 + 7 + 1 + 24 + 1 + 4 + 4
+        constexpr size_t MAX_WIDTH = 120;
+
+        for (const auto& [sym, entry] : symbols_) {
+            if (use_all_symbols || !entry.usage.empty()) {
+                auto [def_file_id, def_line] = entry.defined;
+                std::string def_fname = std::filesystem::path(src_mgr.GetFileName(def_file_id)).filename().string();
+                std::string def_str = std::format("{}:{}", def_fname, def_line);
+
+                std::string val_str = std::format("${:04X}", entry.value);
+                std::string refs_count = std::format("{}", entry.usage.size());
+
+                std::string line_prefix;
+                if (sym.length() <= 30) {
+                    line_prefix = std::format("{:<30} {:<7} {:<24} {:>4}     ", 
+                                              sym, val_str, def_str, refs_count);
+                } else {
+                    out += std::format("{}\n", sym);
+                    line_prefix = std::format("{:<30} {:<7} {:<24} {:>4}     ", 
+                                              "", val_str, def_str, refs_count);
+                }
+
+                std::string current_line = line_prefix;
+                std::string ref_padding(REF_INDENT, ' ');
+                bool first_ref = true;
+
+                for (const auto& [use_file_id, use_line] : entry.usage) {
+                    std::string item;
+                    if (use_file_id == def_file_id) {
+                        item = std::format("{}", use_line);
+                    } else {
+                        std::string use_fname = std::filesystem::path(src_mgr.GetFileName(use_file_id)).filename().string();
+                        item = std::format("{}:{}", use_fname, use_line);
+                    }
+
+                    std::string sep = first_ref ? "" : ", ";
+
+                    if (!first_ref && (current_line.length() + sep.length() + item.length() > MAX_WIDTH)) {
+                        out += current_line + "\n";
+                        current_line = ref_padding + item;
+                    } else {
+                        current_line += sep + item;
+                    }
+                    first_ref = false;
+                }
+
+                out += current_line + "\n";
+            }
+        }
+        return out;
+    }
+
+    std::string XTRaRef() const {
+        std::string out;
+
+        for (const auto& [sym, entry] : symbols_) {
+            if (use_all_symbols || !entry.usage.empty()) {
+                // Format entry.defined as "first:second" (or format entry.defined.second if it's just line number)
+                auto&[file, line] = entry.defined;
+                auto fname = src_mgr.GetFileName(file);
+                std::string defined_str = std::format("{:<30} {}", fname, line);
+
+                auto header = std::format("{:<20} {:04X} {:<30} {:>3} ", sym, entry.value, defined_str, entry.usage.size());
+                
+                std::string current_line = header;
+                std::string padding(header.length(), ' ');
+
+                for (const auto& [file, line] : entry.usage) {
+                    // Format use.first and use.second explicitly
+                    
+                    auto fname = src_mgr.GetFileName(file);
+                    auto item = std::format("{} {} ; ", fname, line);
+
+                    if (current_line.length() + item.length() > 120 && current_line != padding) {
+                        out += current_line + "\n";
+                        current_line = padding;
+                    }
+                    current_line += item;
+                }
+                
+                out += current_line + "\n";
+            }
+        }
+        return out;
+    }
+
     /**
      * @brief Defines or updates a symbol value in the table.
      * @details Logs a diagnostic trace message if the symbol is present in the trace watchlist.

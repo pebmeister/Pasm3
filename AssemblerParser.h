@@ -54,6 +54,8 @@ struct OpPrecedence {
  */
 class AssemblerParser {
 private:
+    SourceManager& src_mgr; ///< manage source code.
+
     std::vector<PasmTokenizer::Token> tokens_; ///< Stream of tokens to be parsed.
 
     /**
@@ -70,7 +72,7 @@ private:
 
     std::vector<bool> ifdef_stack;     ///< Legacy stack tracking boolean evaluation states for conditional blocks.
 
-    Options options;                   ///< Global assembly toolchain options and configuration settings.
+    Options& options;                   ///< Global assembly toolchain options and configuration settings.
 
     /**
      * @brief Checks whether a given identifier name matches a defined macro.
@@ -92,7 +94,7 @@ private:
      * @param msg Optional custom label or prefix message to display alongside output.
      * @return Always returns 0.
      */
-    int prTok(const SourceManager &src_mgr, std::string msg="") {
+    int prTok(std::string msg="") {
         auto text = Tok.text;
         auto id = Tok.id;
         if (id == (int)TokenKind::Newline) text = "[\\n]";
@@ -111,7 +113,10 @@ public:
      * @param tokens Vector of tokens produced by the tokenizer.
      * @param opts Reference to assembler execution options and settings.
      */
-    explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens, Options& opts) : tokens_(std::move(tokens)), options(opts) {
+    explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens, Options& opts, SourceManager& src) :
+        src_mgr(src),
+        tokens_(std::move(tokens)),
+        options(opts) {
         if (!tokens_.empty()) Tok = tokens_[0];
     }
 
@@ -241,8 +246,6 @@ public:
      * symbol definitions (`EQU`), PC assignments (`* =`), labels, control-flow statements, 
      * data declarations, and file inclusions.
      *
-     * @param[in,out] src_mgr   Reference to the SourceManager used for file tracking, line numbers,
-     *                          and error reporting locations.
      * @param[in,out] macros_   Unordered map storing macro definitions, keyed by lower-case macro name.
      *                          Newly encountered macros are registered here, and existing macros are expanded.
      * @param[in,out] tokenizer Reference to the tokenizer used to load and tokenize secondary 
@@ -255,14 +258,13 @@ public:
      *                            unmatched loop/conditional block, or file reading failure occurs.
      */
     std::vector<std::unique_ptr<Statement>> ParseProgram(
-        SourceManager &src_mgr, 
         std::unordered_map<std::string, MacroDef>& macros_, 
         PasmTokenizer& tokenizer) 
     {        
         std::vector<std::unique_ptr<Statement>> statements;
         std::vector<LoopStatement*> repeatStack; // Track active .repeat blocks for matching .until expressions
         
-        SymbolTable definedSyms = SymbolTable("DEF");
+        SymbolTable definedSyms = SymbolTable("DEF", src_mgr);
         
         // Seed the local symbol table with CLI defined symbols (-D / --define)
         for (auto&[sym, val] : options.defined_symbols) {        
@@ -278,7 +280,7 @@ public:
         while (!TokIs(TokenKind::Eof)) {
 
             if (display_tok) {
-                prTok(src_mgr);
+                prTok();
             }
 
             /**
@@ -547,8 +549,8 @@ public:
                     }
 
                     auto inc_tokens = LoadAndTokenizeFile(filepath, src_mgr, tokenizer);
-                    AssemblerParser parser(inc_tokens, options);
-                    auto inc_statements = parser.ParseProgram(src_mgr, macros_, tokenizer);
+                    AssemblerParser parser(inc_tokens, options, src_mgr);
+                    auto inc_statements = parser.ParseProgram(macros_, tokenizer);
 
                     for (auto& stmt : inc_statements) {
                         statements.push_back(std::move(stmt));
@@ -731,7 +733,7 @@ public:
 
                 while (!TokIs(TokenKind::Newline) && !TokIs(TokenKind::Eof) && !TokIs(TokenKind::Semicolon)) {
 
-                    // prTok(src_mgr);
+                    // prTok();
 
                     if (TokIs(TokenKind::Comma)) {
                         if (current_arg.size() == 1 && (current_arg[0].text == "+" || current_arg[0].text == "-")) {
