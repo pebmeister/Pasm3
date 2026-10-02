@@ -114,12 +114,12 @@ int main(int argc, char* argv[])
             out.write(reinterpret_cast<const char*>(assembler.binary_output.data()), sz);
             out.close();
             
-            std::cout << "Wrote " << sz << " bytes to " << options.outfile << "\n";
+            std::cout << std::format("Wrote {} bytes to {}.\n", sz, options.outfile);
         }        
         
         /// Report total assembly execution time.
         std::chrono::duration<double> elapsed_seconds = end - begin;
-        std::cout << "Elapsed time: " << elapsed_seconds.count() << " seconds\n";
+        std::cout std::format("Elapsed time: {} seconds.\n", elapsed_seconds.count());
 
         /// Convert assembled binary into a Commodore CRT cartridge image using the external 'cartconv' tool.
         if (options.cart) {
