@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
         /// Initialize assembly tracking structures, state buffers, and parser tokens.
         SourceManager src_mgr;                               /// Tracks source file origins, include depths, and line positions.
         PasmTokenizer tokenizer;                             /// Lexical analyzer context for PASM input files.
-        std::unordered_map<std::string, MacroDef> macros_;   /// Registry map for macro definitions encountered during parsing.
+
         std::vector<AnonymousLabel> anonymous_labels;        /// Queue for tracking temporary/anonymous jump targets (e.g., +, -).
         std::vector<PasmTokenizer::Token> tokens;            /// Aggregated token stream from all source inputs.
         
