@@ -75,12 +75,11 @@ int Label_test::test(int col)
         PasmTokenizer tokenizer;
         Options options;
         options.verbose = false;
-        std::unordered_map<std::string, MacroDef> macros_;
         std::vector<AnonymousLabel> anonymous_labels;    
 
         auto tokens = tokenizer.tokenize(source_code, fileid);
         AssemblerParser parser(tokens, options, src_mgr);
-        auto statements = parser.ParseProgram(macros_, tokenizer);
+        auto statements = parser.ParseProgram(tokenizer);
         MultiPassAssembler assembler(options, src_mgr);
         assembler.Assemble(statements, anonymous_labels);
 
