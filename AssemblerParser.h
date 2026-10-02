@@ -326,7 +326,7 @@ public:
              * @section Standard & Relative Labels
              * Matches explicit labels (`label:`), implicit non-macro identifiers, and relative labels (`+`, `-`).
              */
-            if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text, macros_))) {
+            if (TokIs(TokenKind::Label) || (TokIs(TokenKind::Identifier) && !IsMacro(Tok.text))) {
                 std::string name = Tok.text;
                 if (!name.empty() && name.back() == ':')
                     name.pop_back();
@@ -707,7 +707,7 @@ public:
              * Replaces macro invocation tokens with macro body tokens, performing positional 
              * parameter substitution (`\\1`, `\\2`) and local symbol mangling (`@`).
              */
-            if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text, macros_)) {
+            if (TokIs(TokenKind::Identifier) && IsMacro(Tok.text)) {
                 // ... (Macro expansion continuation)
                 auto mac_call_tok = Tok;
 
