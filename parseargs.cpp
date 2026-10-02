@@ -36,7 +36,7 @@ R"(Usage:
     pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart [options]] [-d64 disk] [-al] [-debug] [-launch] [-mp maxpass] [-xref] inputfile inputfile2 ...
 
     -h                  Print help.
-    -o outfile          Specifies the output file name.
+    -o [outfile]        Specifies to create an output file.
     -v                  Specifies verbose output.
     -vs [file]          Create VICE symbol file.
     -c64                Specifies Commodore 64 program format. 
@@ -89,12 +89,11 @@ Options parse_args(int argc, char* argv[])
             options.debug = true;
         }
         else if (arg_str == "-o") {
-            arg++;
-            if (arg >= argc) {
-                help();
-                throw std::runtime_error("No output file specified for -o");
+            options.out = true;
+
+            if ((arg + 1) < argc && argv[arg + 1][0] != '-' ) {
+                options.outfile = argv[arg];
             }
-            options.outfile = argv[arg];
         }
         else if (arg_str == "-c64") {
             options.c64 = true;
@@ -194,28 +193,32 @@ Options parse_args(int argc, char* argv[])
         throw std::runtime_error("No input file specified");
     }
 
-    std::string fname = options.outfile;
-    if (fname.length() == 0) {
-        fname = options.input_filenames[0];
-    }
+    std::string fname = options.out ? options.outfile : options.input_filenames[0];
     std::string base_name = RemoveExtension(fname);
     
-    if (options.cart && options.outfile.length() == 0) {
-        options.outfile = std::format("{}.bin", base_name);        
+    if (!options.out && (options.cart || options.launch || options.debug || options.d64 || options.autoloader)) {
+        options.out = true;
     }
-    else if ((options.launch || options.debug || options.d64 || options.autoloader) && options.outfile.length() == 0) {
-        options.outfile = std::format("{}{}", base_name, (options.c64 ? ".prg" : ".bin"));        
-        if (options.autoloader) {
-            namespace fs = std::filesystem;
-            fs::path p(fname);
-            
-            // Get just the uppercase filename without path or extension (e.g., "MYCODE")
-            auto upper_name = GetUppercaseBasename(fname);
-            
-            // Rebuild the output path cleanly in the same directory with the uppercase name
-            options.outfile = (p.parent_path() / (upper_name + ".prg")).string();
+    
+    if (options.out && options.outfile.length() == 0) {
+        if (options.cart) {
+            options.outfile = std::format("{}.bin", base_name);        
+        }
+        else {
+            options.outfile = std::format("{}{}", base_name, (options.c64 ? ".prg" : ".bin"));        
+            if (options.autoloader) {
+                namespace fs = std::filesystem;
+                fs::path p(fname);
+                
+                // Get just the uppercase filename without path or extension (e.g., "MYCODE")
+                auto prg_name = GetBasename(fname);
+                
+                // Rebuild the output path cleanly in the same directory with the uppercase name
+                options.outfile = (p.parent_path() / (prg_name + ".prg")).string();
+            }
         }
     }
+    
     if (options.autoloader && !options.d64) {
         options.d64 = true;
     }

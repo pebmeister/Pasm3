@@ -56,6 +56,22 @@ inline std::string GetUppercaseBasename(const std::string& filepath) {
 }
 
 /**
+ * @brief Get the base name from a path.
+ *
+ * Used to create a Commodore 64 file name 
+ */
+inline std::string GetBasename(const std::string& filepath) {
+    namespace fs = std::filesystem;
+    
+    fs::path p(filepath);
+
+    // 1. Strip directory and extension
+    std::string name = p.filename().stem().string();
+       
+    return name;
+}
+
+/**
  * @brief Mangles a local label identifier by prefixing it with its parent global scope.
  *
  * Local labels starting with `@` (e.g., `@loop`) are scoped under the most recent global
