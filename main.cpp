@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
         
         /// Report total assembly execution time.
         std::chrono::duration<double> elapsed_seconds = end - begin;
-        std::cout std::format("Elapsed time: {} seconds.\n", elapsed_seconds.count());
+        std::cout << std::format("Elapsed time: {} seconds.\n", elapsed_seconds.count());
 
         /// Convert assembled binary into a Commodore CRT cartridge image using the external 'cartconv' tool.
         if (options.cart) {
