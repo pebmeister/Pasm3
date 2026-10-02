@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 
         /// Parse the accumulated token stream into executable AST statements.
         AssemblerParser parser(tokens, options, src_mgr);
-        auto statements = parser.ParseProgram(macros_, tokenizer);
+        auto statements = parser.ParseProgram(tokenizer);
 
         /// Execute multi-pass assembly to resolve addresses, symbols, and output bytecode.
         MultiPassAssembler assembler(options, src_mgr);
