@@ -103,6 +103,7 @@ add_library(pasm_core STATIC
     utilities.cpp
     d64.cpp
     geos.cpp
+    AssemblerParser.cpp
     anonymouslabel.h
     exprNode.h
     findanonlabel.h
