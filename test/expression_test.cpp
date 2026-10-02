@@ -77,8 +77,8 @@ int Expression_test::test(int col)
 
         AssemblerParser parser(tokens, options, src_mgr);
         auto statements = parser.ParseProgram(tokenizer);
-        MultiPassAssembler assembler(options, src_mgr);
-        assembler.Assemble(statements);
+        MultiPassAssembler assembler(options);
+        assembler.Assemble(statements, src_mgr);
 
         if (passed) {
             passed = (expected_output == assembler.binary_output);

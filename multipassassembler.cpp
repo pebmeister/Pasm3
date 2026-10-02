@@ -53,7 +53,8 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
  * @param statements AST statement stream.
  * @throws std::runtime_error On convergence failure after max_passes.
  */
-void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements) {
+void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, SourceManager& src) {
+    src_mgr = src;
     pass = 1;
     changed = true;
     island_counter = 0;

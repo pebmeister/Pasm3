@@ -83,8 +83,8 @@ int main(int argc, char* argv[])
         auto statements = parser.ParseProgram(tokenizer);
 
         /// Execute multi-pass assembly to resolve addresses, symbols, and output bytecode.
-        MultiPassAssembler assembler(options, src_mgr);
-        assembler.Assemble(statements);
+        MultiPassAssembler assembler(options);
+        assembler.Assemble(statements, src_mgr);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
         /// Print assembly listing file path if verbose output is requested.

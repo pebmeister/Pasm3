@@ -200,8 +200,8 @@ int Opcode_test::op_test(OP_TEST& test, int max)
             auto tokens = tokenizer.tokenize(source_code, fileid);
             AssemblerParser parser(tokens, options, src_mgr);
             auto statements = parser.ParseProgram(tokenizer);
-            MultiPassAssembler assembler(options, src_mgr);
-            assembler.Assemble(statements);
+            MultiPassAssembler assembler(options);
+            assembler.Assemble(statements, src_mgr);
             
             std::vector<RULE_TYPE> false_negative_mode;
             pass = true;
