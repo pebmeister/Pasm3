@@ -258,12 +258,11 @@ public:
      *                            unmatched loop/conditional block, or file reading failure occurs.
      */
     std::vector<std::unique_ptr<Statement>> ParseProgram(
-        std::unordered_map<std::string, MacroDef>& macros_, 
         PasmTokenizer& tokenizer) 
     {        
         std::vector<std::unique_ptr<Statement>> statements;
         std::vector<LoopStatement*> repeatStack; // Track active .repeat blocks for matching .until expressions
-        
+        std::unordered_map<std::string, MacroDef> macros_, 
         SymbolTable definedSyms = SymbolTable("DEF", src_mgr);
         
         // Seed the local symbol table with CLI defined symbols (-D / --define)
