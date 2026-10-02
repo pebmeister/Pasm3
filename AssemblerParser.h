@@ -945,9 +945,8 @@ public:
              * Triggered when an unrecognized token sequence is encountered at statement start.
              * Logs a syntax error and advances the token stream to prevent infinite loops.
              */
-            if (options.verbose) {
-                std::cout << "Syntax Error: Invalid token " << tokmap[static_cast<TokenKind>(Tok.id)] << " File: " << src_mgr.GetFileName(Tok.file) << " Line: " << Tok.line << "\n";
-            }
+            throw std::runtime_error(std::format("Syntax Error: Invalid token {} File: {} Line: {}", 
+                tokmap[static_cast<TokenKind>(Tok.id)], src_mgr.GetFileName(Tok.file), Tok.line));
             ConsumeToken();
         }
 
@@ -1049,8 +1048,13 @@ private:
         // --- Grouped Parenthesized Expression ---
         if (TokIs(TokenKind::LParen)) {
             ConsumeToken();
-            ExprResult expr = ParseExpression(0);
-            if (TokIs(TokenKind::RParen)) ConsumeToken();
+            ExprResult expr = ParseExpression(0);        
+            
+            if (!TokIs(TokenKind::RParen)) {
+                throw std::runtime_error("Syntax Error: Expected ')' after parenthesized expression");
+            }
+            ConsumeToken();
+
             return expr;
         }
 
