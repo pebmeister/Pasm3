@@ -262,7 +262,7 @@ public:
     {        
         std::vector<std::unique_ptr<Statement>> statements;
         std::vector<LoopStatement*> repeatStack; // Track active .repeat blocks for matching .until expressions
-        std::unordered_map<std::string, MacroDef> macros_, 
+        std::unordered_map<std::string, MacroDef> macros_;
         SymbolTable definedSyms = SymbolTable("DEF", src_mgr);
         
         // Seed the local symbol table with CLI defined symbols (-D / --define)
