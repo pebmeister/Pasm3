@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
         }
         
         /// Handle primary binary file generation.
-        if (options.outfile.length() > 0) {
+        if (options.out) {
             /// Prepend Commodore 64 2-byte PRG load address header (little-endian) if targeting C64.
             if (options.c64) {
                 auto lo = static_cast<uint8_t>(assembler.load_address & 0xFF); 
