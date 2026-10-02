@@ -1,0 +1,2 @@
+#include "AssemblerParser.h" 
+std::unordered_map<std::string, MacroDef> AssemblerParser::macros_;
