@@ -55,7 +55,7 @@ struct OpPrecedence {
 class AssemblerParser {
 private:
     SourceManager& src_mgr; ///< manage source code.
-
+    static std::unordered_map<std::string, MacroDef> macros_;
     std::vector<PasmTokenizer::Token> tokens_; ///< Stream of tokens to be parsed.
 
     /**
@@ -262,7 +262,7 @@ public:
     {        
         std::vector<std::unique_ptr<Statement>> statements;
         std::vector<LoopStatement*> repeatStack; // Track active .repeat blocks for matching .until expressions
-        std::unordered_map<std::string, MacroDef> macros_;
+
         SymbolTable definedSyms = SymbolTable("DEF", src_mgr);
         
         // Seed the local symbol table with CLI defined symbols (-D / --define)
@@ -549,7 +549,7 @@ public:
 
                     auto inc_tokens = LoadAndTokenizeFile(filepath, src_mgr, tokenizer);
                     AssemblerParser parser(inc_tokens, options, src_mgr);
-                    auto inc_statements = parser.ParseProgram(macros_, tokenizer);
+                    auto inc_statements = parser.ParseProgram(tokenizer);
 
                     for (auto& stmt : inc_statements) {
                         statements.push_back(std::move(stmt));
