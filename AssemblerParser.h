@@ -1161,5 +1161,3 @@ private:
         return RULE_TYPE::Op_Absolute;
     }
 };
-
-std::unordered_map<std::string, MacroDef> AssemblerParser::macros_;
