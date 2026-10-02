@@ -92,7 +92,7 @@ Options parse_args(int argc, char* argv[])
             options.out = true;
 
             if ((arg + 1) < argc && argv[arg + 1][0] != '-' ) {
-                options.outfile = argv[arg];
+                options.outfile = argv[++arg];
             }
         }
         else if (arg_str == "-c64") {

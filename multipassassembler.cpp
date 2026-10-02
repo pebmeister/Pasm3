@@ -51,15 +51,16 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
 /**
  * @brief Runs multi-pass symbol resolution until convergence or max pass limit.
  * @param statements AST statement stream.
- * @param anonymous_labels Anonymous label tracker.
  * @throws std::runtime_error On convergence failure after max_passes.
  */
-void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, std::vector<AnonymousLabel>& anonymous_labels) {
+void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements) {
     pass = 1;
     changed = true;
     island_counter = 0;
     stable = false;
     auto lastpasschanged = false;
+    std::vector<AnonymousLabel> anonymous_labels;
+
 
     if (options.verbose) {
         std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";

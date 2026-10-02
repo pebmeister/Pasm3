@@ -60,10 +60,7 @@ int main(int argc, char* argv[])
         Options options = parse_args(argc, argv);
 
         /// Resolve the base filename (excluding file extensions) used for output generation.
-        std::string fname = options.outfile;
-        if (fname.length() == 0) {
-            fname = options.input_filenames[0];
-        }
+        std::string fname = options.out ? options.outfile : options.input_filenames[0];
         std::string base_name = RemoveExtension(fname);
 
         /// Start high-precision execution timer for performance metrics.
@@ -73,7 +70,6 @@ int main(int argc, char* argv[])
         SourceManager src_mgr;                               /// Tracks source file origins, include depths, and line positions.
         PasmTokenizer tokenizer;                             /// Lexical analyzer context for PASM input files.
 
-        std::vector<AnonymousLabel> anonymous_labels;        /// Queue for tracking temporary/anonymous jump targets (e.g., +, -).
         std::vector<PasmTokenizer::Token> tokens;            /// Aggregated token stream from all source inputs.
         
         /// Tokenize each input source file sequentially into a unified token stream.
@@ -88,7 +84,7 @@ int main(int argc, char* argv[])
 
         /// Execute multi-pass assembly to resolve addresses, symbols, and output bytecode.
         MultiPassAssembler assembler(options, src_mgr);
-        assembler.Assemble(statements, anonymous_labels);
+        assembler.Assemble(statements);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
         /// Print assembly listing file path if verbose output is requested.

@@ -130,8 +130,7 @@ public:
      *
      * @throws std::runtime_error If symbol resolution fails to converge within `max_passes`.
      */
-    void Assemble(std::vector<std::unique_ptr<Statement>>& statements, 
-                  std::vector<AnonymousLabel>& anonymous_labels );
+    void Assemble(std::vector<std::unique_ptr<Statement>>& statements);
 
 private:
     /**
