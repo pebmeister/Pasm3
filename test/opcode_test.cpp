@@ -53,7 +53,6 @@ int Opcode_test::op_test(OP_TEST& test, int max)
     SourceManager src_mgr;
     PasmTokenizer tokenizer;
     std::vector<uint8_t> expected_output;
-    std::vector<AnonymousLabel> anonymous_labels;    
     std::string line;
     std::string source_code;
     std::stringstream ss;
@@ -201,8 +200,8 @@ int Opcode_test::op_test(OP_TEST& test, int max)
             auto tokens = tokenizer.tokenize(source_code, fileid);
             AssemblerParser parser(tokens, options, src_mgr);
             auto statements = parser.ParseProgram(tokenizer);
-            MultiPassAssembler assembler(options, src_mgr);
-            assembler.Assemble(statements, anonymous_labels);
+            MultiPassAssembler assembler(options);
+            assembler.Assemble(statements, src_mgr);
             
             std::vector<RULE_TYPE> false_negative_mode;
             pass = true;

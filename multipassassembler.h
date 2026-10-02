@@ -29,8 +29,8 @@
  */
 class MultiPassAssembler {
 private:
-    SourceManager& src_mgr; //< Source manager for files.
-    Options options;       ///< Command-line options and assembler configuration.
+    SourceManager src_mgr;  ///< Source manager for files.
+    Options options;        ///< Command-line options and assembler configuration.
 
     /**
      * @enum LoopControlKind
@@ -112,7 +112,7 @@ public:
      * @brief Constructs a new MultiPassAssembler object with developer configuration options.
      * @param opts Reference to assembly options specifying start address, defines, and debug flags.
      */
-    explicit MultiPassAssembler(const Options& opts, SourceManager& src ) : src_mgr(src)
+    explicit MultiPassAssembler(const Options& opts)
     { 
         options = std::move(opts);
         start_pc_ = opts.start_addr; 
@@ -125,13 +125,11 @@ public:
      * branches, and variables converge, or until `max_passes` is hit. Executes `EmitFinalPass` upon convergence.
      *
      * @param[in,out] statements AST statement stream to process.
-     * @param[in,out] anonymous_labels Tracked anonymous labels ('+' and '-').
-     * @param[in]     src_mgr Reference to SourceManager for source line locations.
+     * @param[in]     src Reference to SourceManager for source line locations.
      *
      * @throws std::runtime_error If symbol resolution fails to converge within `max_passes`.
      */
-    void Assemble(std::vector<std::unique_ptr<Statement>>& statements, 
-                  std::vector<AnonymousLabel>& anonymous_labels );
+    void Assemble(std::vector<std::unique_ptr<Statement>>& statements, SourceManager& src);
 
 private:
     /**

@@ -35,5 +35,6 @@ struct Options {
     bool vs = false;                                           /**< Flag to create VICE symbols */    
     bool debug = false;                                        /**< Flag to debug with VICE */    
     bool launch = false;                                       /**< Flag to launch with VICE */    
-    bool xfref = false;                                        /**< Flag to crteate a cross reference symbol file */    
+    bool xfref = false;                                        /**< Flag to create a cross reference symbol file */    
+    bool out = false;                                          /**< Flag to create aan output file */    
 };

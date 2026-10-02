@@ -245,8 +245,6 @@ public:
      * symbol definitions (`EQU`), PC assignments (`* =`), labels, control-flow statements, 
      * data declarations, and file inclusions.
      *
-     * @param[in,out] macros_   Unordered map storing macro definitions, keyed by lower-case macro name.
-     *                          Newly encountered macros are registered here, and existing macros are expanded.
      * @param[in,out] tokenizer Reference to the tokenizer used to load and tokenize secondary 
      *                          source files during `.include` processing.
      *
