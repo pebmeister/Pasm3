@@ -95,6 +95,11 @@ int main(int argc, char* argv[])
         if (options.verbose) {
             std::cout << assembler.listing_file << "\n";
         }
+
+        /// Print symbol table cross refrence.
+        if (options.xfref) {
+            std::cout << assembler.ExrefSymbols();
+        }
         
         /// Handle primary binary file generation.
         if (options.outfile.length() > 0) {
@@ -155,11 +160,6 @@ int main(int argc, char* argv[])
             std::ofstream out(options.vs_name, std::ios::out);
             out << syms;            
             std::cout << std::format("Created {}\n", options.vs_name);            
-        }
-
-        /// Print symbol table cross refrence.
-        if (options.xfref) {
-            std::cout << assembler.ExrefSymbols();
         }
 
         /// Generate VICE monitor breakpoint script (.mon) and launch debugging session in x64sc.
