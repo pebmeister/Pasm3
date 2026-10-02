@@ -61,6 +61,7 @@ void parse_args(int argc, char* argv[], Test_Options& options)
 {
     options.test_opcode = false;
     options.test_labels = false;
+    options.test_expression = false;
     auto arg_num = 1;
     while (arg_num < argc) {
         std::string arg = std::string(argv[arg_num++]);
@@ -135,7 +136,7 @@ int main(int argc, char* argv[])
 
         if (options.test_expression) {
             std::cout << std::format("{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "EXPR TEST");
-            result = ex_test.test(15);
+            result = ex_test.test(15, true);
         }
     }
     catch (std::exception& ex) {
