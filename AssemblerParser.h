@@ -77,10 +77,9 @@ private:
     /**
      * @brief Checks whether a given identifier name matches a defined macro.
      * @param name Name of the identifier to query (case-insensitive).
-     * @param macros_ Map of defined macros in the current compilation context.
      * @return True if the identifier represents a registered macro, false otherwise.
      */
-    bool IsMacro(std::string name, const std::unordered_map<std::string>) const {
+    bool IsMacro(std::string name) const {
         std::transform(name.begin(), name.end(), name.begin(),
         [](unsigned char c) {
             return static_cast<char>(std::tolower(c));
