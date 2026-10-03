@@ -21,15 +21,18 @@ class Label_test : public TestRunner {
 private:
     Test create_global_labels_test();
     Test create_foward_labels_test();
+    Test create_anon_labels_test();
+
     int max = 0;
     
 public:
     std::vector<Test> create_unit_tests(int max_iterations) override 
     {
-        max = max_iterations = 0;
+        max = max_iterations;
         return {
             create_global_labels_test(),
-            create_foward_labels_test()
+            create_foward_labels_test(),
+            create_anon_labels_test()
         };
     }
 };
