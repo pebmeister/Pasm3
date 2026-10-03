@@ -40,7 +40,7 @@ public:
 
 
     std::string error;
-    std::string source;
+    std::string source_code;
     
     virtual std::vector<Test> create_unit_tests(int max_iterations) = 0;
 
@@ -63,7 +63,7 @@ public:
             bool test_passed = false;
             try {
 
-                std::string source_code = test.source_code;
+                source_code = test.source_code;
                 auto tokens = tokenizer.tokenize(source_code, fileid);
                 AssemblerParser parser(tokens, options, test.src_mgr);
                 auto statements = parser.ParseProgram(tokenizer);

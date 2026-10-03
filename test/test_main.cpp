@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
             std::cout << std::format("{}{}{}{:15}building...", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "OPCODE TEST");
             result = op_test.test(15, true, options.opcode_max_iteration);        
             if (result) {
-                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
                 return -1;
             }
         }
@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
             std::cout << std::format("{}{}{}{:15}building...", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "LABEL TEST");
             result = lab_test.test(15, true, 1);
             if (result) {
-                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
                 return -1;
             }            
         }
@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
             std::cout << std::format("{}{}{}{:15}building...", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "EXPR TEST");
             result = ex_test.test(15, true, 1);
             if (result) {
-                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
                 return -1;
             }
         }
