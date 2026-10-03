@@ -72,7 +72,7 @@ public:
 
                 if (test.negative_test) {
                     // Assembly succeeded when it should have thrown an exception
-                    // The is needed because we can have a false fail in opcode test
+                    // This is needed because we can have a false fail in opcode test
                     // if an op has say abolute mode but not zero page
                     // the zero page test will succeed because it will be interpreted as absolute
                     test_passed = (test.expected != assembler.binary_output);
