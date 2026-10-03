@@ -2,8 +2,27 @@
 #include <vector>
 #include <cctype>
 
-class Opcode_test {
+
+#include "ruletype.h"
+#include "tokenkind.h"
+
+#include "AssemblerParser.h"
+#include "anonymouslabel.h"
+#include "macrodef.h"
+#include "multipassassembler.h"
+#include "options.h"
+#include "sourceManager.h"
+#include "utilities.h"
+#include "d64.h"
+#include "autoloader.h"
+#include "ANSI_esc.h"
+#include "test_runner.h"
+
+
+class Opcode_test  : public TestRunner {
+
 private:
+
     struct OP_TEST {
         std::string_view op;
         int mode;
@@ -11,9 +30,8 @@ private:
         bool negative_test;
     };
 
-    int op_test(OP_TEST& test, int depth);
-    void build_opcode_tests(std::vector<OP_TEST>& positive_opcode_tests, std::vector<OP_TEST>& negative_opcode_tests);
-
+    Test make_unit_test(OP_TEST& test, int max);
+  
     int test_num = 0;
 
     const int fileid = 0;
@@ -40,9 +58,25 @@ private:
     uint16_t opr_indirect = abs_min;
 
 public:
-    int passed = 0;
-    int failed = 0;
-    std::string error;
-    std::string source;
-    int test(int max_iterations, int col, bool exit_on_fail);
+    std::vector<Test> create_unit_tests(int max_iterations = 255) override
+    {
+        std::vector<Opcode_test::Test> tests;
+       
+        for (auto&[_, info]: opcodeDict) {
+            auto& op = info.mnemonic;
+            for (int mode = RULE_TYPE::Op_Implied; mode <= RULE_TYPE::Op_ZeroPageRelative; ++mode) {
+                auto modeIt = info.mode_to_opcode.find(static_cast<RULE_TYPE>(mode));
+                if (modeIt == info.mode_to_opcode.end()) {
+                    OP_TEST op_negative_test = {op, mode, 0, true};
+                    tests.push_back(make_unit_test(op_negative_test, max_iterations));
+                }
+                else {
+                    auto [opcode, _] = modeIt->second;
+                    OP_TEST op_positive_test = {op, mode, opcode, false};
+                    tests.push_back(make_unit_test(op_positive_test, max_iterations));
+                }
+            }
+        }
+        return tests;
+    }
 };
