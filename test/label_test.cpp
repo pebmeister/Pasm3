@@ -111,3 +111,75 @@ Label_test::Test Label_test::create_global_labels_test()
 
     return Test(src_mgr, source_code, expected_output, false);
 }
+
+Label_test::Test Label_test::create_anon_labels_test()
+{
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string line;
+    std::string source_code;
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+    add_line(std::format("    * = {}", org));
+
+    // Anonymous label testing (+, ++ for forward; -, -- for backward)
+    add_line("    jmp +");
+    add_line("-");
+    add_line("    nop");
+    add_line("    nop");
+    add_line("-");
+    add_line("    .word -");
+    add_line("    .word --");
+    add_line("    jmp +");
+    add_line("+");
+    add_line("    nop");
+    add_line("+");
+    add_line("    .word +");
+    add_line("    .word ++");
+    add_line("+");
+    add_line("    nop");
+    add_line("+");
+    add_line("    rts");
+
+    // Expected Memory Layout & Address Resolution:
+    // $1000: jmp +      -> Jumps 1 forward to 1st '+' ($100C)      [4C 0C 10]
+    // $1003: -          -> 2nd backward label relative to $1007
+    // $1003: nop        -> $1003                                    [EA]
+    // $1004: nop        -> $1004                                    [EA]
+    // $1005: -          -> 1st backward label relative to $1005
+    // $1005: .word -    -> Resolves 1 back to '-' ($1005)           [05 10]
+    // $1007: .word --   -> Resolves 2 back to '--' ($1003)          [03 10]
+    // $1009: jmp +      -> Jumps 1 forward to '+' ($100C)          [4C 0C 10]
+    // $100C: +          -> 1st forward label relative to $1009
+    // $100C: nop        -> $100C                                    [EA]
+    // $100D: +          -> Label at $100D
+    // $100D: .word +    -> Resolves 1 forward to '+' ($1011)        [11 10]
+    // $100F: .word ++   -> Resolves 2 forward to '++' ($1012)       [12 10]
+    // $1011: +          -> Label at $1011
+    // $1011: nop        -> $1011                                    [EA]
+    // $1012: +          -> Label at $1012
+    // $1012: rts        -> $1012                                    [60]
+
+    std::vector<uint8_t> expected_output = {
+        0x4C, 0x0C, 0x10, // jmp $100C
+        0xEA,             // nop
+        0xEA,             // nop
+        0x05, 0x10,       // .word $1005
+        0x03, 0x10,       // .word $1003
+        0x4C, 0x0C, 0x10, // jmp $100C
+        0xEA,             // nop
+        0x11, 0x10,       // .word $1011
+        0x12, 0x10,       // .word $1012
+        0xEA,             // nop
+        0x60              // rts
+    };
+
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
