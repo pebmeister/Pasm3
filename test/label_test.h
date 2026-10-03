@@ -1,32 +1,35 @@
 #pragma once 
 #include <string>
 
+#include "ruletype.h"
+#include "tokenkind.h"
+
+#include "AssemblerParser.h"
+#include "anonymouslabel.h"
+#include "macrodef.h"
+#include "multipassassembler.h"
+#include "options.h"
 #include "sourceManager.h"
+#include "utilities.h"
+#include "d64.h"
+#include "autoloader.h"
+#include "ANSI_esc.h"
+#include "test_runner.h"
 
-class Label_test {
-public:
-    struct Test {
-        SourceManager src_mgr;
-        std::string source_code;
-        std::vector<uint8_t> expected;
-        bool negative_test;
 
-        Test(
-            SourceManager src_mgr,
-            std::string_view source_code,
-            std::vector<uint8_t> expected,
-            bool negative_test = false) 
-            : src_mgr(std::move(src_mgr)),
-              source_code(std::move(source_code)),
-              expected(std::move(expected)),
-              negative_test(negative_test) {}
-    };
-    
+class Label_test : public TestRunner {
+private:
     Test create_global_labels_test();
     Test create_foward_labels_test();
-    std::vector<Test> create_unit_tests();
+    int max = 0;
     
 public:
-    std::string error;
-    int test(int col); 
+    std::vector<Test> create_unit_tests(int max_iterations) override 
+    {
+        max = max_iterations = 0;
+        return {
+            create_global_labels_test(),
+            create_foward_labels_test()
+        };
+    }
 };
