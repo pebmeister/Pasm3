@@ -31,8 +31,6 @@ private:
     };
 
     Test make_unit_test(OP_TEST& test, int max);
-  
-    int test_num = 0;
 
     const int fileid = 0;
     const int abs_min = 0x0100;
