@@ -1,5 +1,6 @@
 #pragma once 
 #include <string>
+#include <functional>
 
 #include "ruletype.h"
 #include "tokenkind.h"
@@ -16,7 +17,6 @@
 #include "ANSI_esc.h"
 #include "test_runner.h"
 
-
 class Label_test : public TestRunner {
 private:
     Test create_global_labels_test();
@@ -26,13 +26,13 @@ private:
     int max = 0;
     
 public:
-    std::vector<Test> create_unit_tests(int max_iterations) override 
+    void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
     {
         max = max_iterations;
-        return {
-            create_global_labels_test(),
-            create_foward_labels_test(),
-            create_anon_labels_test()
-        };
+
+        // Stream tests individually directly into the queue
+        emit(create_global_labels_test());
+        emit(create_foward_labels_test());
+        emit(create_anon_labels_test());
     }
 };
