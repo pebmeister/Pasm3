@@ -56,22 +56,20 @@ private:
     uint16_t opr_indirect = abs_min;
 
 public:
-    std::vector<Test> create_unit_tests(int max_iterations = 255) override
+    void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
     {
-        std::vector<Opcode_test::Test> tests;
-       
         for (auto&[_, info]: opcodeDict) {
             auto& op = info.mnemonic;
             for (int mode = RULE_TYPE::Op_Implied; mode <= RULE_TYPE::Op_ZeroPageRelative; ++mode) {
                 auto modeIt = info.mode_to_opcode.find(static_cast<RULE_TYPE>(mode));
                 if (modeIt == info.mode_to_opcode.end()) {
                     OP_TEST op_negative_test = {op, mode, 0, true};
-                    tests.push_back(make_unit_test(op_negative_test, max_iterations));
+                    emit(make_unit_test(op_negative_test, max_iterations));
                 }
                 else {
                     auto [opcode, _] = modeIt->second;
                     OP_TEST op_positive_test = {op, mode, opcode, false};
-                    tests.push_back(make_unit_test(op_positive_test, max_iterations));
+                    emit(make_unit_test(op_positive_test, max_iterations));
                 }
             }
         }
