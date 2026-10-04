@@ -23,17 +23,15 @@ private:
     int max = 0;
 
 public:
-    std::vector<Test> create_unit_tests(int max_iterations) override 
+    void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
     {
         max = max_iterations;
-        return {
-            create_expression_operators_test(),
-            create_expression_order_of_operations_test(),
-            create_expression_div_zero_test(),
-            create_expression_mod_zero_test(),
-            create_expression_mismatched_parens_test(),
-            create_expression_missing_operand_test()
-        };    
+        emit(create_expression_operators_test());
+        emit(create_expression_order_of_operations_test());
+        emit(create_expression_div_zero_test());
+        emit(create_expression_mod_zero_test());
+        emit(create_expression_mismatched_parens_test());
+        emit(create_expression_missing_operand_test());
     }
 
 };
