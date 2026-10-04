@@ -73,6 +73,5 @@ public:
                 }
             }
         }
-        return tests;
     }
 };
