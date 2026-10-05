@@ -229,4 +229,5 @@ public:
 		if (producer_exception) {
         	std::rethrow_exception(producer_exception);
 		}
+	}
 };
