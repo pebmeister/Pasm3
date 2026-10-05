@@ -229,5 +229,6 @@ public:
 		if (producer_exception) {
         	std::rethrow_exception(producer_exception);
 		}
+        return  overall_passed ? 0 : 1;
 	}
 };
