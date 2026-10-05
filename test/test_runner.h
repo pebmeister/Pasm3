@@ -83,29 +83,41 @@ public:
 
         std::mutex console_mutex;
 
-        // 1. Producer Thread: Streams tests from generate_tests() into the queue
-        std::thread producer([&]() {
-            generate_tests(max_iterations, [&](Test test_item) {
-                if (stop_requested.load(std::memory_order_relaxed)) return;
+		std::exception_ptr producer_exception = nullptr;
 
-                std::unique_lock<std::mutex> lock(queue_mutex);
-                cv_producer.wait(lock, [&]() {
-                    return test_queue.size() < MAX_QUEUE_CAPACITY || stop_requested.load(std::memory_order_relaxed);
-                });
+		// 1. Producer Thread
+		std::thread producer([&]() {
+    		try {
+        		generate_tests(max_iterations, [&](Test test_item) {
+            		if (stop_requested.load(std::memory_order_relaxed)) return;
 
-                if (stop_requested.load(std::memory_order_relaxed)) return;
+            		std::unique_lock<std::mutex> lock(queue_mutex);
+            		cv_producer.wait(lock, [&]() {
+                		return test_queue.size() < MAX_QUEUE_CAPACITY || stop_requested.load(std::memory_order_relaxed);
+            		});
 
-                test_queue.push(std::move(test_item));
-                lock.unlock();
-                cv_workers.notify_one();
-            });
+            		if (stop_requested.load(std::memory_order_relaxed)) return;
 
-            {
-                std::lock_guard<std::mutex> lock(queue_mutex);
-                generation_complete = true;
-            }
-            cv_workers.notify_all();
-        });
+            		test_queue.push(std::move(test_item));
+            		lock.unlock();
+            		cv_workers.notify_one();
+        		});
+    		}
+    		catch (...) {
+        		// Capture the exception thrown during test generation
+        		producer_exception = std::current_exception();
+
+        		// Signal worker threads to halt immediately
+        		stop_requested.store(true, std::memory_order_relaxed);
+        		cv_workers.notify_all();
+    		}
+
+    		{
+        		std::lock_guard<std::mutex> lock(queue_mutex);
+        		generation_complete = true;
+    		}
+    		cv_workers.notify_all();
+		});
 
         // 2. Worker Threads: Process tests in parallel
         unsigned int num_workers = std::thread::hardware_concurrency();
@@ -207,12 +219,14 @@ public:
             });
         }
 
-        if (producer.joinable()) producer.join();
-        for (auto& w : workers) {
-            if (w.joinable()) w.join();
-        }
+		// Join producer and worker threads
+		if (producer.joinable()) producer.join();
+		for (auto& w : workers) {
+    		if (w.joinable()) w.join();
+		}
 
-        error = error_ss.str();
-        return overall_passed.load() ? 0 : 1;
-    }
+		// Rethrow and catch the exception back on the main thread
+		if (producer_exception) {
+        	std::rethrow_exception(producer_exception);
+		}
 };
