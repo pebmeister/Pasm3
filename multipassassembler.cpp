@@ -53,8 +53,7 @@ size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
  * @param statements AST statement stream.
  * @throws std::runtime_error On convergence failure after max_passes.
  */
-void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements, SourceManager& src) {
-    src_mgr = src;
+void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& statements) {
     pass = 1;
     changed = true;
     island_counter = 0;
@@ -194,7 +193,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     }
                 }
 
-                // CRITICAL: Always register 'name' in vars_, even if 0, so vars_.Lookup(name) succeeds
                 vars_.Define(name, static_cast<uint16_t>(initial_val), {var_stmt->file, var_stmt->line});
             }
             new_statements.push_back(std::move(stmt));

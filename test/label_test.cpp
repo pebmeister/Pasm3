@@ -115,71 +115,304 @@ Label_test::Test Label_test::create_global_labels_test()
 Label_test::Test Label_test::create_anon_labels_test()
 {
     constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
     int line_num = 1;
     std::string line;
     std::string source_code;
+    std::vector<uint8_t> expected_output;
 
     auto add_line = [&](std::string line = "") {
         src_mgr.source[{fileid, line_num}] = line;
         source_code += (line + "\n");
         line_num++;
     };
+
+    constexpr uint8_t JMP_OPCODE = 0x4C; // 6502 absolute JMP opcode
+    auto org = 0x1000;
+    auto pc = org;
+    auto target_count = max;
+
+    // ------------------------------------------------------------------
+    // 1. Backward Anonymous Labels (-) Test
+    // ------------------------------------------------------------------
+
     add_line(std::format("    * = {}", org));
 
-    // Anonymous label testing (+, ++ for forward; -, -- for backward)
-    add_line("    jmp +");
-    add_line("-");
-    add_line("    nop");
-    add_line("    nop");
-    add_line("-");
-    add_line("    .word -");
-    add_line("    .word --");
-    add_line("    jmp +");
-    add_line("+");
-    add_line("    nop");
-    add_line("+");
-    add_line("    .word +");
-    add_line("    .word ++");
-    add_line("+");
-    add_line("    nop");
-    add_line("+");
-    add_line("    rts");
+    // Store created target addresses in order (0x1000, 0x1002, 0x1004, ...)
+    std::vector<uint16_t> backward_targets;
 
-    // Expected Memory Layout & Address Resolution:
-    // $1000: jmp +      -> Jumps 1 forward to 1st '+' ($100C)      [4C 0C 10]
-    // $1003: -          -> 2nd backward label relative to $1007
-    // $1003: nop        -> $1003                                    [EA]
-    // $1004: nop        -> $1004                                    [EA]
-    // $1005: -          -> 1st backward label relative to $1005
-    // $1005: .word -    -> Resolves 1 back to '-' ($1005)           [05 10]
-    // $1007: .word --   -> Resolves 2 back to '--' ($1003)          [03 10]
-    // $1009: jmp +      -> Jumps 1 forward to '+' ($100C)          [4C 0C 10]
-    // $100C: +          -> 1st forward label relative to $1009
-    // $100C: nop        -> $100C                                    [EA]
-    // $100D: +          -> Label at $100D
-    // $100D: .word +    -> Resolves 1 forward to '+' ($1011)        [11 10]
-    // $100F: .word ++   -> Resolves 2 forward to '++' ($1012)       [12 10]
-    // $1011: +          -> Label at $1011
-    // $1011: nop        -> $1011                                    [EA]
-    // $1012: +          -> Label at $1012
-    // $1012: rts        -> $1012                                    [60]
+    auto count = 0;
+    while (count < target_count) {
+        auto addr = pc;
+        backward_targets.push_back(addr);
+        add_line(std::format("{:1}    {} ${:04X}", "-", ".word", addr));
+        
+        expected_output.push_back(static_cast<uint8_t>(addr & 0xFF));
+        expected_output.push_back(static_cast<uint8_t>((addr >> 8) & 0xFF));
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error(std::format("PC exceeded. Lower max iteration."));
+        }
+        
+        count++;
+        pc += 2;
+    }
 
-    std::vector<uint8_t> expected_output = {
-        0x4C, 0x0C, 0x10, // jmp $100C
-        0xEA,             // nop
-        0xEA,             // nop
-        0x05, 0x10,       // .word $1005
-        0x03, 0x10,       // .word $1003
-        0x4C, 0x0C, 0x10, // jmp $100C
-        0xEA,             // nop
-        0x11, 0x10,       // .word $1011
-        0x12, 0x10,       // .word $1012
-        0xEA,             // nop
-        0x60              // rts
-    };
+    // Jumps targeting backward labels:
+    // '-'   targets backward_targets[last]  (most recent)
+    // '--'  targets backward_targets[last - 1]
+    count = 0;
+    while (count < target_count) {
+        add_line(std::format("    {} {}", "jmp", std::string(count + 1, '-')));
+
+        uint16_t target_addr = backward_targets[backward_targets.size() - 1 - count];
+
+        expected_output.push_back(JMP_OPCODE);
+        expected_output.push_back(static_cast<uint8_t>(target_addr & 0xFF));
+        expected_output.push_back(static_cast<uint8_t>((target_addr >> 8) & 0xFF));
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error(std::format("PC exceeded. Lower max iteration."));
+        }
+
+        pc += 3;
+        count++;
+    }
+
+    // ------------------------------------------------------------------
+    // 2. Forward Anonymous Labels (+) Test
+    // ------------------------------------------------------------------
+
+    // Pre-calculate target addresses for upcoming forward labels
+    // The forward labels will start at current 'pc' plus total bytes of all forward jmp instructions
+    uint16_t forward_labels_start_pc = pc + (target_count * 3);
+    std::vector<uint16_t> forward_targets;
+    for (int i = 0; i < target_count; ++i) {
+        forward_targets.push_back(forward_labels_start_pc + (i * 2));
+    }
+
+    // Jumps targeting forward labels:
+    // '+'   targets forward_targets[0] (first upcoming)
+    // '++'  targets forward_targets[1]
+    count = 0;
+    while (count < target_count) {
+        add_line(std::format("    {} {}", "jmp", std::string(count + 1, '+')));
+
+        uint16_t target_addr = forward_targets[count];
+
+        expected_output.push_back(JMP_OPCODE);
+        expected_output.push_back(static_cast<uint8_t>(target_addr & 0xFF));
+        expected_output.push_back(static_cast<uint8_t>((target_addr >> 8) & 0xFF));
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error(std::format("PC exceeded. Lower max iteration."));
+        }
+
+        pc += 3;
+        count++;
+    }
+
+    // Generate the forward target data (.word pc)
+    count = 0;
+    while (count < target_count) {
+        add_line(std::format("{:1}    {} ${:04X}", "+", ".word", pc));
+
+        expected_output.push_back(static_cast<uint8_t>(pc & 0xFF));
+        expected_output.push_back(static_cast<uint8_t>((pc >> 8) & 0xFF));
+
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error(std::format("PC exceeded. Lower max iteration."));
+        }
+
+        pc += 2;
+        count++;
+    }
 
     return Test(src_mgr, source_code, expected_output, false);
 }
 
+Label_test::Test Label_test::create_local_label_test()
+{
+    constexpr int fileid = 0;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+    std::vector<uint8_t> expected_output;
+    
+    src_mgr.files.push_back("Label_test");
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    constexpr uint8_t JMP_OPCODE = 0x4C; // 6502 JMP absolute
+    constexpr uint8_t NOP_OPCODE = 0xEA;
+    uint16_t org = 0x1000;
+    uint16_t pc = org;
+
+    add_line(std::format("    * = ${:04X}", org));
+
+    // ------------------------------------------------------------------
+    // Parent Scope 1: parent_1
+    // ------------------------------------------------------------------
+    add_line("parent_1:");
+    
+    // Local label @loop inside parent_1 scope
+    uint16_t p1_loop_addr = pc;
+    add_line("@loop");
+    add_line("    nop");
+    expected_output.push_back(NOP_OPCODE);
+    pc += 1;
+
+    // Backward local jump to @loop (resolves to parent_1@loop)
+    add_line("    jmp @loop");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(p1_loop_addr & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((p1_loop_addr >> 8) & 0xFF));
+    pc += 3;
+
+    // Forward local jump to @exit (resolves to parent_1@exit)
+    uint16_t p1_exit_addr = pc + 3 + 1; // jmp size (3) + nop size (1)
+    add_line("    jmp @exit");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(p1_exit_addr & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((p1_exit_addr >> 8) & 0xFF));
+    pc += 3;
+
+    add_line("    nop");
+    expected_output.push_back(NOP_OPCODE);
+    pc += 1;
+
+    add_line("@exit");
+    add_line("    nop");
+    expected_output.push_back(NOP_OPCODE);
+    pc += 1;
+
+    // ------------------------------------------------------------------
+    // Parent Scope 2: parent_2 (Resets local scope)
+    // ------------------------------------------------------------------
+    add_line("parent_2:");
+
+    // Re-use same local label name @loop inside parent_2 scope
+    uint16_t p2_loop_addr = pc;
+    add_line("@loop");
+    add_line("    nop");
+    expected_output.push_back(NOP_OPCODE);
+    pc += 1;
+
+    // Local jump to @loop (must resolve to parent_2@loop)
+    add_line("    jmp @loop");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(p2_loop_addr & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((p2_loop_addr >> 8) & 0xFF));
+    pc += 3;
+
+    // Fully-qualified cross-scope jump to parent_1's local label
+    add_line("    jmp parent_1@loop");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(p1_loop_addr & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((p1_loop_addr >> 8) & 0xFF));
+    pc += 3;
+
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
+Label_test::Test Label_test::create_combined_label_test()
+{
+    constexpr int fileid = 0;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+    std::vector<uint8_t> expected_output;
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    constexpr uint8_t JMP_OPCODE = 0x4C;
+    constexpr uint8_t NOP_OPCODE = 0xEA;
+    uint16_t org = 0x2000;
+    uint16_t pc = org;
+
+    add_line(std::format("    * = ${:04X}", org));
+
+    // Global Label: entry_point (Establishes scope 'entry_point')
+    uint16_t entry_addr = pc;
+    add_line("entry_point:");
+
+    // Anonymous Backward Target (-)
+    uint16_t anon_back_1 = pc;
+    add_line("-   nop");
+    expected_output.push_back(NOP_OPCODE);
+    pc += 1;
+
+    // Local Label @init under entry_point scope
+    uint16_t init_addr = pc;
+    add_line("@init");
+    add_line("    nop");
+    expected_output.push_back(NOP_OPCODE);
+    pc += 1;
+
+    // 1. Anonymous backward jump (-)
+    add_line("    jmp -");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(anon_back_1 & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((anon_back_1 >> 8) & 0xFF));
+    pc += 3;
+
+    // 2. Forward Anonymous jump (+)
+    uint16_t anon_forward_1 = pc + 3 + 3; // After jmp + and jmp @init
+    add_line("    jmp +");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(anon_forward_1 & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((anon_forward_1 >> 8) & 0xFF));
+    pc += 3;
+
+    // 3. Backward Local jump (@init) -> entry_point@init
+    add_line("    jmp @init");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(init_addr & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((init_addr >> 8) & 0xFF));
+    pc += 3;
+
+    // Target for Anonymous Jump 2 (+)
+    add_line("+   nop");
+    expected_output.push_back(NOP_OPCODE);
+    pc += 1;
+
+    // ------------------------------------------------------------------
+    // New Global Scope: process_data (Resets scope to 'process_data')
+    // ------------------------------------------------------------------
+    add_line("process_data:");
+
+    // Local Label @init under process_data (distinct from entry_point@init)
+    uint16_t process_init_addr = pc;
+    add_line("@init");
+    add_line("    nop");
+    expected_output.push_back(NOP_OPCODE);
+    pc += 1;
+
+    // 4. Jump to Global entry_point
+    add_line("    jmp entry_point");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(entry_addr & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((entry_addr >> 8) & 0xFF));
+    pc += 3;
+
+    // 5. Jump to local @init in current scope (process_data@init)
+    add_line("    jmp @init");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(process_init_addr & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((process_init_addr >> 8) & 0xFF));
+    pc += 3;
+
+    // 6. Jump to explicit previous global scope local (entry_point@init)
+    add_line("    jmp entry_point@init");
+    expected_output.push_back(JMP_OPCODE);
+    expected_output.push_back(static_cast<uint8_t>(init_addr & 0xFF));
+    expected_output.push_back(static_cast<uint8_t>((init_addr >> 8) & 0xFF));
+    pc += 3;
+
+    return Test(src_mgr, source_code, expected_output, false);
+}

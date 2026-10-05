@@ -42,6 +42,8 @@ struct Test_Options {
     bool test_labels = false;             ///< Flag indicating whether to execute label verification tests.
     bool test_expression = false;         ///< Flag indicating whether to execute Expression verification tests.
     int  opcode_max_iteration = 0xFF;     ///< Maximum operand loop iterations per addressing mode test.
+    int  label_max_iteration = 0xFF;      ///< Maximum label iterations per test.
+    int  expression_max_iteration = 1;    ///< Maximum expression iterations per test.
 };
 
 /**
@@ -77,9 +79,21 @@ void parse_args(int argc, char* argv[], Test_Options& options)
         }
         else if (arg == "-label") {
             options.test_labels = true;
+            if (arg_num < argc) {
+                options.label_max_iteration = std::stoi(argv[arg_num++]);
+                if (options.label_max_iteration < 1) {
+                    throw std::runtime_error(std::format("invalid value for max iterations {}. Must be greater than zero.", options.opcode_max_iteration));
+                }
+            }
         }
         else if (arg == "-expr") {
             options.test_expression = true;
+            if (arg_num < argc) {
+                options.expression_max_iteration = std::stoi(argv[arg_num++]);
+                if (options.expression_max_iteration < 1) {
+                    throw std::runtime_error(std::format("invalid value for max iterations {}. Must be greater than zero.", options.opcode_max_iteration));
+                }
+            }
         }        
         else if (arg == "-all") {
             options.test_opcode = true;
@@ -131,16 +145,16 @@ int main(int argc, char* argv[])
         }
         if (options.test_labels) {
             std::cout << std::format("{}{}{}{:15}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "LABEL TEST");
-            result = lab_test.test(15, true, 1);
+            result = lab_test.test(15, true, options.label_max_iteration);
             if (result) {
                 std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
                 return -1;
-            }            
+            }
         }
 
         if (options.test_expression) {
             std::cout << std::format("{}{}{}{:15}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "EXPR TEST");
-            result = ex_test.test(15, true, 1);
+            result = ex_test.test(15, true, options.expression_max_iteration);
             if (result) {
                 std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
                 return -1;
@@ -148,7 +162,7 @@ int main(int argc, char* argv[])
         }
     }
     catch (std::exception& ex) {
-        std::cout << std::format("{}{}{}{}{}", 
+        std::cout << std::format("\n{}{}{}{}{}", 
             es.down(1), es.gr(es.BRIGHT_RED_FOREGROUND), ex.what(), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
         result = -1;
     }

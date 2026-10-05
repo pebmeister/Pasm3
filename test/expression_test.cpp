@@ -246,6 +246,7 @@ Expression_test::Test Expression_test::create_expression_missing_operand_test()
         line_num++;
     };
 
+    src_mgr.files.push_back("Expression_test");
     add_line(std::format("    * = {}", org));
     add_line("bad_val = 100 + * 5"); // Missing operand between operators
     add_line("    .word bad_val");
