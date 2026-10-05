@@ -43,7 +43,6 @@ Opcode_test::Test Opcode_test::make_unit_test(OP_TEST& test, int max)
     SourceManager src_mgr;
     std::vector<uint8_t> expected_output;
     std::string line;
-    std::string source_code;
 
     constexpr int org = 0x1000;
     int line_num = 1;
