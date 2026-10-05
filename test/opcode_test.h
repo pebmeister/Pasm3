@@ -67,7 +67,7 @@ public:
                     emit(make_unit_test(op_negative_test, max_iterations));
                 }
                 else {
-                    auto [opcode, _] = modeIt->second;
+                    auto [opcode, __] = modeIt->second;
                     OP_TEST op_positive_test = {op, mode, opcode, false};
                     emit(make_unit_test(op_positive_test, max_iterations));
                 }
