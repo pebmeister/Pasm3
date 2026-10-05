@@ -194,7 +194,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     }
                 }
 
-                // CRITICAL: Always register 'name' in vars_, even if 0, so vars_.Lookup(name) succeeds
                 vars_.Define(name, static_cast<uint16_t>(initial_val), {var_stmt->file, var_stmt->line});
             }
             new_statements.push_back(std::move(stmt));

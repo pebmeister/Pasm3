@@ -22,7 +22,9 @@ private:
     Test create_global_labels_test();
     Test create_foward_labels_test();
     Test create_anon_labels_test();
-
+    Test create_local_label_test();
+    Test create_combined_label_test();
+    
     int max = 0;
     
 public:
@@ -34,5 +36,7 @@ public:
         emit(create_global_labels_test());
         emit(create_foward_labels_test());
         emit(create_anon_labels_test());
+        emit(create_local_label_test());
+        emit(create_combined_label_test());
     }
 };

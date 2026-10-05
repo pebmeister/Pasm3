@@ -38,7 +38,7 @@ int main() {
         { "[\\\\][1-9]+",                    static_cast<int>(MacroArg) },
 
         // --- Identifiers, Labels, and Directives ---
-        { "[@]?[a-z_][a-z0-9_]*[:]?",        static_cast<int>(Identifier), true },
+        { "[@]?[a-z_][a-z0-9_@]*[:]?",       static_cast<int>(Identifier), true },
         { "[\\.][a-z_][a-z0-9_]*",           static_cast<int>(Directive), true },
 
         // --- Literals (Decimal, Hex, Binary, Character, String) ---
