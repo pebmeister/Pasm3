@@ -29,6 +29,8 @@ Label_test::Test Label_test::create_foward_labels_test()
     std::string line;
     std::string source_code;
 
+    src_mgr.files.push_back("Label_test");
+
     auto add_line = [&](std::string line = "") {
         src_mgr.source[{fileid, line_num}] = line;
         source_code += (line + "\n");

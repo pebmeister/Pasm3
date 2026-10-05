@@ -27,6 +27,7 @@ Expression_test::Test Expression_test::create_expression_operators_test()
     int line_num = 1;
     std::string source_code;
 
+    src_mgr.files.push_back("Expression_test");
     auto add_line = [&](std::string line = "") {
         src_mgr.source[{fileid, line_num}] = line;
         source_code += (line + "\n");
