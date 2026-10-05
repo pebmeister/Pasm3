@@ -45,6 +45,8 @@ Opcode_test::Test Opcode_test::make_unit_test(OP_TEST& test, int max)
     std::string line;
     std::string source_code;
 
+    src_mgr.files.push_back("Opcode_test");
+
     constexpr int org = 0x1000;
     int line_num = 1;
     int count = 0;

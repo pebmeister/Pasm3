@@ -235,6 +235,8 @@ Label_test::Test Label_test::create_local_label_test()
     int line_num = 1;
     std::string source_code;
     std::vector<uint8_t> expected_output;
+    
+    src_mgr.files.push_back("Label_test");
 
     auto add_line = [&](std::string line = "") {
         src_mgr.source[{fileid, line_num}] = line;

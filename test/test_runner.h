@@ -139,8 +139,8 @@ public:
                         auto tokens = tokenizer.tokenize(current_test.source_code, fileid);
                         AssemblerParser parser(tokens, options, current_test.src_mgr);
                         auto statements = parser.ParseProgram(tokenizer);
-                        MultiPassAssembler assembler(options);
-                        assembler.Assemble(statements, current_test.src_mgr);
+                        MultiPassAssembler assembler(options, current_test.src_mgr);
+                        assembler.Assemble(statements);
 
                         if (current_test.negative_test) {
                             test_passed = (current_test.expected != assembler.binary_output);

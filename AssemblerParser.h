@@ -54,7 +54,7 @@ struct OpPrecedence {
  */
 class AssemblerParser {
 private:
-    SourceManager& src_mgr; ///< manage source code.
+    SourceManager& src_mgr;             ///< manage source code.
     static std::unordered_map<std::string, MacroDef> macros_;
     std::vector<PasmTokenizer::Token> tokens_; ///< Stream of tokens to be parsed.
 
