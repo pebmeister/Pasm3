@@ -153,6 +153,6 @@ int main(int argc, char* argv[])
         result = -1;
     }
     std::cout << std::format("{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR);
-    std::count << "\n";
+    std::cout << "\n";
     return 0;
 }
