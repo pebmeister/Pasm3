@@ -53,5 +53,8 @@ enum Opcode {
     AHX, SHY, SHX, TAS, LAS,
 
     // 65C02 Bit Test & Reset/Set
-    TRB, TSB
+    TRB, TSB,
+    
+    JAM, DOP, TOP, LXA
+  
 };

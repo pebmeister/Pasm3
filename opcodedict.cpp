@@ -1739,5 +1739,89 @@ std::map<int, OpCodeInfo> opcodeDict = {
             false, // is_illegal
             "Pull Y Register (65C02 only)"
         } 
+    },
+    
+    { 
+        JAM, 
+        OpCodeInfo
+        {
+            "JAM",
+            {
+                { Op_Implied, { 0x02, 0} }, // Locks the CPU, requires reset
+                { Op_Implied, { 0x12, 0} },
+                { Op_Implied, { 0x22, 0} },
+                { Op_Implied, { 0x32, 0} },
+                { Op_Implied, { 0x42, 0} },
+                { Op_Implied, { 0x52, 0} },
+                { Op_Implied, { 0x62, 0} },
+                { Op_Implied, { 0x72, 0} },
+                { Op_Implied, { 0x92, 0} },
+                { Op_Implied, { 0xB2, 0} },
+                { Op_Implied, { 0xD2, 0} },
+                { Op_Implied, { 0xF2, 0} }
+            },
+            false, // is_65c02
+            true,  // is_illegal
+            "Halt/Kill CPU (Illegal)"
+        } 
+    },
+    { 
+        DOP, 
+        OpCodeInfo
+        {
+            "DOP",
+            {
+                { Op_Immediate, { 0x80, 2} },
+                { Op_Immediate, { 0x82, 2} },
+                { Op_Immediate, { 0x89, 2} },
+                { Op_Immediate, { 0xC2, 2} },
+                { Op_Immediate, { 0xE2, 2} },
+                { Op_ZeroPage,  { 0x04, 3} },
+                { Op_ZeroPage,  { 0x44, 3} },
+                { Op_ZeroPage,  { 0x64, 3} },
+                { Op_ZeroPageX, { 0x14, 4} },
+                { Op_ZeroPageX, { 0x34, 4} },
+                { Op_ZeroPageX, { 0x54, 4} },
+                { Op_ZeroPageX, { 0x74, 4} },
+                { Op_ZeroPageX, { 0xD4, 4} },
+                { Op_ZeroPageX, { 0xF4, 4} }
+            },
+            false, // is_65c02
+            true,  // is_illegal
+            "Double NOP / Skip Byte (Illegal)"
+        } 
+    },
+    { 
+        TOP, 
+        OpCodeInfo
+        {
+            "TOP",
+            {
+                { Op_Absolute,  { 0x0C, 4} },
+                { Op_AbsoluteX, { 0x1C, 4} }, // +1 if page crossed
+                { Op_AbsoluteX, { 0x3C, 4} }, // +1 if page crossed
+                { Op_AbsoluteX, { 0x5C, 4} }, // +1 if page crossed
+                { Op_AbsoluteX, { 0x7C, 4} }, // +1 if page crossed
+                { Op_AbsoluteX, { 0xDC, 4} }, // +1 if page crossed
+                { Op_AbsoluteX, { 0xFC, 4} }  // +1 if page crossed
+            },
+            false, // is_65c02
+            true,  // is_illegal
+            "Triple NOP / Skip Word (Illegal)"
+        } 
+    },
+    { 
+        LXA, 
+        OpCodeInfo
+        {
+            "LXA",
+            {
+                { Op_Immediate, { 0xAB, 2} }
+            },
+            false, // is_65c02
+            true,  // is_illegal
+            "Load Accumulator and X with Immediate (Unstable/Illegal)"
+        } 
     }
+        
 };
