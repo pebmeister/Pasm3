@@ -117,6 +117,7 @@ int main() {
 
         // 65C02 Bit Test & Reset/Set
         { "TRB|TSB",                          static_cast<int>(Opcode), true },
+        { "JAM|DOP|TOP|LXA",                  static_cast<int>(Opcode), true },
     });
 
     std::string classname = "PasmTokenizer";
