@@ -57,7 +57,7 @@ R"(Usage:
     -run                Launch in VICE. Can not be used with -debug.
     -mp maxpass         Sets the max number of passes. Default is 10.
     -xref               Display a cross refrerence symbol file.
-    -ops                Display a allowed opcodes and modes
+    -ops [op1][op2]..   Display a allowed opcodes and modes. No argument displays all.
 )";
 }
 
