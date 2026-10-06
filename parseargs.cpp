@@ -61,12 +61,12 @@ R"(Usage:
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `-launch`, `-mp`. `xref`)
+ * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `-launch`, `-mp`, `-xref`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
  * @return Options Returns Options on successful parsing.
- * @exception throws runtime exception on invalid parameters
+ * @exception throws runtime_error on invalid parameters
  */
 Options parse_args(int argc, char* argv[])
 {
@@ -91,7 +91,7 @@ Options parse_args(int argc, char* argv[])
         else if (arg_str == "-o") {
             options.out = true;
 
-            if ((arg + 1) < argc && argv[arg + 1][0] != '-' ) {
+            if ((arg + 1) < argc && argv[arg + 1][0] != '-') {
                 options.outfile = argv[++arg];
             }
         }
@@ -100,36 +100,35 @@ Options parse_args(int argc, char* argv[])
         }
         else if (arg_str == "-vs") {
             options.vs = true;
-            if ((arg + 1) < argc && argv[arg + 1][0] != '-' ) {
+            if ((arg + 1) < argc && argv[arg + 1][0] != '-') {
                 options.vs_name = argv[++arg];
             }
         }
         else if (arg_str == "-mp") {
-            arg++;
-            if (arg >= argc) {
+            if ((arg + 1) >= argc) {
                 help();
-                throw std::runtime_error("Max pass not specified for -mp");
+                throw std::runtime_error("Max pass value not specified for -mp");
             }
+            arg++;
             options.max_pass = std::stoi(argv[arg]);
             if (options.max_pass <= 1) {
                 help();
-                throw std::runtime_error("Invalid value specified for -mp");
+                throw std::runtime_error("Invalid value specified for -mp (must be > 1)");
             }
         }
         else if (arg_str == "-al") {
             options.autoloader = true;
         }
         else if (arg_str == "-i") {
-            arg++;
-            if (arg >= argc) {
+            if ((arg + 1) >= argc) {
                 help();
                 throw std::runtime_error("No directory specified for -i");
             }
-            options.include.push_back(argv[arg]);
+            options.include.push_back(argv[++arg]);
         }
         else if (arg_str == "-cart") {
             options.cart = true;
-            if ((arg + 1) >= argc || argv[arg + 1][0] == '-' ) {
+            if ((arg + 1) >= argc || argv[arg + 1][0] == '-') {
                 options.cart_options = "-t normal -p";
             }
             else {
@@ -139,41 +138,46 @@ Options parse_args(int argc, char* argv[])
         else if (arg_str == "-d64") {
             options.d64 = true;
 
-            if ((arg + 1) < argc && argv[arg + 1][0] != '-' ) {
+            if ((arg + 1) < argc && argv[arg + 1][0] != '-') {
                 options.d64_diskname = argv[++arg];
             }
         }
         else if (arg_str == "-st") {
-            arg++;
-            if (arg >= argc) {
+            if ((arg + 1) >= argc) {
                 help();
                 throw std::runtime_error("No symbol defined for -st");
             }
-            options.traced_symbols.push_back(argv[arg]);
+            options.traced_symbols.push_back(argv[++arg]);
         }
         else if (arg_str == "-launch") {
             options.launch = true;
         }
         else if (arg_str == "-xref") {
-            options.xfref = true;
+            options.xref = true; // Fixed typo (xfref -> xref)
         }
         else if (arg_str == "-d") {
-            arg++;
-            if ((arg + 1) >= argc) {
+            // Needs two trailing parameters: symbol name and value
+            if ((arg + 2) >= argc) {
                 help();
                 throw std::runtime_error("No symbol or value defined for -d");
             }
-            std::string sym = argv[arg++];
-            std::string val = argv[arg];
-            int symval;
+            std::string sym = argv[++arg];
+            std::string val = argv[++arg];
+            
+            int symval = 0;
             std::stringstream ss;
-            if (val[0] == '$') {
+            if (!val.empty() && val[0] == '$') {
                 ss << std::hex << val.substr(1);
             }
             else {
                 ss << std::dec << val;
             }
-            ss >> symval;
+            
+            if (!(ss >> symval)) {
+                help();
+                throw std::runtime_error(std::format("Invalid numeric value '{}' for symbol '{}'", val, sym));
+            }
+            
             options.defined_symbols.push_back({sym, symval});
         }
         else { 
@@ -185,7 +189,7 @@ Options parse_args(int argc, char* argv[])
   
     if (options.launch && options.debug) {
         help();
-        throw std::runtime_error("Launch can not be used with debug");
+        throw std::runtime_error("Launch cannot be used with debug");
     }
 
     if (options.input_filenames.empty()) {
@@ -200,7 +204,7 @@ Options parse_args(int argc, char* argv[])
         options.out = true;
     }
     
-    if (options.out && options.outfile.length() == 0) {
+    if (options.out && options.outfile.empty()) {
         if (options.cart) {
             options.outfile = std::format("{}.bin", base_name);        
         }
@@ -225,10 +229,10 @@ Options parse_args(int argc, char* argv[])
     if (options.debug && !options.vs) {
         options.vs = true;
     }
-    if (options.d64 && options.d64_diskname.length() == 0) {
+    if (options.d64 && options.d64_diskname.empty()) {
         options.d64_diskname = std::format("{}.d64", base_name);        
     }
-    if (options.vs && options.vs_name.length() == 0) {
+    if (options.vs && options.vs_name.empty()) {
         options.vs_name = std::format("{}.vs", base_name);        
     }
 
