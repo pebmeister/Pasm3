@@ -70,8 +70,6 @@ private:
     size_t index_{0};                  ///< Current index position within the token stream.
     PasmTokenizer::Token Tok;          ///< Current active lookahead token.
 
-    std::vector<bool> ifdef_stack;     ///< Legacy stack tracking boolean evaluation states for conditional blocks.
-
     Options& options;                   ///< Global assembly toolchain options and configuration settings.
 
     /**
@@ -89,7 +87,6 @@ private:
 
     /**
      * @brief Prints diagnostic details for the current lookahead token to stdout.
-     * @param src_mgr SourceManager instance used to resolve the source filename.
      * @param msg Optional custom label or prefix message to display alongside output.
      * @return Always returns 0.
      */
@@ -107,10 +104,12 @@ private:
     }
 
 public:
+
     /**
      * @brief Constructs an AssemblerParser instance.
      * @param tokens Vector of tokens produced by the tokenizer.
      * @param opts Reference to assembler execution options and settings.
+     * @param src Reference to source manager for resolving file names and line mappings.
      */
     explicit AssemblerParser(std::vector<PasmTokenizer::Token> tokens, Options& opts, SourceManager& src) :
         src_mgr(src),
@@ -240,21 +239,18 @@ public:
     /**
      * @brief Parses a stream of tokens into a vector of Abstract Syntax Tree (AST) statements.
      *
-     * This function serves as the primary parsing loop for the assembler. It iterates through 
-     * the tokens provided by the tokenizer, handling directives, macro definitions and expansions,
-     * symbol definitions (`EQU`), PC assignments (`* =`), labels, control-flow statements, 
-     * data declarations, and file inclusions.
+     * Serves as the main parsing loop. Handles directives (.byte, .word, .text, .org, .basic_hdr,
+     * .fill, .ds, .macro, .break, .continue, .while, .repeat, .include, .print, .var, conditional assembly),
+     * symbol assignments (`EQU` / `=`), origin declarations (`* =`), labels, and instructions.
      *
      * @param[in,out] tokenizer Reference to the tokenizer used to load and tokenize secondary 
      *                          source files during `.include` processing.
      *
-     * @return std::vector<std::unique_ptr<Statement>> A list of heap-allocated AST statement nodes
-     *                                                  representing the parsed program.
+     * @return std::vector<std::unique_ptr<Statement>> Heap-allocated AST statement nodes.
      *
-     * @throws std::runtime_error If a syntax error, unexpected token, unclosed macro definition, 
-     *                            unmatched loop/conditional block, or file reading failure occurs.
-     */
-    std::vector<std::unique_ptr<Statement>> ParseProgram(
+     * @throws std::runtime_error On syntax errors, unexpected tokens, unclosed macros, 
+     *                            unmatched loops/conditionals, or file I/O errors.
+     */    std::vector<std::unique_ptr<Statement>> ParseProgram(
         PasmTokenizer& tokenizer) 
     {        
         std::vector<std::unique_ptr<Statement>> statements;
@@ -262,7 +258,7 @@ public:
 
         SymbolTable definedSyms = SymbolTable("DEF", src_mgr);
         
-        // Seed the local symbol table with CLI defined symbols (-D / --define)
+        // Seed the local symbol table with CLI defined symbols (-d sym value)
         for (auto&[sym, val] : options.defined_symbols) {        
             definedSyms.Define(sym, 1, {0, 0});
         }

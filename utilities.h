@@ -1,17 +1,17 @@
 /**
- * @file getmangledsymbol.h
- * @brief Utilities for local symbol scoping, file tokenization, and relative anonymous label lookup.
+ * @file utilities.h
+ * @brief Utilities for local symbol scoping, path helpers, file tokenization, and relative anonymous label lookup.
  * @author Paul Baxter
  */
 
 #pragma once
 
 #include <algorithm>
-#include <fstream>
+#include <cctype>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
-#include <filesystem>
 
 #include "PasmTokenizer.hpp"
 #include "ruletype.h"
@@ -21,33 +21,33 @@ struct SourceManager;
 struct AnonymousLabel;
 
 /**
- * @brief Removes the extension from a path.
+ * @brief Removes the extension from a file path.
  *
- * Used to set default file names
+ * @param filepath Target file path string.
+ * @return std::string Path string without the extension.
  */
-inline std::string RemoveExtension(const std::string filepath) {
+inline std::string RemoveExtension(const std::string& filepath) {
     namespace fs = std::filesystem;
     
     fs::path p(filepath);
-    p.replace_extension(""); // Clears the extension while keeping directories
-    
+    p.replace_extension("");
     return p.string();
 }
 
 /**
- * @brief Get the uppercase base name from a path.
+ * @brief Gets the uppercase base name from a path.
  *
- * Used to create a Commodore 64 file name 
+ * Useful for deriving uppercase Commodore 64 filenames (e.g., "src/game.asm" -> "GAME").
+ *
+ * @param filepath Target file path string.
+ * @return std::string Uppercase file stem.
  */
 inline std::string GetUppercaseBasename(const std::string& filepath) {
     namespace fs = std::filesystem;
     
     fs::path p(filepath);
-
-    // 1. Strip directory and extension
     std::string name = p.filename().stem().string();
     
-    // 2. Convert to uppercase in-place (note name.begin() as the 3rd argument)
     std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
         return static_cast<char>(std::toupper(c));
     });
@@ -56,19 +56,16 @@ inline std::string GetUppercaseBasename(const std::string& filepath) {
 }
 
 /**
- * @brief Get the base name from a path.
+ * @brief Gets the stem/base name from a path without directory or extension.
  *
- * Used to create a Commodore 64 file name 
+ * @param filepath Target file path string.
+ * @return std::string File stem string.
  */
 inline std::string GetBasename(const std::string& filepath) {
     namespace fs = std::filesystem;
     
     fs::path p(filepath);
-
-    // 1. Strip directory and extension
-    std::string name = p.filename().stem().string();
-       
-    return name;
+    return p.filename().stem().string();
 }
 
 /**
@@ -84,7 +81,6 @@ inline std::string GetBasename(const std::string& filepath) {
  */
 inline std::string GetMangledSymbol(const std::string& symbol, const std::string& parent_scope) {
     if (symbol.starts_with('@')) {
-        // If a local label appears before any global label, fall back to raw name
         return parent_scope.empty() ? symbol : parent_scope + symbol;
     }
     return symbol;

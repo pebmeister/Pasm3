@@ -6,6 +6,7 @@
 #include <optional>
 #include <utility>
 #include <cstdint>
+#include <stdexcept>
 
 #include "tokenkind.h"
 #include "getmangledsymbol.h"
@@ -16,7 +17,6 @@
  * @file exprNode.h
  * @author Paul Baxter
  */
-
 
 /**
  * @enum ExprType
@@ -80,12 +80,12 @@ struct NumberExpr : ExprNode {
  */
 struct SymbolExpr : ExprNode {
     std::string name; /**< Identifier string (e.g., "LABEL", "@local", "*"). */
-    std::pair<int, int> location; /**< location of symbol */
+    std::pair<int, int> location; /**< Source location pair (file ID / line offset). */
 
     /**
      * @brief Constructs a SymbolExpr node.
      * @param n Symbol identifier string name.
-     * @param loc std::pair defining file line location.
+     * @param loc std::pair defining file index and line location.
      */
     explicit SymbolExpr(std::string n, std::pair<int, int> loc)
         : ExprNode(ExprType::Symbol), name(std::move(n)), location(loc) {}
@@ -141,7 +141,7 @@ struct UnaryExpr : ExprNode {
  * @brief AST node representing a binary infix operator expression.
  */
 struct BinaryExpr : ExprNode {
-    int op;                           /**< Operator identifier (castable to TokenKind). */
+    int op;                            /**< Operator identifier (castable to TokenKind). */
     std::unique_ptr<ExprNode> lhs;    /**< Smart pointer to left-hand operand subtree. */
     std::unique_ptr<ExprNode> rhs;    /**< Smart pointer to right-hand operand subtree. */
 
@@ -242,7 +242,7 @@ public:
  * @return std::optional<int64_t> Evaluated result value, or std::nullopt if resolution fails.
  */
 inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vector<AnonymousLabel>& anonymous_labels, 
-    SymbolTable& symbols, SymbolTable& vars, const std::string& parent_scope, uint16_t pc ) {
+    SymbolTable& symbols, SymbolTable& vars, const std::string& parent_scope, uint16_t pc) {
     if (!node) return std::nullopt;
 
     auto node_type = node->expr_type;
@@ -264,7 +264,7 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
                 name = GetMangledSymbol(name, parent_scope);
             }
             else if (sym->name[0] == '*') {
-                return pc;
+                return static_cast<int64_t>(pc);
             }
             val = symbols.Lookup(name, sym->location);
             if (val.has_value()) return static_cast<int64_t>(val.value());
@@ -335,13 +335,15 @@ inline std::optional<int64_t> EvaluateExpr(const ExprNode* node, const std::vect
                 case TokenKind::Plus:         return *lhs + *rhs;
                 case TokenKind::Minus:        return *lhs - *rhs;
                 case TokenKind::Star:         return *lhs * *rhs;
-                case TokenKind::Shl:          return *lhs << *rhs;
-                case TokenKind::Shr:          return *lhs >> *rhs;
+                case TokenKind::Shl:          
+                    return (*rhs < 0 || *rhs >= 64) ? 0 : (*lhs << *rhs);
+                case TokenKind::Shr:          
+                    return (*rhs < 0 || *rhs >= 64) ? 0 : (*lhs >> *rhs);
                 case TokenKind::Slash: {
                     if (*rhs == 0) {
                         throw std::domain_error("Division by zero");
                     }
-                    return (*rhs != 0) ? *lhs / *rhs : 0;
+                    return *lhs / *rhs;
                 }
                 case TokenKind::Percent: {
                     if (*rhs == 0) {
