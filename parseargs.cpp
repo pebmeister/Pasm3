@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <format>
 #include <cctype>
+#include <unordered_set>
 
 #include "AssemblerParser.h"
 #include "PasmTokenizer.hpp"
@@ -184,27 +185,28 @@ Options parse_args(int argc, char* argv[])
         }
         
         else if (arg_str == "-ops") {
-            // Check if an optional target opcode was passed (e.g., -ops LDA)
-            std::string target_op = "";
-            if (arg + 1 < argc && argv[arg + 1][0] != '-') {
-                target_op = argv[++arg];
-                // Convert target_op to uppercase for case-insensitive matching
-                std::transform(target_op.begin(), target_op.end(), target_op.begin(), ::toupper);
+            // Collect all subsequent non-flag arguments (e.g., -ops LDA STA JSR)
+            std::unordered_set<std::string> target_ops;
+            while (arg + 1 < argc && argv[arg + 1][0] != '-') {
+                std::string op_arg = argv[++arg];
+                // Normalize to uppercase for case-insensitive matching
+                std::transform(op_arg.begin(), op_arg.end(), op_arg.begin(), ::toupper);
+                target_ops.insert(op_arg);
             }
 
-            bool found = false;
+            std::unordered_set<std::string> found_ops;
 
             for (auto& [op, opcodeinfo] : opcodeDict) {
-                // Upper-case mnemonic check
+                // Normalize instruction mnemonic to uppercase
                 std::string mnemonic_upper(opcodeinfo.mnemonic);
                 std::transform(mnemonic_upper.begin(), mnemonic_upper.end(), mnemonic_upper.begin(), ::toupper);
 
-                // If a target opcode is specified, skip non-matching entries
-                if (!target_op.empty() && mnemonic_upper != target_op) {
+                // If target opcodes were specified, skip non-matching entries
+                if (!target_ops.empty() && !target_ops.contains(mnemonic_upper)) {
                     continue;
                 }
 
-                found = true;
+                found_ops.insert(mnemonic_upper);
 
                 // Print header with Mnemonic and Description
                 std::cout << std::format("\n\n  {} ({})\n", opcodeinfo.mnemonic, opcodeinfo.description);
@@ -294,12 +296,18 @@ Options parse_args(int argc, char* argv[])
                 }   
             }
 
-            if (!target_op.empty() && !found) {
-                std::cerr << std::format("\nError: Unknown opcode '{}'.\n", target_op);
+            // Report any requested opcodes that were not found in opcodeDict
+            if (!target_ops.empty()) {
+                for (const auto& requested : target_ops) {
+                    if (!found_ops.contains(requested)) {
+                        std::cerr << std::format("\nError: Unknown opcode '{}'.\n", requested);
+                    }
+                }
             }
 
             exit(0);
         }
+
         
         else { 
             help();
