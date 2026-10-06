@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
         }
 
         /// Print symbol table cross refrence.
-        if (options.xfref) {
+        if (options.xref) {
             std::cout << assembler.ExrefSymbols();
         }
         
