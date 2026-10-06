@@ -52,7 +52,7 @@ R"(Usage:
     -d64 [diskname]     Creates d64 disk and installs the output file.
     -al                 Creates auto loader. This will also create a .d64 disk if -d64 is not specified.
     -debug              Launch VICE monitor and debug. Can not be used with -launch.
-    -launch             Launch in VICE. Can not be used with -debug.
+    -run                Launch in VICE. Can not be used with -debug.
     -mp maxpass         Sets the max number of passes. Default is 10.
     -xref               Display a cross refrerence symbol file.
 )";
@@ -61,7 +61,7 @@ R"(Usage:
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `-launch`, `-mp`, `-xref`)
+ * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `-run`, `-mp`, `-xref`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
@@ -149,7 +149,7 @@ Options parse_args(int argc, char* argv[])
             }
             options.traced_symbols.push_back(argv[++arg]);
         }
-        else if (arg_str == "-launch") {
+        else if (arg_str == "-run") {
             options.launch = true;
         }
         else if (arg_str == "-xref") {
