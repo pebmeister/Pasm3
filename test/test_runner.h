@@ -172,11 +172,14 @@ public:
 
                     if (test_passed) {
                         int current_passed = ++passed_count;
-                        std::lock_guard<std::mutex> console_lock(console_mutex);
-                        std::cout << std::format("{} {}PASSED: {:6}", 
-                            es.column(col), 
-                            es.gr(es.BRIGHT_GREEN_FOREGROUND), 
-                            current_passed) << std::flush;
+                        
+                        if (total_processed % 20 == 0) {
+                            std::lock_guard<std::mutex> console_lock(console_mutex);
+                            std::cout << std::format("{} {}PASSED: {:6}", 
+                                es.column(col), 
+                                es.gr(es.BRIGHT_GREEN_FOREGROUND), 
+                                current_passed) << std::flush;
+                        }
                     } else {
                         int current_failed = ++failed_count;
                         overall_passed.store(false, std::memory_order_relaxed);
