@@ -33,6 +33,7 @@
 #include "opcode_test.h"
 #include "label_test.h"
 #include "expression_test.h"
+#include "macro_test.h"
 
 /**
  * @brief Holds configuration flags and parameters parsed from command-line arguments.
@@ -41,9 +42,11 @@ struct Test_Options {
     bool test_opcode = false;             ///< Flag indicating whether to execute opcode verification tests.
     bool test_labels = false;             ///< Flag indicating whether to execute label verification tests.
     bool test_expression = false;         ///< Flag indicating whether to execute Expression verification tests.
+    bool test_macros = false;              ///< Flag indicating whether to execute Macro verification tests.
     int  opcode_max_iteration = 0xFF;     ///< Maximum operand loop iterations per addressing mode test.
     int  label_max_iteration = 0xFF;      ///< Maximum label iterations per test.
     int  expression_max_iteration = 1;    ///< Maximum expression iterations per test.
+    int  macro_max_iteration = 20;        ///< Maximum macro iterations per test.
 };
 
 /**
@@ -64,7 +67,9 @@ void parse_args(int argc, char* argv[], Test_Options& options)
     options.test_opcode = false;
     options.test_labels = false;
     options.test_expression = false;
+    options.test_macros = false;
     auto arg_num = 1;
+    
     while (arg_num < argc) {
         std::string arg = std::string(argv[arg_num++]);
         
@@ -95,10 +100,20 @@ void parse_args(int argc, char* argv[], Test_Options& options)
                 }
             }
         }        
+        else if (arg == "-macro") {
+            options.test_macros = true;
+            if (arg_num < argc) {
+                options.macro_max_iteration = std::stoi(argv[arg_num++]);
+                if (options.macro_max_iteration < 1) {
+                    throw std::runtime_error(std::format("invalid value for max iterations {}. Must be greater than zero.", options.opcode_max_iteration));
+                }
+            }
+        }        
         else if (arg == "-all") {
             options.test_opcode = true;
             options.test_labels = true;
             options.test_expression = true;
+            options.test_macros = true;
         }
         else {
             throw std::runtime_error(std::format("Unknown command line option {}", arg));
@@ -124,12 +139,14 @@ int main(int argc, char* argv[])
     Opcode_test op_test;
     Label_test lab_test;
     Expression_test ex_test;
+    Macro_test macro_test;
     
     int result = 0;
     try {
         options.test_opcode = true;
         options.test_labels = true;
         options.test_expression = true;
+        options.test_macros = true;
 
         if (argc > 1) {
             parse_args(argc, argv, options);
@@ -157,6 +174,14 @@ int main(int argc, char* argv[])
             result = ex_test.test(15, true, options.expression_max_iteration);
             if (result) {
                 std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), op_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+                return -1;
+            }
+        }
+        if (options.test_macros) {
+            std::cout << std::format("{}{}{}{:15}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "MACRO TEST");
+            result = macro_test.test(15, true, options.macro_max_iteration);
+            if (result) {
+                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), macro_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
                 return -1;
             }
         }
