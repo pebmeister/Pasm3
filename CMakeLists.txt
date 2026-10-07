@@ -149,10 +149,12 @@ add_executable(pasm_tests
     test/label_test.cpp
     test/expression_test.cpp
     test/macro_test.cpp
+    test/loop_test.cpp
     test/opcode_test.h
     test/label_test.h
     test/expression_test.h
     test/macro_test.h
+    test/loop_test.h
     test/ANSI_esc.h    
 )
 
