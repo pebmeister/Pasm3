@@ -37,11 +37,16 @@ Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
         source_code += (line + "\n");
         line_num++;
     };
-    add_line(std::format("    * = {}", org));
-    add_line(std::format(".var VAL = 0"));
-    add_line(std::format(".while VAL < {}", max_iterations));
-    add_line(std::format("    .word VAL"));
-    add_line(std::format("    VAL = VAL + 1"));
+
+    add_line();
+    add_line(std::format("{}; basic_while_loop_test", Tab(0)));
+    add_line();
+    add_line(std::format("{}* = {}", org));
+    add_line();
+    add_line(std::format("{}.var VAL = 0"));
+    add_line(std::format("{}.while VAL < {}", max_iterations));
+    add_line(std::format("{}.word VAL"));
+    add_line(std::format("{}VAL = VAL + 1"));
     add_line(std::format(".wend"));
 
     auto val = 0;
