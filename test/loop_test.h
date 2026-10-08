@@ -19,6 +19,9 @@
 
 class Loop_test : public TestRunner {
 private:
+
+    inline std::string indent(int level) { return std::string(level, ' '); }
+
     Test create_basic_while_loop_test(int max_iterations);
     Test create_basic_repeat_loop_test(int max_iterations);
     Test create_while_loop_nested_test(int max_iterations);
