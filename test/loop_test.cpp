@@ -19,7 +19,7 @@
 
 #include "loop_test.h"
 
-inline std::string indent(int level) { return std::string(level, ' '); }
+
 Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
 {
     constexpr int fileid = 0;
