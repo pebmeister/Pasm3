@@ -19,8 +19,9 @@
 
 class Loop_test : public TestRunner {
 private:
-    Test create_basic_loop_test(int max_iterations);
-    Test create_whileloop_nested_test(int max_iterations);
+    Test create_basic_while_loop_test(int max_iterations);
+    Test create_basic_repeat_loop_test(int max_iterations);
+    Test create_while_loop_nested_test(int max_iterations);
     int max = 0;
     
 public:
@@ -29,7 +30,8 @@ public:
         max = max_iterations;
 
         // Stream tests individually directly into the queue
-        emit(create_basic_loop_test(max_iterations));
-        emit(create_whileloop_nested_test(std::min(max_iterations, 5 )));
+        emit(create_basic_while_loop_test(max_iterations));
+        emit(create_basic_repeat_loop_test(max_iterations));
+        emit(create_while_loop_nested_test(std::min(max_iterations, 5 )));
     }
 };
