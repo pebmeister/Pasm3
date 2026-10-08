@@ -77,11 +77,16 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
         source_code += (line + "\n");
         line_num++;
     };
-    add_line(std::format("{}* = {}", org, Tab(0)));
+
+    add_line();
+    add_line(std::format("{}; basic_while_loop_test", Tab(0)));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
     add_line(std::format("{}.word VAL", Tab(1)));
-    add_line(std::format("{}VAL = VAL + 1", Tab(1)));
+    add_line(std::format("{}VAL = VAL + 1", Tab(0)));
     add_line(std::format("{}.wend", Tab(0)));
 
     auto val = 0;
@@ -92,7 +97,7 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
         val++;
     }
     
-    return Test(src_mgr, source_code, expected_output, false);    
+    return Test(src_mgr, source_code, expected_output, false);
 }
 
 
