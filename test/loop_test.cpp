@@ -46,7 +46,7 @@ Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
     add_line(std::format("{}.word VAL", Tab(1)));
-    add_line(std::format("{}VAL = VAL + 1", Tab(0)));
+    add_line(std::format("{}VAL = VAL + 1", Tab(1)));
     add_line(std::format("{}.wend", Tab(0)));
 
     auto val = 0;
@@ -79,23 +79,23 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
     };
 
     add_line();
-    add_line(std::format("{}; basic_while_loop_test", Tab(0)));
+    add_line(std::format("{}; basic_repeat_loop_test", Tab(0)));
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
     add_line(std::format("{}.var VAL = 0", Tab(0)));
-    add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
+    add_line(std::format("{}.repeat", Tab(0)));
     add_line(std::format("{}.word VAL", Tab(1)));
-    add_line(std::format("{}VAL = VAL + 1", Tab(0)));
-    add_line(std::format("{}.wend", Tab(0)));
+    add_line(std::format("{}VAL = VAL + 1", Tab(1)));
+    add_line(std::format("{}.until VAL >= {}", Tab(0), max_iterations));
 
     auto val = 0;
-    while (val < max_iterations) 
+    do
     {
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);        
         val++;
-    }
+    }  while (val < max_iterations) 
     
     return Test(src_mgr, source_code, expected_output, false);
 }
