@@ -131,7 +131,6 @@ Loop_test::Test Loop_test::create_whileloop_nested_test(int max_iterations)
     // Start simulation at the outermost loop
     simulate_loop(0);
     
-    std::cout << source_code;
     return Test(src_mgr, source_code, expected_output, false);    
 }
 

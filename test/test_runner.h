@@ -170,9 +170,16 @@ public:
 
                     total_processed.fetch_add(1, std::memory_order_relaxed);
 
+                    
                     if (test_passed) {
-                        int current_passed = ++passed_count;
-                        
+                        ++passed_count;
+                    }
+                    else {
+                        ++failed_count;
+                    }
+                    int current_passed = passed_count;
+                    int current_failed = failed_count;
+                    if (!failed_count) {
                         if (total_processed % 20 == 0) {
                             std::lock_guard<std::mutex> console_lock(console_mutex);
                             std::cout << std::format("{} {}PASSED: {:6}", 
@@ -181,13 +188,11 @@ public:
                                 current_passed) << std::flush;
                         }
                     } else {
-                        int current_failed = ++failed_count;
                         overall_passed.store(false, std::memory_order_relaxed);
 
                         std::lock_guard<std::mutex> console_lock(console_mutex);
-                        std::cout << std::format("\n{} FAILED\n{}", 
-                            (current_test.negative_test ? "negative" : "positive"), 
-                            current_test.source_code);
+                        std::cout << std::format("\n{} TEST FAILED\n", 
+                            (current_test.negative_test ? "negative" : "positive"));
 
                         std::cout << std::format("{}{} PASSED: {:6} {}FAILED: {}{}", 
                             es.column(col), 
@@ -195,7 +200,7 @@ public:
                             passed_count.load(), 
                             es.gr(es.BRIGHT_RED_FOREGROUND), 
                             current_failed, 
-                            es.ERASE_CURSOR_EOL) << std::flush;
+                            current_test.source_code) << std::flush;
 
                         error_ss << fail_msg;
                         this->source_code = current_test.source_code;
