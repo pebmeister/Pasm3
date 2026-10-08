@@ -34,7 +34,7 @@ public:
 
         // Stream tests individually directly into the queue
         emit(create_basic_while_loop_test(max_iterations));
-        // emit(create_basic_repeat_loop_test(max_iterations));
+        emit(create_basic_repeat_loop_test(max_iterations));
         // emit(create_while_loop_nested_test(std::min(max_iterations, 5 )));
     }
 };
