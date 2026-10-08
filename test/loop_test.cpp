@@ -91,7 +91,7 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
 }
 
 
-Loop_test::Test Loop_test::create_while__nested_test(int max_iterations)
+Loop_test::Test Loop_test::create_while_nested_test(int max_iterations)
 {    
     constexpr int fileid = 0;
     constexpr int org = 0x0100;
