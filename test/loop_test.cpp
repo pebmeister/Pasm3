@@ -72,12 +72,12 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
         source_code += (line + "\n");
         line_num++;
     };
-    add_line(std::format("    * = {}", org));
-    add_line(std::format(".var VAL = 0"));
-    add_line(std::format(".while VAL < {}", max_iterations));
-    add_line(std::format("    .word VAL"));
-    add_line(std::format("    VAL = VAL + 1"));
-    add_line(std::format(".wend"));
+    add_line(std::format("{}* = {}", org, Tab(0)));
+    add_line(std::format("{}.var VAL = 0", Tab(0)));
+    add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations)));
+    add_line(std::format("{}.word VAL", Tab(1)));
+    add_line(std::format("{}VAL = VAL + 1"  Tab(1)));
+    add_line(std::format("{}.wend", Tab(0)));
 
     auto val = 0;
     while (val < max_iterations) 
