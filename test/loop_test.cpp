@@ -95,7 +95,7 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);        
         val++;
-    }  while (val < max_iterations) 
+    }  while (val < max_iterations);
     
     return Test(src_mgr, source_code, expected_output, false);
 }
