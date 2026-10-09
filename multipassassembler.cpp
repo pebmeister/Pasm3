@@ -303,7 +303,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             // Helper lambda to check if a statement is a loop end
             auto is_loop_end = [&](const std::unique_ptr<Statement>& s) {
-                return s->stmt_type == StmtType::Wend || s->stmt_type == loop_statement->loop_end_keyword;
+                return s->stmt_type == StmtType::Wend || s->stmt_type == StmtType::Until;
             };
 
             // 1. Capture original loop body template ONCE (depth-aware)
