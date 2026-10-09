@@ -1,6 +1,9 @@
 #include <sstream>
 #include <format>
 #include <string>
+#include <vector>
+#include <functional>
+#include <stdexcept>
 
 #include "ruletype.h"
 #include "tokenkind.h"
@@ -19,7 +22,6 @@
 
 #include "loop_test.h"
 
-
 Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
 {
     const std::string name = "create_basic_while_loop_test";
@@ -27,10 +29,9 @@ Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
     constexpr int org = 0x1000;
     SourceManager src_mgr;
     int line_num = 1;
-    std::string line;
     std::string source_code;
-
     std::vector<uint8_t> expected_output;
+
     src_mgr.files.push_back(name);
 
     auto add_line = [&](std::string line = "") {
@@ -50,7 +51,7 @@ Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
     add_line(std::format("{}VAL = VAL + 1", Tab(1)));
     add_line(std::format("{}.wend", Tab(0)));
 
-    auto val = 0;
+    int val = 0;
     while (val < max_iterations) 
     {
         expected_output.push_back(val & 0xFF);
@@ -68,10 +69,9 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
     constexpr int org = 0x1000;
     SourceManager src_mgr;
     int line_num = 1;
-    std::string line;
     std::string source_code;
-
     std::vector<uint8_t> expected_output;
+
     src_mgr.files.push_back(name);
 
     auto add_line = [&](std::string line = "") {
@@ -91,19 +91,19 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
     add_line(std::format("{}VAL = VAL + 1", Tab(1)));
     add_line(std::format("{}.until VAL >= {}", Tab(0), max_iterations));
 
-    auto val = 0;
+    int val = 0;
     do
     {
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);        
         val++;
-    }  while (val < max_iterations);
+    } while (val < max_iterations);
 
     return Test(src_mgr, source_code, expected_output, false);
 }
 
 Loop_test::Test Loop_test::create_while_loop_nested_test(int max_iterations)
-{    
+{   
     const std::string name = "create_while_loop_nested_test";
     constexpr int fileid = 0;
     constexpr int org = 0x0100;
@@ -127,60 +127,52 @@ Loop_test::Test Loop_test::create_while_loop_nested_test(int max_iterations)
     add_line();
 
     // 1. Declare all variables initially
-    for (auto n = 0; n < max_iterations; ++n) {
+    for (int n = 0; n < max_iterations; ++n) {
         add_line(std::format("{}.var val{} = 0", Tab(0), n));
     }
     add_line();
 
-    // 2. Generate the nested .while blocks
-    for (auto n = 0; n < max_iterations; ++n) {
-        // Reset the counter before starting the inner loop
-        add_line(std::format("{}val{} = 0", Tab(n), n));
-        add_line(std::format("{}.while val{} < {}", Tab(n), n, max_iterations));
-        
-        // Emulate the word payload inside the loop
-        add_line(std::format("{}.word val{}", Tab(n + 1), n));
-    }   
-    
-    // 3. Generate the increments and .wend closures inside-out
-    for (auto n = max_iterations - 1; n >= 0; --n) {
-        // Increment the counter at the bottom of the loop body
-        add_line(std::format("{}val{} = val{} + 1", Tab(n + 1), n, n));
-        add_line(std::format("{}.wend", Tab(n)));
-    }
-    
+    // 2. Build nested loop assembly structure recursively
+    std::function<void(int)> build_asm_loop = [&](int depth) {
+        if (depth >= max_iterations) return;
+
+        add_line(std::format("{}val{} = 0", Tab(depth), depth));
+        add_line(std::format("{}.while val{} < {}", Tab(depth), depth, max_iterations));
+        add_line(std::format("{}.word val{}", Tab(depth + 1), depth));
+
+        build_asm_loop(depth + 1);
+
+        add_line(std::format("{}val{} = val{} + 1", Tab(depth + 1), depth, depth));
+        add_line(std::format("{}.wend", Tab(depth)));
+    };
+
+    build_asm_loop(0);
+
+    // 3. Exact simulation matching assembly execution pattern
     std::vector<int> vars(max_iterations, 0);
-    
-    // 4. Recursive function to exactly simulate the nested loops
     std::function<void(int)> simulate_loop = [&](int depth) {
         if (depth >= max_iterations) return;
 
-        vars[depth] = 0; // Reset counter for this depth
-
+        vars[depth] = 0;
         while (vars[depth] < max_iterations) {
-            // Emulate .word valN
             expected_output.push_back(vars[depth] & 0xFF);
-            expected_output.push_back((vars[depth] >> 8) & 0xFF);        
+            expected_output.push_back((vars[depth] >> 8) & 0xFF);
 
             if (org + expected_output.size() >= 0xFFFF) {
                 throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
             }
 
-            // Execute deeper nested loops
             simulate_loop(depth + 1);
-
-            // Increment counter at the end of the loop
             vars[depth]++;
         }
     };
 
-    // Start simulation at the outermost loop
     simulate_loop(0);
     return Test(src_mgr, source_code, expected_output, false);    
 }
 
 Loop_test::Test Loop_test::create_repeat_loop_nested_test(int max_iterations)
-{    
+{   
     const std::string name = "create_repeat_loop_nested_test";
     constexpr int fileid = 0;
     constexpr int org = 0x0100;
@@ -204,61 +196,52 @@ Loop_test::Test Loop_test::create_repeat_loop_nested_test(int max_iterations)
     add_line();
 
     // 1. Declare all variables initially
-    for (auto n = 0; n < max_iterations; ++n) {
+    for (int n = 0; n < max_iterations; ++n) {
         add_line(std::format("{}.var val{} = 0", Tab(0), n));
     }
     add_line();
 
-    // 2. Generate the nested .while blocks
-    for (auto n = 0; n < max_iterations; ++n) {
-        // Reset the counter before starting the inner loop
-        add_line(std::format("{}val{} = 0", Tab(n), n));
-        add_line(std::format("{}.repeat", Tab(n)));
-        
-        // Emulate the word payload inside the loop
-        add_line(std::format("{}.word val{}", Tab(n + 1), n));
-    }   
-    
-    // 3. Generate the increments and .wend closures inside-out
-    for (auto n = max_iterations - 1; n >= 0; --n) {
-        // Increment the counter at the bottom of the loop body
-        add_line(std::format("{}val{} = val{} + 1", Tab(n + 1), n, n));
-        add_line(std::format("{}.until val{} >= {}", Tab(n), n, max_iterations));
-    }
-    
+    // 2. Build nested repeat assembly structure recursively
+    std::function<void(int)> build_asm_loop = [&](int depth) {
+        if (depth >= max_iterations) return;
+
+        add_line(std::format("{}val{} = 0", Tab(depth), depth));
+        add_line(std::format("{}.repeat", Tab(depth)));
+        add_line(std::format("{}.word val{}", Tab(depth + 1), depth));
+
+        build_asm_loop(depth + 1);
+
+        add_line(std::format("{}val{} = val{} + 1", Tab(depth + 1), depth, depth));
+        add_line(std::format("{}.until val{} >= {}", Tab(depth), depth, max_iterations));
+    };
+
+    build_asm_loop(0);
+
+    // 3. Exact post-test do-while simulation
     std::vector<int> vars(max_iterations, 0);
-    
-    // 4. Recursive function to exactly simulate the nested loops
     std::function<void(int)> simulate_loop = [&](int depth) {
         if (depth >= max_iterations) return;
 
-        vars[depth] = 0; // Reset counter for this depth
-
-        while (vars[depth] < max_iterations) {
-            // Emulate .word valN
+        vars[depth] = 0;
+        do {
             expected_output.push_back(vars[depth] & 0xFF);
-            expected_output.push_back((vars[depth] >> 8) & 0xFF);        
+            expected_output.push_back((vars[depth] >> 8) & 0xFF);
 
             if (org + expected_output.size() >= 0xFFFF) {
                 throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
             }
 
-            // Execute deeper nested loops
             simulate_loop(depth + 1);
-
-            // Increment counter at the end of the loop
             vars[depth]++;
-        }
+        } while (vars[depth] < max_iterations);
     };
 
-    // Start simulation at the outermost loop
     simulate_loop(0);
-    
     return Test(src_mgr, source_code, expected_output, false);    
 }
 
 Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
-{    
+{   
     const std::string name = "create_mixed_loop_nested_test";
     constexpr int fileid = 0;
     constexpr int org = 0x0100;
@@ -281,16 +264,24 @@ Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
     
+    // Declare variables globally at standard start scope
     add_line(std::format("{}.var VAL1 = 0", Tab(0)));
+    add_line(std::format("{}.var VAL2 = 0", Tab(0)));
+    add_line(std::format("{}.var VAL3 = 0", Tab(0)));
+    add_line(std::format("{}.var VAL4 = 0", Tab(0)));
+    add_line();
+
+    // Assembly generation
+    add_line(std::format("{}VAL1 = 0", Tab(0)));
     add_line(std::format("{}.while VAL1 < {}", Tab(0), max_iterations));
     add_line(std::format("{}.word VAL1", Tab(1)));    
-    add_line(std::format("{}.var VAL2 = 0", Tab(1)));
+    add_line(std::format("{}VAL2 = 0", Tab(1)));
     add_line(std::format("{}.repeat", Tab(1)));
     add_line(std::format("{}.word VAL2", Tab(2)));
-    add_line(std::format("{}.var VAL3 = 0", Tab(2)));
+    add_line(std::format("{}VAL3 = 0", Tab(2)));
     add_line(std::format("{}.while VAL3 < {}", Tab(2), max_iterations));
     add_line(std::format("{}.word VAL3", Tab(3))); 
-    add_line(std::format("{}.var VAL4 = 0", Tab(3)));
+    add_line(std::format("{}VAL4 = 0", Tab(3)));
     add_line(std::format("{}.repeat", Tab(3)));
     add_line(std::format("{}.word VAL4", Tab(4)));    
     add_line(std::format("{}VAL4 = VAL4 + 1", Tab(4)));
@@ -302,32 +293,38 @@ Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
     add_line(std::format("{}VAL1 = VAL1 + 1", Tab(1)));    
     add_line(std::format("{}.wend", Tab(0)));
 
-    constexpr int max_depth = 4;
-    std::vector<int> vars(max_depth, 0);
-    std::function<void(int)> simulate_loop = [&](int depth) {
-        if (depth >= max_depth) return;
+    auto push_word = [&](int val) {
+        expected_output.push_back(val & 0xFF);
+        expected_output.push_back((val >> 8) & 0xFF);
+    };
 
-        vars[depth] = 0; // Reset counter for this depth
+    // Correct structural simulation matching exact assembly payload order
+    int val1 = 0;
+    while (val1 < max_iterations) {
+        push_word(val1);
 
-        while (vars[depth] < max_iterations) {
-            // Emulate .word valN
-            expected_output.push_back(vars[depth] & 0xFF);
-            expected_output.push_back((vars[depth] >> 8) & 0xFF);        
+        int val2 = 0;
+        do {
+            push_word(val2);
 
-            if (org + expected_output.size() >= 0xFFFF) {
-                throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+            int val3 = 0;
+            while (val3 < max_iterations) {
+                push_word(val3);
+
+                int val4 = 0;
+                do {
+                    push_word(val4);
+                    val4++;
+                } while (val4 < max_iterations);
+
+                val3++;
             }
 
-            // Execute deeper nested loops
-            simulate_loop(depth + 1);
+            val2++;
+        } while (val2 < max_iterations);
 
-            // Increment counter at the end of the loop
-            vars[depth]++;
-        }
-    };
-    
-    // Start simulation at the outermost loop
-    simulate_loop(0);
+        val1++;
+    }
 
     return Test(src_mgr, source_code, expected_output, false);        
 }
