@@ -298,7 +298,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             // Helper lambda to check if a statement is a loop start
             auto is_loop_start = [&](const std::unique_ptr<Statement>& s) {
-                return s->stmt_type == StmtType::Loop || s->stmt_type == loop_statement->loop_start_keyword;
+                return s->stmt_type == StmtType::Loop;
             };
 
             // Helper lambda to check if a statement is a loop end
