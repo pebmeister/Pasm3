@@ -484,7 +484,6 @@ public:
                     auto condition_expr = ParseExpression();
                     statements.push_back(std::make_unique<LoopStatement>(
                         dir_tok.file, dir_tok.line, condition_expr.move(), 
-                        StmtType::While, StmtType::Wend, 
                         true, false));
                 }
                 else if (dir == ".wend") {
@@ -495,7 +494,6 @@ public:
                 else if (dir == ".repeat") {
                     auto loop_stmt = std::make_unique<LoopStatement>(
                         Tok.file, Tok.line, nullptr, 
-                        StmtType::Repeat, StmtType::Until, 
                         false, true);
 
                     repeatStack.push_back(loop_stmt.get());

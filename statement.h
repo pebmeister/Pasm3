@@ -353,8 +353,6 @@ struct LoopStatement : Statement {
     std::unique_ptr<ExprNode> condition_expr;          /**< Condition expression controlling loop iteration. */
     std::vector<std::unique_ptr<Statement>> statements; /**< Statements forming the inner body of the loop. */
     
-    StmtType loop_start_keyword; /**< Opening keyword directive (While / Repeat). */
-    StmtType loop_end_keyword;   /**< Closing keyword directive (Wend / Until). */
     bool test_at_top;            /**< True if condition is evaluated before loop body execution. */
     bool reverse_logic;          /**< True if loop terminates when expression yields true (until). */
 
@@ -363,23 +361,19 @@ struct LoopStatement : Statement {
      * @param file Source file index.
      * @param line Source line index.
      * @param expr Loop evaluation expression AST node.
-     * @param start_kw Enum identifying opening loop directive keyword.
-     * @param end_kw Enum identifying closing loop directive keyword.
      * @param test_top Flag indicating top-of-loop testing logic.
      * @param rev_logic Flag indicating inverted truth evaluation.
      */
     explicit LoopStatement(int file, int line, std::unique_ptr<ExprNode> expr, 
-                           StmtType start_kw, StmtType end_kw, bool test_top, bool rev_logic)
+                           bool test_top, bool rev_logic)
         : Statement(file, line, StmtType::Loop), 
           condition_expr(std::move(expr)),
-          loop_start_keyword(start_kw),
-          loop_end_keyword(end_kw),
           test_at_top(test_top),
           reverse_logic(rev_logic) {}
 
     std::unique_ptr<Statement> clone() const override {
         auto cloned_loop = std::make_unique<LoopStatement>(
-            file, line, CloneExpr(condition_expr), loop_start_keyword, loop_end_keyword, test_at_top, reverse_logic);
+            file, line, CloneExpr(condition_expr), test_at_top, reverse_logic);
         
         cloned_loop->statements.reserve(statements.size());
         for (const auto& stmt : statements) {
