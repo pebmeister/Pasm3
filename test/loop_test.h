@@ -30,11 +30,18 @@ private:
     Test create_while_continue_loop_test(int max_iterations, int continue_index);
     Test create_while_break_loop_test(int max_iterations, int break_index);
     Test create_while_loop_nested_continue_test(int max_iterations, int continue_j);
-    
+    Test create_orphaned_continue_test();
+    Test create_orphaned_break_test();
+    Test create_orphaned_wend_test();
+    Test create_orphaned_until_test();
+    Test create_unmatched_while_test();
+    Test create_unmatched_repeat_test();
+
 public:
     void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
     {
         // Stream tests individually directly into the queue
+
         for (auto i = 1; i <= max_iterations; ++i) {
             emit(create_basic_while_loop_test(i));
             emit(create_basic_repeat_loop_test(i));
@@ -52,5 +59,11 @@ public:
                 emit(create_while_loop_nested_continue_test(i, j));
             }
         }
+        emit(create_orphaned_continue_test());
+        emit(create_orphaned_break_test());
+        emit(create_orphaned_wend_test());
+        emit(create_orphaned_until_test());
+        emit(create_unmatched_while_test());
+        emit(create_unmatched_repeat_test());
     }
 };

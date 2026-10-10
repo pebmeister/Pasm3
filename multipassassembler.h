@@ -53,7 +53,7 @@ private:
     bool wait_stable = false; ///< Delay flag ensuring state consistency before final code emission.
     bool stable = false;       ///< Indicates that symbol addresses have fully converged across passes.
     uint16_t start_pc_ = 0;    ///< Initial program counter value set prior to assembly.
-
+    int64_t loop_level = 0;    /// Nested loop level.
     /**
      * @brief Maps anonymous label scopes and statement indices to global anonymous IDs.
      * Key: std::pair<int scope_id, size_t statement_index>
