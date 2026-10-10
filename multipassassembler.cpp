@@ -1232,7 +1232,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             // SourceManager signals end-of-file (e.g. empty string or exception).
             std::string src_text;
             try {
-                src_text = src_mgr.GetLine(file_id, curr_line);                    
+                src_text = src_mgr.GetLine(file_id, ++curr_line);                    
             } catch (...) {
                 break; // Reached end of file
             }
