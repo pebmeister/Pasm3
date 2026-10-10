@@ -1224,7 +1224,6 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
         // -------------------------------------------------------------------------
         // Final Flush: Print any remaining trailing line at the end of source file
         // -------------------------------------------------------------------------
-        bool need_listing = false;
         auto file_id = last_file;
         int curr_line = file_last_printed_line[file_id];
 
@@ -1246,11 +1245,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             }
 
             // Print the trailing blank line or comment line
-            if (need_listing) {
-                listing << "Processing " << src_mgr.GetFileName(file_id) << "\n";
-                need_listing = false;
+            if (printstate) {
+                listing << std::format("{:5d}) {:7}{:14} {:30} {}\n", curr_line, "", "", "", src_text);
             }
-            listing << std::format("{:5d}) {:7}{:14} {:30} {}\n", curr_line, "", "", "", src_text);
             curr_line++;
         }
     
