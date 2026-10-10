@@ -58,6 +58,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     changed = true;
     island_counter = 0;
     stable = false;
+    loop_level = 0;
     auto lastpasschanged = false;
     std::vector<AnonymousLabel> anonymous_labels;
 
@@ -82,6 +83,8 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
 
         parent_scope="GLOBAL_";
         changed = ResolutionPass(statements, anonymous_labels);
+
+
         if (options.verbose) {
             std::cout << "Pass " << pass << " complete. "
                 << (changed ? "Symbols modified (needs another pass)." : "Symbols stable.") << "\n";
@@ -274,13 +277,23 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             break;
         }
 
-        case StmtType::Break: {
+        case StmtType::Break: {            
+            if (loop_level < 1) {
+                throw std::runtime_error(
+                    std::format("Break without a loop at ${:04X}  File: {} Line: {}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
+                );
+            }                           
             loopControl = LoopControlKind::break_loop;
             new_statements.push_back(std::move(stmt));
             break;
         }
             
         case StmtType::Continue: {
+            if (loop_level < 1) {
+                throw std::runtime_error(
+                    std::format("Continue without a loop at ${:04X}  File: {} Line: {}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
+                );
+            }                
             loopControl = LoopControlKind::continue_loop;
             new_statements.push_back(std::move(stmt));
             break;
@@ -288,6 +301,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             
         case StmtType::Loop: 
         {
+            loop_level++;
             auto loop_statement = static_cast<LoopStatement*>(stmt.get());
 
             if (!loop_statement->condition_expr) {
@@ -398,12 +412,12 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             // 3. Advance driver index to the matching outer end statement (depth-aware)
             size_t skip_idx = st_index + 1;
-            int skip_depth = 1;
+            size_t skip_depth = 1;
 
             while (skip_idx < statements.size() && statements[skip_idx] && skip_depth > 0) {
                 if (is_loop_start(statements[skip_idx])) {
                     skip_depth++;
-                } else if (is_loop_end(statements[skip_idx])) {
+                } else if (is_loop_end(statements[skip_idx])) {                    
                     skip_depth--;
                     if (skip_depth == 0) {
                         break;
@@ -411,8 +425,13 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
                 skip_idx++;
             }
-            
+            if (skip_depth != 0) {
+                throw std::runtime_error(
+                    std::format("loop missing termination at ${:04X} File: {} Line: {}", 
+                                pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
+            }            
             st_index = skip_idx;
+            loop_level--;
             break;
         }
 
@@ -561,6 +580,11 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::Until:
         case StmtType::Wend: {
+            if (loop_level < 1) {
+                throw std::runtime_error(
+                    std::format("loop termination without a loop at ${:04X} File: {} Line: {}", 
+                                pc, src_mgr.GetFileName(stmt->file), stmt->line));
+            }            
             new_statements.push_back(std::move(stmt));
             break;
         }
@@ -656,6 +680,8 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
                 skip_idx++;
             }
+
+
 
             st_index = skip_idx;
             break;

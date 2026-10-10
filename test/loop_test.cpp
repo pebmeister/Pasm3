@@ -506,3 +506,169 @@ Loop_test::Test Loop_test::create_while_loop_nested_continue_test(int max_iterat
 
     return Test(src_mgr, source_code, expected_output, false);
 }
+
+Loop_test::Test Loop_test::create_orphaned_continue_test()
+{
+    const std::string name = "create_orphaned_continue_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    add_line(std::format("{}.continue", Tab(0)));
+
+    return Test(src_mgr, source_code, {}, true);
+}
+
+Loop_test::Test Loop_test::create_orphaned_break_test()
+{
+    const std::string name = "create_orphaned_break_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    add_line(std::format("{}.break", Tab(0)));
+
+    return Test(src_mgr, source_code, {}, true);
+}
+
+Loop_test::Test Loop_test::create_orphaned_wend_test()
+{
+    const std::string name = "create_orphaned_wend_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    add_line(std::format("{}.wend", Tab(0)));
+
+    return Test(src_mgr, source_code, {}, true);
+}
+
+Loop_test::Test Loop_test::create_orphaned_until_test()
+{
+    const std::string name = "create_orphaned_until_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    add_line(std::format("{}.until VAL >= 1", Tab(0)));
+
+    return Test(src_mgr, source_code, {}, true);
+}
+
+Loop_test::Test Loop_test::create_unmatched_while_test()
+{
+    const std::string name = "create_unmatched_while_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    add_line(std::format("{}.var VAL = 0", Tab(0)));
+    add_line(std::format("{}.while VAL < 3", Tab(0)));
+    add_line(std::format("{}VAL = VAL + 1", Tab(1)));
+
+    return Test(src_mgr, source_code, {}, true);
+}
+
+Loop_test::Test Loop_test::create_unmatched_repeat_test()
+{
+    const std::string name = "create_unmatched_repeat_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    add_line(std::format("{}.var VAL = 0", Tab(0)));
+    add_line(std::format("{}.repeat", Tab(0)));
+    add_line(std::format("{}VAL = VAL + 1", Tab(1)));
+
+    return Test(src_mgr, source_code, {}, true);
+}
