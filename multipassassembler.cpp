@@ -362,7 +362,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                         break;
                     }
                     else if (loopControl == LoopControlKind::continue_loop) {
-                        loopControl = LoopControlKind::normal;
                         break;
                     }
                 }
@@ -371,6 +370,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     break;
                 }
 
+                loopControl = LoopControlKind::normal;
                 if (!loop_statement->test_at_top) {
                     auto condition = EvaluateExpr(loop_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
@@ -561,7 +561,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::Until:
         case StmtType::Wend: {
-            // Wend
+            new_statements.push_back(std::move(stmt));
             break;
         }
 
@@ -1187,7 +1187,38 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 break;
          }
     }
+    if (printstate) {
+        // -------------------------------------------------------------------------
+        // Final Flush: Print any remaining trailing lines at the end of source files
+        // -------------------------------------------------------------------------
+        for (const auto& [file_id, last_printed] : file_last_printed_line) {
+            if (file_id != last_file) {
+                listing << "Processing " << src_mgr.GetFileName(file_id) << "\n";
+                last_file = file_id;
+            }
 
+            int curr_line = last_printed + 1;
+            while (true) {
+                // Fetch the next line. Adjust this check depending on how your 
+                // SourceManager signals end-of-file (e.g. empty string or exception).
+                std::string src_text;
+                try {
+                    src_text = src_mgr.GetLine(file_id, curr_line);
+                } catch (...) {
+                    break; // Reached end of file
+                }
+
+                if (src_text.empty() /* && add condition if src_mgr returns empty for EOF */) {
+                    // If your GetLine returns an empty string for non-existent lines, break here.
+                    break; 
+                }
+
+                // Print the trailing blank line or comment line
+                listing << std::format("{:5d}) {:7}{:14} {:30} {}\n", curr_line, "", "", "", src_text);
+                curr_line++;
+            }
+        }
+    }
     listing << "------------------------------------------------------------------------------------------------------------------------\n";
     listing << std::format("Emitted {} bytes. Load address ${:04X}.\n", binary_output.size(), load_address);
 
