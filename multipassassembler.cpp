@@ -1225,14 +1225,14 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
         // Final Flush: Print any remaining trailing line at the end of source file
         // -------------------------------------------------------------------------
         auto file_id = last_file;
-        int curr_line = file_last_printed_line[file_id];
+        int curr_line = file_last_printed_line[file_id] + 1;
 
         while (true) {
             // Fetch the next line. Adjust this check depending on how your 
             // SourceManager signals end-of-file (e.g. empty string or exception).
             std::string src_text;
             try {
-                src_text = src_mgr.GetLine(file_id, ++curr_line);                    
+                src_text = src_mgr.GetLine(file_id, curr_line);                    
             } catch (...) {
                 break; // Reached end of file
             }
