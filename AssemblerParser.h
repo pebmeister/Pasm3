@@ -475,8 +475,12 @@ public:
                 }
                 
                 // --- .break / .continue ---
-                else if (dir == ".break" || dir == ".continue") {
+                else if (dir == ".break") {
                     statements.push_back(std::make_unique<BreakStatement>(dir_tok.file, dir_tok.line));
+                }
+                
+                else if (dir == ".continue") {
+                    statements.push_back(std::make_unique<ContinueStatement>(dir_tok.file, dir_tok.line));
                 }
                 
                 // --- .while / .wend ---

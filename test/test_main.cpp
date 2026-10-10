@@ -49,7 +49,7 @@ struct Test_Options {
     int  label_max_iteration = 0xFF;      ///< Maximum label iterations per test.
     int  expression_max_iteration = 1;    ///< Maximum expression iterations per test.
     int  macro_max_iteration = 20;        ///< Maximum macro iterations per test.
-    int  loop_max_iteration = 20;         ///< Maximum loop iterations per test.
+    int  loop_max_iteration = 25;         ///< Maximum loop iterations per test.
 };
 
 /**

@@ -328,3 +328,181 @@ Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
 
     return Test(src_mgr, source_code, expected_output, false);        
 }
+
+Loop_test::Test Loop_test::create_while_continue_loop_test(int max_iterations, int continue_index)
+{
+    const std::string name = "create_while_continue_loop_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+    std::vector<uint8_t> expected_output;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    add_line(std::format("{}.var VAL = 0", Tab(0)));
+    add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
+    
+    add_line(std::format("{}.if VAL == {}", Tab(1), continue_index));
+        add_line(std::format("{}VAL = VAL + 1", Tab(2)));
+    add_line(std::format("{}.continue", Tab(2)));
+    add_line(std::format("{}.endif", Tab(1)));
+    
+    add_line(std::format("{}.word VAL", Tab(1)));
+    add_line(std::format("{}VAL = VAL + 1", Tab(1)));
+    add_line(std::format("{}.wend", Tab(0)));
+
+    int val = 0;
+    while (val < max_iterations) 
+    {
+        if (val == continue_index) {
+            val++;
+            continue;
+        }
+        expected_output.push_back(val & 0xFF);
+        expected_output.push_back((val >> 8) & 0xFF);        
+        val++;
+    }
+    
+    return Test(src_mgr, source_code, expected_output, false);    
+}
+
+Loop_test::Test Loop_test::create_while_break_loop_test(int max_iterations, int break_index)
+{
+    const std::string name = "create_while_break_loop_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+    std::vector<uint8_t> expected_output;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    add_line(std::format("{}.var VAL = 0", Tab(0)));
+    add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
+    
+    add_line(std::format("{}.if VAL == {}", Tab(1), break_index));
+    add_line(std::format("{}.break", Tab(2)));
+    add_line(std::format("{}.endif", Tab(1)));
+    
+    add_line(std::format("{}.word VAL", Tab(1)));
+    add_line(std::format("{}VAL = VAL + 1", Tab(1)));
+    add_line(std::format("{}.wend", Tab(0)));
+
+    int val = 0;
+    while (val < max_iterations) 
+    {
+        if (val == break_index) {
+            break;
+        }
+        expected_output.push_back(val & 0xFF);
+        expected_output.push_back((val >> 8) & 0xFF);        
+        val++;
+    }
+    
+    return Test(src_mgr, source_code, expected_output, false);    
+}
+
+Loop_test::Test Loop_test::create_while_loop_nested_continue_test(int max_iterations, int continue_j)
+{
+    const std::string name = "create_while_loop_nested_continue_test";
+    constexpr int fileid = 0;
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    int line_num = 1;
+    std::string source_code;
+    std::vector<uint8_t> expected_output;
+
+    src_mgr.files.push_back(name);
+
+    auto add_line = [&](std::string line = "") {
+        src_mgr.source[{fileid, line_num}] = line;
+        source_code += (line + "\n");
+        line_num++;
+    };
+
+    add_line();
+    add_line(std::format("{}; {}", Tab(0), name));
+    add_line();
+    add_line(std::format("{}* = {}", Tab(0), org));
+    add_line();
+    
+    // Declare loop variables
+    add_line(std::format("{}.var I = 0", Tab(0)));
+    add_line(std::format("{}.var J = 0", Tab(0)));
+    add_line();
+
+    // Outer loop
+    add_line(std::format("{}I = 0", Tab(0)));
+    add_line(std::format("{}.while I < {}", Tab(0), max_iterations));
+    
+    // Inner loop
+    add_line(std::format("{}J = 0", Tab(1)));
+    add_line(std::format("{}.while J < {}", Tab(1), max_iterations));
+    
+    // Conditional continue block
+    add_line(std::format("{}.if J == {}", Tab(2), continue_j));
+        add_line(std::format("{}J = J + 1", Tab(3)));
+        add_line(std::format("{}.continue", Tab(3)));
+    add_line(std::format("{}.endif", Tab(2)));
+    
+    // Emitted data payload (I and J values per iteration)
+    add_line(std::format("{}.word I", Tab(2)));
+    add_line(std::format("{}.word J", Tab(2)));
+    
+    // Inner loop increment
+    add_line(std::format("{}J = J + 1", Tab(2)));
+    add_line(std::format("{}.wend", Tab(1)));
+    
+    // Outer loop increment
+    add_line(std::format("{}I = I + 1", Tab(1)));
+    add_line(std::format("{}.wend", Tab(0)));
+
+    // Helper to push words into expected output
+    auto push_word = [&](int val) {
+        expected_output.push_back(val & 0xFF);
+        expected_output.push_back((val >> 8) & 0xFF);
+    };
+
+    // Simulation matching the assembly execution flow
+    int i = 0;
+    while (i < max_iterations) {
+        int j = 0;
+        while (j < max_iterations) {
+            if (j == continue_j) {
+                j++;
+                continue;
+            }
+            push_word(i);
+            push_word(j);
+            j++;
+        }
+        i++;
+    }
+
+    return Test(src_mgr, source_code, expected_output, false);
+}
