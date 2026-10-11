@@ -1,7 +1,7 @@
 ;
 ; BlackBoard
 ;
-    .org $8000
+    .basic_hdr
 ;
     COLOR   .equ $10
     BASE    .equ $2000
