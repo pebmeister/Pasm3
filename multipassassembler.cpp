@@ -18,29 +18,29 @@
 
 /**
  * @brief Maps 6502 addressing modes to their byte length.
- * @param mode Addressing mode (`RULE_TYPE`).
+ * @param mode Addressing mode (`OP_TYPE`).
  * @return Instruction byte count (1 to 3).
  */
-size_t MultiPassAssembler::GetInstructionSize(RULE_TYPE mode) {
+size_t MultiPassAssembler::GetInstructionSize(OP_TYPE mode) {
     switch (mode) {
-        case RULE_TYPE::Op_Implied:
-        case RULE_TYPE::Op_Accumulator:
+        case OP_TYPE::Op_Implied:
+        case OP_TYPE::Op_Accumulator:
             return 1;
 
-        case RULE_TYPE::Op_Immediate:
-        case RULE_TYPE::Op_ZeroPage:
-        case RULE_TYPE::Op_ZeroPageX:
-        case RULE_TYPE::Op_ZeroPageY:
-        case RULE_TYPE::Op_IndirectX:
-        case RULE_TYPE::Op_IndirectY:
-        case RULE_TYPE::Op_Relative:
+        case OP_TYPE::Op_Immediate:
+        case OP_TYPE::Op_ZeroPage:
+        case OP_TYPE::Op_ZeroPageX:
+        case OP_TYPE::Op_ZeroPageY:
+        case OP_TYPE::Op_IndirectX:
+        case OP_TYPE::Op_IndirectY:
+        case OP_TYPE::Op_Relative:
             return 2;
 
-        case RULE_TYPE::Op_Absolute:
-        case RULE_TYPE::Op_AbsoluteX:
-        case RULE_TYPE::Op_AbsoluteY:
-        case RULE_TYPE::Op_Indirect:
-        case RULE_TYPE::Op_ZeroPageRelative:
+        case OP_TYPE::Op_Absolute:
+        case OP_TYPE::Op_AbsoluteX:
+        case OP_TYPE::Op_AbsoluteY:
+        case OP_TYPE::Op_Indirect:
+        case OP_TYPE::Op_ZeroPageRelative:
             return 3;
 
         default:
@@ -448,20 +448,20 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             if (mode_it == info->mode_to_opcode.end()) {
                 
                 switch (inst->mode) {
-                    case RULE_TYPE::Op_Implied:
-                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
+                    case OP_TYPE::Op_Implied:
+                        mode_it = info->mode_to_opcode.find(OP_TYPE::Op_Accumulator);
                         break;
                         
-                    case RULE_TYPE::Op_Absolute:
-                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_ZeroPage);
+                    case OP_TYPE::Op_Absolute:
+                        mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPage);
                         break;
                      
-                    case RULE_TYPE::Op_AbsoluteX:
-                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_ZeroPageX);
+                    case OP_TYPE::Op_AbsoluteX:
+                        mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPageX);
                         break;
                      
-                    case RULE_TYPE::Op_AbsoluteY:
-                        mode_it = info->mode_to_opcode.find(RULE_TYPE::Op_ZeroPageY);
+                    case OP_TYPE::Op_AbsoluteY:
+                        mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPageY);
                         break;
                      
                     default:
@@ -475,7 +475,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val.has_value()) {
                     int64_t evaluated = val.value();
-                    if (inst->mode == RULE_TYPE::Op_Relative) {
+                    if (inst->mode == OP_TYPE::Op_Relative) {
                         int64_t offset = evaluated - (static_cast<int64_t>(pc) + 2);
 
                         if (offset < -128 || offset > 127) {
@@ -502,7 +502,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                     stmt->file,
                                     stmt->line,
                                     "jmp",
-                                    RULE_TYPE::Op_Absolute,
+                                    OP_TYPE::Op_Absolute,
                                     std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
                                 );
 
@@ -512,7 +512,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                     stmt->file,
                                     stmt->line,
                                     it->second,
-                                    RULE_TYPE::Op_Relative,
+                                    OP_TYPE::Op_Relative,
                                     std::make_unique<SymbolExpr>(skip_label, loc)
                                 );
 
@@ -524,8 +524,8 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                 );
 
                                 // 4. adjust the pc
-                                pc += GetInstructionSize(RULE_TYPE::Op_Relative);
-                                pc += GetInstructionSize(RULE_TYPE::Op_Absolute);
+                                pc += GetInstructionSize(OP_TYPE::Op_Relative);
+                                pc += GetInstructionSize(OP_TYPE::Op_Absolute);
 
                                 // 5. Push the new branch first, followed immediately by the new JMP and label
                                 new_statements.push_back(std::move(branch_inst));
@@ -541,7 +541,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                 std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst->mnemonic, pc,  src_mgr.GetFileName(inst->file), inst->line)
                             );
                         }
-                        RULE_TYPE want_mode = inst->mode;
+                        OP_TYPE want_mode = inst->mode;
                         if (evaluated <= 0xFF) {
                             if (inst->mode == Op_Absolute) want_mode = Op_ZeroPage;
                             else if (inst->mode == Op_AbsoluteX) want_mode = Op_ZeroPageX;
@@ -746,43 +746,43 @@ bool MultiPassAssembler::ResolutionPass(std::vector<std::unique_ptr<Statement>>&
  * Takes a target addressing mode and an evaluated numerical value, returning a formatted
  * syntax string matching standard 6502 assembly conventions (e.g., "#$FF", "$1234,X", "($00,X)").
  *
- * @param mode The addressing mode of the instruction operand (`RULE_TYPE`).
+ * @param mode The addressing mode of the instruction operand (`OP_TYPE`).
  * @param val The 64-bit evaluated numerical value or target address for the operand.
  * @param val2 The 64-bit evaluated numerical value or target address for the ZeroPageRelative operand.
  * @return A `std::string` containing the formatted operand representation, or an empty string 
  *         for implied or unhandled modes.
  */
- std::string MultiPassAssembler::FormatOperand(RULE_TYPE mode, int64_t val, int64_t val2 = 0) {
+ std::string MultiPassAssembler::FormatOperand(OP_TYPE mode, int64_t val, int64_t val2 = 0) {
     uint16_t v = static_cast<uint16_t>(val);
     uint16_t v2 = static_cast<uint16_t>(val2);
     switch (mode) {
-    case RULE_TYPE::Op_Immediate:
+    case OP_TYPE::Op_Immediate:
         return std::format("#${:02X}", v & 0xFF);
-    case RULE_TYPE::Op_ZeroPage:
+    case OP_TYPE::Op_ZeroPage:
         return std::format("${:02X}", v & 0xFF);
-    case RULE_TYPE::Op_ZeroPageX:
+    case OP_TYPE::Op_ZeroPageX:
         return std::format("${:02X},X", v & 0xFF);
-    case RULE_TYPE::Op_ZeroPageY:
+    case OP_TYPE::Op_ZeroPageY:
         return std::format("${:02X},Y", v & 0xFF);
-    case RULE_TYPE::Op_Absolute:
+    case OP_TYPE::Op_Absolute:
         return std::format("${:04X}", v);
-    case RULE_TYPE::Op_AbsoluteX:
+    case OP_TYPE::Op_AbsoluteX:
         return std::format("${:04X},X", v);
-    case RULE_TYPE::Op_AbsoluteY:
+    case OP_TYPE::Op_AbsoluteY:
         return std::format("${:04X},Y", v);
-    case RULE_TYPE::Op_Indirect:
+    case OP_TYPE::Op_Indirect:
         return std::format("(${:04X})", v);
-    case RULE_TYPE::Op_IndirectX:
+    case OP_TYPE::Op_IndirectX:
         return std::format("(${:02X},X)", v & 0xFF);
-    case RULE_TYPE::Op_IndirectY:
+    case OP_TYPE::Op_IndirectY:
         return std::format("(${:02X}),Y", v & 0xFF);
-    case RULE_TYPE::Op_Relative:
+    case OP_TYPE::Op_Relative:
         return std::format("${:04X}", v);
-    case RULE_TYPE::Op_ZeroPageRelative:
+    case OP_TYPE::Op_ZeroPageRelative:
         return std::format("${:02X}, ${:04X}", v, v2);
-    case RULE_TYPE::Op_Accumulator:
+    case OP_TYPE::Op_Accumulator:
         return "A";
-    case RULE_TYPE::Op_Implied:
+    case OP_TYPE::Op_Implied:
     default:
         return "";
     }
@@ -1099,8 +1099,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
                 auto modeIt = info->mode_to_opcode.find(inst_stmt->mode);
                 if (modeIt == info->mode_to_opcode.end()) {
-                    if (inst_stmt->mode == RULE_TYPE::Op_Implied) {
-                        modeIt = info->mode_to_opcode.find(RULE_TYPE::Op_Accumulator);
+                    if (inst_stmt->mode == OP_TYPE::Op_Implied) {
+                        modeIt = info->mode_to_opcode.find(OP_TYPE::Op_Accumulator);
                     }
                     if (modeIt == info->mode_to_opcode.end()) {
                         throw std::runtime_error(
@@ -1132,7 +1132,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     int val = static_cast<int>(eval_result.value());
                     operand_str = FormatOperand(inst_stmt->mode, val);
 
-                    if (inst_stmt->mode == RULE_TYPE::Op_ZeroPageRelative) {
+                    if (inst_stmt->mode == OP_TYPE::Op_ZeroPageRelative) {
                         
                         auto eval2_result = EvaluateExpr(inst_stmt->operand2.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                         if (!eval2_result.has_value()) {
@@ -1157,7 +1157,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         emitted_bytes.push_back(static_cast<uint8_t>(val));
                         emitted_bytes.push_back(static_cast<uint8_t>(offset & 0xFF));
                     }
-                    else if (inst_stmt->mode == RULE_TYPE::Op_Relative) {
+                    else if (inst_stmt->mode == OP_TYPE::Op_Relative) {
                         int next_pc = pc + 2;
                         int offset = val - next_pc;
 

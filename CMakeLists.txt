@@ -112,7 +112,7 @@ add_library(pasm_core STATIC
     opcodedict.h
     opcodeinfo.h
     opcodes.h
-    ruletype.h
+    optype.h
     sourceManager.h
     statement.h
     symboltable.h
@@ -150,11 +150,13 @@ add_executable(pasm_tests
     test/expression_test.cpp
     test/macro_test.cpp
     test/loop_test.cpp
+    test/control_flow_test.cpp
     test/opcode_test.h
     test/label_test.h
     test/expression_test.h
     test/macro_test.h
     test/loop_test.h
+    test/control_flow_test.h
     test/ANSI_esc.h    
 )
 

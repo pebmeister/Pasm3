@@ -11,7 +11,7 @@
 #include <functional>
 #include <iostream>
 
-#include "ruletype.h"
+#include "optype.h"
 #include "tokenkind.h"
 #include "AssemblerParser.h"
 #include "PasmTokenizer.hpp"
@@ -46,6 +46,8 @@ public:
     std::string source_code;
 
     virtual void generate_tests(int max_iterations, const std::function<void(Test)>& emit) = 0;
+
+    inline std::string Tab(int level) { return std::string(level*4, ' '); }
 
     int test(int col, bool exit_on_fail, int max_iterations)
     {         

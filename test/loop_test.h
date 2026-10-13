@@ -2,7 +2,7 @@
 #include <string>
 #include <functional>
 
-#include "ruletype.h"
+#include "optype.h"
 #include "tokenkind.h"
 
 #include "AssemblerParser.h"
@@ -19,8 +19,6 @@
 
 class Loop_test : public TestRunner {
 private:
-
-    inline std::string Tab(int level) { return std::string(level*4, ' '); }
 
     Test create_basic_while_loop_test(int max_iterations);
     Test create_basic_repeat_loop_test(int max_iterations);

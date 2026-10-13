@@ -10,7 +10,7 @@
 #include <iostream>
 #include <stack>
 
-#include "ruletype.h"
+#include "optype.h"
 #include "PasmTokenizer.hpp"
 #include "options.h"
 #include "macrodef.h"
@@ -844,23 +844,23 @@ public:
 
                 PasmTokenizer::Token opcode_tok = ConsumeToken();
                 std::string mnemonic = opcode_tok.text;
-                RULE_TYPE mode = RULE_TYPE::Op_Implied;
+                OP_TYPE mode = OP_TYPE::Op_Implied;
                 ExprResult operand_expr;
 
                 // --- Immediate Addressing (#expr) ---
                 if (TokIs(TokenKind::Hash)) {
                     ConsumeToken();
-                    mode = RULE_TYPE::Op_Immediate;
+                    mode = OP_TYPE::Op_Immediate;
                     operand_expr = ParseExpression();
                 } 
                 // --- Implied Addressing ---
                 else if (TokIs(TokenKind::Newline) || TokIs(TokenKind::Eof) || TokIs(TokenKind::Semicolon)) {
-                    mode = RULE_TYPE::Op_Implied;
+                    mode = OP_TYPE::Op_Implied;
                 } 
                 // --- Accumulator Addressing (e.g., ASL A, ROR A) ---
                 else if (TokIs(TokenKind::Identifier) && (Tok.text == "a" || Tok.text == "A")) {
                     ConsumeToken();
-                    mode = RULE_TYPE::Op_Accumulator;
+                    mode = OP_TYPE::Op_Accumulator;
                 } 
                 // --- Indirect Addressing Modes ---
                 else if (TokIs(TokenKind::LParen)) {
@@ -874,7 +874,7 @@ public:
                             ConsumeToken(); // Consume 'X'
                             if (TokIs(TokenKind::RParen)) {
                                 ConsumeToken(); // Consume ')'
-                                mode = RULE_TYPE::Op_IndirectX;
+                                mode = OP_TYPE::Op_IndirectX;
                             } else {
                                 throw std::runtime_error(std::format("Expected ')' for Indirect X addressing File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
                             }
@@ -888,13 +888,13 @@ public:
                             ConsumeToken(); // Consume ','
                             if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
                                 ConsumeToken(); // Consume 'Y'
-                                mode = RULE_TYPE::Op_IndirectY;
+                                mode = OP_TYPE::Op_IndirectY;
                             } else {
                                 throw std::runtime_error(std::format("Expected 'Y' for Indirect Y addressing File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
                             }
                         } else {
                             // Standard Absolute Indirect: (expr) - e.g., JMP ($FFFC)
-                            mode = RULE_TYPE::Op_Indirect;
+                            mode = OP_TYPE::Op_Indirect;
                         }
                     } else {
                         throw std::runtime_error(std::format("Malformed indirect addressing mode File: {} Line {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
@@ -908,9 +908,9 @@ public:
                         
 
                         // Check if this mnemonic is a ZeroPageRelative instruction (e.g., BBR/BBS)
-                        if (DeduceMemoryMode(mnemonic) == RULE_TYPE::Op_ZeroPageRelative) {
+                        if (DeduceMemoryMode(mnemonic) == OP_TYPE::Op_ZeroPageRelative) {
                             
-                            mode = RULE_TYPE::Op_ZeroPageRelative;
+                            mode = OP_TYPE::Op_ZeroPageRelative;
                             auto second_expr = ParseExpression();
                             
                             statements.push_back(std::make_unique<InstructionStatement>(
@@ -919,10 +919,10 @@ public:
                         }                                                
                         else if (TokIs(TokenKind::Identifier) && (Tok.text == "x" || Tok.text == "X")) {
                             ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteX;
+                            mode = OP_TYPE::Op_AbsoluteX;
                         } else if (TokIs(TokenKind::Identifier) && (Tok.text == "y" || Tok.text == "Y")) {
                             ConsumeToken();
-                            mode = RULE_TYPE::Op_AbsoluteY;
+                            mode = OP_TYPE::Op_AbsoluteY;
                         } else {
                             throw std::runtime_error(std::format("Expected X or Y register after comma File: {} Line: {}", src_mgr.GetFileName(opcode_tok.file), opcode_tok.line));
                         }
@@ -1143,21 +1143,21 @@ private:
      * back to absolute memory addressing.
      * 
      * @param mnemonic The instruction mnemonic string (e.g., "bne", "jmp").
-     * @return RULE_TYPE Corresponding addressing mode (`Op_Relative` or `Op_Absolute`).
+     * @return OP_TYPE Corresponding addressing mode (`Op_Relative` or `Op_Absolute`).
      */
-    RULE_TYPE DeduceMemoryMode(std::string mnemonic) const {
+    OP_TYPE DeduceMemoryMode(std::string mnemonic) const {
         std::transform(mnemonic.begin(), mnemonic.end(), mnemonic.begin(),
         [](unsigned char c) {
             return std::tolower(c);
         });
 
         const OpCodeInfo* info = FindOpCodeInfo(mnemonic);
-        if (info->mode_to_opcode.contains(RULE_TYPE::Op_Relative)) {
-            return RULE_TYPE::Op_Relative;
+        if (info->mode_to_opcode.contains(OP_TYPE::Op_Relative)) {
+            return OP_TYPE::Op_Relative;
         }
-        if (info->mode_to_opcode.contains(RULE_TYPE::Op_ZeroPageRelative)) {
-            return RULE_TYPE::Op_ZeroPageRelative;
+        if (info->mode_to_opcode.contains(OP_TYPE::Op_ZeroPageRelative)) {
+            return OP_TYPE::Op_ZeroPageRelative;
         }
-        return RULE_TYPE::Op_Absolute;
+        return OP_TYPE::Op_Absolute;
     }
 };

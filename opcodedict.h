@@ -10,7 +10,7 @@
 #include <string>
 #include <string_view>
 
-#include "ruletype.h"
+#include "optype.h"
 #include "tokenkind.h"
 #include "opcodes.h"
 
@@ -20,7 +20,7 @@
  */
 struct OpCodeInfo {
     std::string_view mnemonic;                                   /**< Instruction mnemonic string (e.g., "LDA", "STA"). */
-    std::map<RULE_TYPE, std::pair<uint8_t, int>> mode_to_opcode; /**< Map from addressing mode (RULE_TYPE) to a pair containing {opcode_byte, cycle_count}. */
+    std::map<OP_TYPE, std::pair<uint8_t, int>> mode_to_opcode; /**< Map from addressing mode (RULE_TYPE) to a pair containing {opcode_byte, cycle_count}. */
     bool is_65c02 = false;                                       /**< Flag indicating whether the instruction is specific to the 65C02 architecture. */
     bool is_illegal = false;                                     /**< Flag indicating whether the instruction is an undocumented/illegal 6502 opcode. */
     std::string_view description;                                /**< Brief narrative description of the instruction's operation. */
@@ -36,7 +36,7 @@ struct OpCodeInfo {
      */
     OpCodeInfo(
         std::string_view mnemonic,
-        std::map<RULE_TYPE, std::pair<uint8_t, int>> mode_to_opcode,
+        std::map<OP_TYPE, std::pair<uint8_t, int>> mode_to_opcode,
         bool is_65c02 = false,
         bool is_illegal = false,
         std::string_view description = ""

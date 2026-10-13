@@ -220,72 +220,72 @@ Options parse_args(int argc, char* argv[])
                     int cycles     = info.second;
 
                     switch (mode) {
-                        case RULE_TYPE::Op_Implied:
+                        case OP_TYPE::Op_Implied:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {}\n", 
                                 "Implied", hex_val, cycles, opcodeinfo.mnemonic);
                             break;
 
-                        case RULE_TYPE::Op_Accumulator:
+                        case OP_TYPE::Op_Accumulator:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} A\n", 
                                 "Accumulator", hex_val, cycles, opcodeinfo.mnemonic);
                             break;
 
-                        case RULE_TYPE::Op_Immediate:
+                        case OP_TYPE::Op_Immediate:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} #${:02X}\n", 
                                 "Immediate", hex_val, cycles, opcodeinfo.mnemonic, 0x10);
                             break;
 
-                        case RULE_TYPE::Op_ZeroPage:
+                        case OP_TYPE::Op_ZeroPage:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X}\n", 
                                 "Zero Page", hex_val, cycles, opcodeinfo.mnemonic, 0x15);
                             break;                    
 
-                        case RULE_TYPE::Op_ZeroPageX:
+                        case OP_TYPE::Op_ZeroPageX:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X},X\n", 
                                 "Zero Page, X", hex_val, cycles, opcodeinfo.mnemonic, 0x16);
                             break;                    
 
-                        case RULE_TYPE::Op_ZeroPageY:
+                        case OP_TYPE::Op_ZeroPageY:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X},Y\n", 
                                 "Zero Page, Y", hex_val, cycles, opcodeinfo.mnemonic, 0x17);
                             break;
 
-                        case RULE_TYPE::Op_Absolute:
+                        case OP_TYPE::Op_Absolute:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:04X}\n", 
                                 "Absolute", hex_val, cycles, opcodeinfo.mnemonic, 0x1234);
                             break;
 
-                        case RULE_TYPE::Op_AbsoluteX:
+                        case OP_TYPE::Op_AbsoluteX:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:04X},X\n", 
                                 "Absolute, X", hex_val, cycles, opcodeinfo.mnemonic, 0x3456);
                             break;                    
 
-                        case RULE_TYPE::Op_AbsoluteY:
+                        case OP_TYPE::Op_AbsoluteY:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:04X},Y\n", 
                                 "Absolute, Y", hex_val, cycles, opcodeinfo.mnemonic, 0x1246);
                             break;                    
 
-                        case RULE_TYPE::Op_Indirect:
+                        case OP_TYPE::Op_Indirect:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} (${:04X})\n", 
                                 "Indirect", hex_val, cycles, opcodeinfo.mnemonic, 0x8735);
                             break;
 
-                        case RULE_TYPE::Op_IndirectX:
+                        case OP_TYPE::Op_IndirectX:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} (${:02X},X)\n", 
                                 "Indexed Indirect (X)", hex_val, cycles, opcodeinfo.mnemonic, 0x35);
                             break;
 
-                        case RULE_TYPE::Op_IndirectY:
+                        case OP_TYPE::Op_IndirectY:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} (${:02X}),Y\n", 
                                 "Indirect Indexed (Y)", hex_val, cycles, opcodeinfo.mnemonic, 0x40);
                             break;                    
 
-                        case RULE_TYPE::Op_Relative:
+                        case OP_TYPE::Op_Relative:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:04X}\n", 
                                 "Relative", hex_val, cycles, opcodeinfo.mnemonic, 0x8012);
                             break;                    
 
-                        case RULE_TYPE::Op_ZeroPageRelative:
+                        case OP_TYPE::Op_ZeroPageRelative:
                             std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X}, ${:04X}\n", 
                                 "ZP Relative (65C02)", hex_val, cycles, opcodeinfo.mnemonic, 0x51, 0x8012);
                             break;

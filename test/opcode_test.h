@@ -3,7 +3,7 @@
 #include <cctype>
 
 
-#include "ruletype.h"
+#include "optype.h"
 #include "tokenkind.h"
 
 #include "AssemblerParser.h"
@@ -60,8 +60,8 @@ public:
     {
         for (auto&[_, info]: opcodeDict) {
             auto& op = info.mnemonic;
-            for (int mode = RULE_TYPE::Op_Implied; mode <= RULE_TYPE::Op_ZeroPageRelative; ++mode) {
-                auto modeIt = info.mode_to_opcode.find(static_cast<RULE_TYPE>(mode));
+            for (int mode = OP_TYPE::Op_Implied; mode <= OP_TYPE::Op_ZeroPageRelative; ++mode) {
+                auto modeIt = info.mode_to_opcode.find(static_cast<OP_TYPE>(mode));
                 if (modeIt == info.mode_to_opcode.end()) {
                     OP_TEST op_negative_test = {op, mode, 0, true};
                     emit(make_unit_test(op_negative_test, max_iterations));

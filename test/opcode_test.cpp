@@ -18,7 +18,7 @@
 #include <format>
 #include <cctype>
 
-#include "ruletype.h"
+#include "optype.h"
 #include "tokenkind.h"
 
 #include "AssemblerParser.h"
@@ -44,7 +44,7 @@ Opcode_test::Test Opcode_test::make_unit_test(OP_TEST& test, int max)
 
     int count = 0;
         
-    add_line(std::format("; {:=>6} {:>4} {:15} {:=>6}", '=', test.op, rulemap[static_cast<RULE_TYPE>(test.mode)], '='));    
+    add_line(std::format("; {:=>6} {:>4} {:15} {:=>6}", '=', test.op, rulemap[static_cast<OP_TYPE>(test.mode)], '='));    
     add_line();
     
     // Helper for single-instruction modes (Implied, Accumulator)
@@ -77,55 +77,55 @@ Opcode_test::Test Opcode_test::make_unit_test(OP_TEST& test, int max)
     };
 
     switch (test.mode) {
-        case RULE_TYPE::Op_Implied:
+        case OP_TYPE::Op_Implied:
             emit_single();
             break;
 
-        case RULE_TYPE::Op_Accumulator:
+        case OP_TYPE::Op_Accumulator:
             emit_single("A");
             break;
             
-        case RULE_TYPE::Op_Immediate:
+        case OP_TYPE::Op_Immediate:
             emit_loop(opr_immediate, [&](auto v) { return std::format("#${:02X}", v); }, false);
             break;
         
-        case RULE_TYPE::Op_ZeroPage:
+        case OP_TYPE::Op_ZeroPage:
             emit_loop(opr_zeropage, [&](auto v) { return std::format("${:02X}", v); }, false);
             break;
         
-        case RULE_TYPE::Op_Absolute:
+        case OP_TYPE::Op_Absolute:
             emit_loop(opr_absolute, [&](auto v) { return std::format("${:04X}", v); }, true);
             break;
         
-        case RULE_TYPE::Op_AbsoluteX:
+        case OP_TYPE::Op_AbsoluteX:
             emit_loop(opr_absolutex, [&](auto v) { return std::format("${:04X},X", v); }, true);
             break;
 
-        case RULE_TYPE::Op_ZeroPageX:
+        case OP_TYPE::Op_ZeroPageX:
             emit_loop(opr_zeropagex, [&](auto v) { return std::format("${:02X},X", v); }, false);
             break;
 
-        case RULE_TYPE::Op_AbsoluteY:
+        case OP_TYPE::Op_AbsoluteY:
             emit_loop(opr_absolutey, [&](auto v) { return std::format("${:04X},Y", v); }, true);
             break;
 
-        case RULE_TYPE::Op_ZeroPageY:
+        case OP_TYPE::Op_ZeroPageY:
             emit_loop(opr_zeropagey, [&](auto v) { return std::format("${:02X},Y", v); }, false);
             break;
      
-        case RULE_TYPE::Op_Indirect:
+        case OP_TYPE::Op_Indirect:
             emit_loop(opr_indirect, [&](auto v) { return std::format("(${:04X})", v); }, true);
             break;
 
-        case RULE_TYPE::Op_IndirectX:
+        case OP_TYPE::Op_IndirectX:
             emit_loop(opr_indirectx, [&](auto v) { return std::format("(${:04X},X)", v); }, false);
             break;
             
-         case RULE_TYPE::Op_IndirectY:
+         case OP_TYPE::Op_IndirectY:
             emit_loop(opr_indirecty, [&](auto v) { return std::format("(${:04X}),Y", v); }, false);
             break;
      
-        case RULE_TYPE::Op_Relative:
+        case OP_TYPE::Op_Relative:
             while (count < max) {
                 expected_output.push_back(test.expected);
                 expected_output.push_back(opr_relative - rel_offset);
@@ -140,7 +140,7 @@ Opcode_test::Test Opcode_test::make_unit_test(OP_TEST& test, int max)
             }
             break;
 
-        case RULE_TYPE::Op_ZeroPageRelative:
+        case OP_TYPE::Op_ZeroPageRelative:
             while (count < max) {
                 expected_output.push_back(test.expected);
                 expected_output.push_back(opr_zprel_addr);
