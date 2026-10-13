@@ -31,13 +31,10 @@
 Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
 {
     SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_basic_while_loop_test");
     constexpr int org = 0x1000;
+    Line_Adder add_line(src_mgr, "create_basic_while_loop_test", org);
     std::vector<uint8_t> expected_output;
     
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
     add_line(std::format("{}.word VAL", Tab(1)));
@@ -66,14 +63,11 @@ Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
  */
 Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_basic_repeat_loop_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_basic_repeat_loop_test", org);
     std::vector<uint8_t> expected_output;
 
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.repeat", Tab(0)));
     add_line(std::format("{}.word VAL", Tab(1)));
@@ -103,15 +97,11 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
  */
 Loop_test::Test Loop_test::create_while_loop_nested_test(int max_iterations)
 {   
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_while_loop_nested_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_while_loop_nested_test", org);
     std::vector<uint8_t> expected_output;
     
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
-
     // 1. Declare all variables initially
     for (int n = 0; n < max_iterations; ++n) {
         add_line(std::format("{}.var val{} = 0", Tab(0), n));
@@ -165,15 +155,11 @@ Loop_test::Test Loop_test::create_while_loop_nested_test(int max_iterations)
  */
 Loop_test::Test Loop_test::create_repeat_loop_nested_test(int max_iterations)
 {   
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_repeat_loop_nested_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_repeat_loop_nested_test", org);
     std::vector<uint8_t> expected_output;
     
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
-
     // 1. Declare all variables initially
     for (int n = 0; n < max_iterations; ++n) {
         add_line(std::format("{}.var val{} = 0", Tab(0), n));
@@ -226,15 +212,11 @@ Loop_test::Test Loop_test::create_repeat_loop_nested_test(int max_iterations)
  */
 Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
 {   
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_mixed_loop_nested_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_mixed_loop_nested_test", org);
     std::vector<uint8_t> expected_output;
     
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
-
     // Declare variables globally at standard start scope
     add_line(std::format("{}.var VAL1 = 0", Tab(0)));
     add_line(std::format("{}.var VAL2 = 0", Tab(0)));
@@ -312,15 +294,11 @@ Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
  */
 Loop_test::Test Loop_test::create_while_continue_loop_test(int max_iterations, int continue_index)
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_while_continue_loop_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_while_continue_loop_test", org);
     std::vector<uint8_t> expected_output;
     
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
-
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
     
@@ -360,15 +338,11 @@ Loop_test::Test Loop_test::create_while_continue_loop_test(int max_iterations, i
  */
 Loop_test::Test Loop_test::create_while_break_loop_test(int max_iterations, int break_index)
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_while_break_loop_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_while_break_loop_test", org);
     std::vector<uint8_t> expected_output;
     
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
-
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
     
@@ -406,14 +380,10 @@ Loop_test::Test Loop_test::create_while_break_loop_test(int max_iterations, int 
  */
 Loop_test::Test Loop_test::create_while_loop_nested_continue_test(int max_iterations, int continue_j)
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_while_loop_nested_continue_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_while_loop_nested_continue_test", org);
     std::vector<uint8_t> expected_output;
-    
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
     
     // Declare loop variables
     add_line(std::format("{}.var I = 0", Tab(0)));
@@ -481,14 +451,10 @@ Loop_test::Test Loop_test::create_while_loop_nested_continue_test(int max_iterat
  */
 Loop_test::Test Loop_test::create_orphaned_continue_test()
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_orphaned_continue_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_orphaned_continue_test", org);
     std::vector<uint8_t> expected_output;
-    
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
     
     add_line(std::format("{}.continue", Tab(0)));
 
@@ -502,14 +468,10 @@ Loop_test::Test Loop_test::create_orphaned_continue_test()
  */
 Loop_test::Test Loop_test::create_orphaned_break_test()
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_orphaned_break_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_orphaned_break_test", org);
     std::vector<uint8_t> expected_output;
-    
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
 
     add_line(std::format("{}.break", Tab(0)));
 
@@ -523,14 +485,10 @@ Loop_test::Test Loop_test::create_orphaned_break_test()
  */
 Loop_test::Test Loop_test::create_orphaned_wend_test()
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_orphaned_continue_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_orphaned_continue_test", org);
     std::vector<uint8_t> expected_output;
-    
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();    
 
     add_line(std::format("{}.wend", Tab(0)));
 
@@ -544,14 +502,10 @@ Loop_test::Test Loop_test::create_orphaned_wend_test()
  */
 Loop_test::Test Loop_test::create_orphaned_until_test()
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_orphaned_until_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_orphaned_until_test", org);
     std::vector<uint8_t> expected_output;
-    
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();    
 
     add_line(std::format("{}.until VAL >= 1", Tab(0)));
 
@@ -565,15 +519,11 @@ Loop_test::Test Loop_test::create_orphaned_until_test()
  */
 Loop_test::Test Loop_test::create_unmatched_while_test()
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_unmatched_while_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_unmatched_while_test", org);
     std::vector<uint8_t> expected_output;
     
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();    
-
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < 3", Tab(0)));
     add_line(std::format("{}VAL = VAL + 1", Tab(1)));
@@ -588,15 +538,11 @@ Loop_test::Test Loop_test::create_unmatched_while_test()
  */
 Loop_test::Test Loop_test::create_unmatched_repeat_test()
 {
-    SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_unmatched_repeat_test");
     constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_unmatched_repeat_test", org);
     std::vector<uint8_t> expected_output;
     
-    add_line();
-    add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();    
-
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.repeat", Tab(0)));
     add_line(std::format("{}VAL = VAL + 1", Tab(1)));

@@ -24,12 +24,27 @@ public:
         return line_num - 1;
     }
 
-    Line_Adder(SourceManager mgr, std::string test_name) 
-        : src_mgr(std::move(mgr)) 
+    Line_Adder(SourceManager mgr, std::string test_name, int org = 0x1000) 
+        : src_mgr(std::move(mgr))
         {
             src_mgr.files.push_back(test_name);
 
             std::string line =  std::format("; {}", test_name);
+            src_mgr.source[{fileid, line_num}] = line;
+            source_code += (line + "\n");
+            line_num++;            
+
+            line = "";
+            src_mgr.source[{fileid, line_num}] = line;
+            source_code += (line + "\n");
+            line_num++;            
+
+            line = std::format("    * = {:04X}", org);;
+            src_mgr.source[{fileid, line_num}] = line;
+            source_code += (line + "\n");
+            line_num++; 
+
+            line = "";
             src_mgr.source[{fileid, line_num}] = line;
             source_code += (line + "\n");
             line_num++;            
