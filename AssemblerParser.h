@@ -553,6 +553,38 @@ public:
                     continue;
                 }
 
+                else if (dir == ".includebinary" || dir == ".incbin") {
+                    if (!TokIs(TokenKind::StringLiteral)) {
+                        throw std::runtime_error(std::format(
+                            "string filename after .include File: {} Line: {}",
+                            src_mgr.GetFileName(Tok.file), Tok.line));
+                    }
+
+                    std::string inc_filename = Tok.text.substr(1, Tok.text.size() - 2);
+                    ConsumeToken();
+
+                    std::string filepath = inc_filename;
+                    bool exists = fs::exists(filepath);
+
+                    for (size_t index = 0; !exists && index < options.include.size(); ++index) {
+                        filepath = options.include[index] + inc_filename;
+                        exists = fs::exists(filepath);
+                    }
+
+                    if (!exists) {
+                        throw std::runtime_error(std::format(
+                            "unable to find .include '{}' File : {} Line: {}",
+                            inc_filename, src_mgr.GetFileName(Tok.file), Tok.line));
+                    }
+
+                    std::error_code ec;
+                    std::uintmax_t size = fs::file_size(inc_filename, ec);
+                    
+                    statements.push_back(std::make_unique<IncBinStatement>(dir_tok.file, dir_tok.line, filepath, size));
+                    continue;
+                }
+
+
                 // --- .print ---
                 else if (dir == ".print") {
                     if (!TokIs(TokenKind::Identifier)) {
