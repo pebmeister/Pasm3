@@ -19,29 +19,22 @@
 #include "d64.h"
 #include "autoloader.h"
 #include "ANSI_esc.h"
+#include "line_adder.h"
 
 #include "loop_test.h"
 
+/**
+ * @brief Creates a test case for a basic assembler while loop.
+ * @param max_iterations The maximum number of iterations the while loop will run.
+ * @return Loop_test::Test The generated test instance with source code and expected binary output.
+ */
 Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
 {
-    const std::string name = "create_basic_while_loop_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_basic_while_loop_test");
+    constexpr int org = 0x1000;
     std::vector<uint8_t> expected_output;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
@@ -56,32 +49,28 @@ Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
     {
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);        
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+        }
         val++;
     }
     
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);    
 }
 
+/**
+ * @brief Creates a test case for a basic assembler repeat-until loop.
+ * @param max_iterations The maximum number of iterations the repeat loop will run.
+ * @return Loop_test::Test The generated test instance with source code and expected binary output.
+ */
 Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
 {
-    const std::string name = "create_basic_repeat_loop_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_basic_repeat_loop_test");
+    constexpr int org = 0x1000;
     std::vector<uint8_t> expected_output;
 
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
@@ -96,32 +85,29 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
     {
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);        
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+        }
+
         val++;
     } while (val < max_iterations);
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);
 }
 
+/**
+ * @brief Creates a test case for nested assembler while loops.
+ * @param max_iterations The maximum iteration depth/limit for each nested while loop level.
+ * @return Loop_test::Test The generated test instance with source code and expected binary output.
+ */
 Loop_test::Test Loop_test::create_while_loop_nested_test(int max_iterations)
 {   
-    const std::string name = "create_while_loop_nested_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x0100;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_while_loop_nested_test");
+    constexpr int org = 0x1000;
     std::vector<uint8_t> expected_output;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
     
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
@@ -168,29 +154,22 @@ Loop_test::Test Loop_test::create_while_loop_nested_test(int max_iterations)
     };
 
     simulate_loop(0);
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);    
 }
 
+/**
+ * @brief Creates a test case for nested assembler repeat-until loops.
+ * @param max_iterations The maximum iteration depth/limit for each nested repeat loop level.
+ * @return Loop_test::Test The generated test instance with source code and expected binary output.
+ */
 Loop_test::Test Loop_test::create_repeat_loop_nested_test(int max_iterations)
 {   
-    const std::string name = "create_repeat_loop_nested_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x0100;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_repeat_loop_nested_test");
+    constexpr int org = 0x1000;
     std::vector<uint8_t> expected_output;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
     
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
@@ -226,7 +205,6 @@ Loop_test::Test Loop_test::create_repeat_loop_nested_test(int max_iterations)
         do {
             expected_output.push_back(vars[depth] & 0xFF);
             expected_output.push_back((vars[depth] >> 8) & 0xFF);
-
             if (org + expected_output.size() >= 0xFFFF) {
                 throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
             }
@@ -237,33 +215,26 @@ Loop_test::Test Loop_test::create_repeat_loop_nested_test(int max_iterations)
     };
 
     simulate_loop(0);
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);    
 }
 
+/**
+ * @brief Creates a test case for interleaved/mixed nested while and repeat loops.
+ * @param max_iterations The loop iteration bound used across the mixed loops.
+ * @return Loop_test::Test The generated test instance with source code and expected binary output.
+ */
 Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
 {   
-    const std::string name = "create_mixed_loop_nested_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x0100;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_mixed_loop_nested_test");
+    constexpr int org = 0x1000;
     std::vector<uint8_t> expected_output;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
     
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
-    
+
     // Declare variables globally at standard start scope
     add_line(std::format("{}.var VAL1 = 0", Tab(0)));
     add_line(std::format("{}.var VAL2 = 0", Tab(0)));
@@ -296,6 +267,9 @@ Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
     auto push_word = [&](int val) {
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+        }
     };
 
     // Correct structural simulation matching exact assembly payload order
@@ -326,32 +300,27 @@ Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
         val1++;
     }
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);        
 }
 
+/**
+ * @brief Creates a test case for a while loop utilizing a conditional `.continue` statement.
+ * @param max_iterations The maximum number of loop iterations.
+ * @param continue_index The specific loop iteration index at which a continue triggers.
+ * @return Loop_test::Test The generated test instance.
+ */
 Loop_test::Test Loop_test::create_while_continue_loop_test(int max_iterations, int continue_index)
 {
-    const std::string name = "create_while_continue_loop_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_while_continue_loop_test");
+    constexpr int org = 0x1000;
     std::vector<uint8_t> expected_output;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
+
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
     
@@ -373,35 +342,33 @@ Loop_test::Test Loop_test::create_while_continue_loop_test(int max_iterations, i
         }
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);        
-        val++;
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+        }
+     val++;
     }
     
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);    
 }
 
+/**
+ * @brief Creates a test case for a while loop utilizing a conditional `.break` statement.
+ * @param max_iterations The maximum number of loop iterations.
+ * @param break_index The specific loop iteration index at which a break triggers.
+ * @return Loop_test::Test The generated test instance.
+ */
 Loop_test::Test Loop_test::create_while_break_loop_test(int max_iterations, int break_index)
 {
-    const std::string name = "create_while_break_loop_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_while_break_loop_test");
+    constexpr int org = 0x1000;
     std::vector<uint8_t> expected_output;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
+
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < {}", Tab(0), max_iterations));
     
@@ -421,32 +388,29 @@ Loop_test::Test Loop_test::create_while_break_loop_test(int max_iterations, int 
         }
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);        
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+        }
         val++;
     }
     
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);    
 }
 
+/**
+ * @brief Creates a test case for nested while loops featuring a conditional `.continue` statement.
+ * @param max_iterations The maximum loop iteration limit per level.
+ * @param continue_j The inner loop index value triggering the continue instruction.
+ * @return Loop_test::Test The generated test instance.
+ */
 Loop_test::Test Loop_test::create_while_loop_nested_continue_test(int max_iterations, int continue_j)
 {
-    const std::string name = "create_while_loop_nested_continue_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_while_loop_nested_continue_test");
+    constexpr int org = 0x1000;
     std::vector<uint8_t> expected_output;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
@@ -486,6 +450,9 @@ Loop_test::Test Loop_test::create_while_loop_nested_continue_test(int max_iterat
     auto push_word = [&](int val) {
         expected_output.push_back(val & 0xFF);
         expected_output.push_back((val >> 8) & 0xFF);
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+        }
     };
 
     // Simulation matching the assembly execution flow
@@ -504,171 +471,136 @@ Loop_test::Test Loop_test::create_while_loop_nested_continue_test(int max_iterat
         i++;
     }
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);
 }
 
+/**
+ * @brief Creates a negative test case for an orphaned `.continue` statement outside any loop context.
+ * @return Loop_test::Test The generated test instance expecting an assembler error.
+ */
 Loop_test::Test Loop_test::create_orphaned_continue_test()
 {
-    const std::string name = "create_orphaned_continue_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    Line_Adder add_line(src_mgr, "create_orphaned_continue_test");
+    constexpr int org = 0x1000;
+    std::vector<uint8_t> expected_output;
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
+    
     add_line(std::format("{}.continue", Tab(0)));
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
 
+/**
+ * @brief Creates a negative test case for an orphaned `.break` statement outside any loop context.
+ * @return Loop_test::Test The generated test instance expecting an assembler error.
+ */
 Loop_test::Test Loop_test::create_orphaned_break_test()
 {
-    const std::string name = "create_orphaned_break_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    Line_Adder add_line(src_mgr, "create_orphaned_break_test");
+    constexpr int org = 0x1000;
+    std::vector<uint8_t> expected_output;
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
     add_line();
+
     add_line(std::format("{}.break", Tab(0)));
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
 
+/**
+ * @brief Creates a negative test case for an orphaned `.wend` statement without a matching while loop.
+ * @return Loop_test::Test The generated test instance expecting an assembler error.
+ */
 Loop_test::Test Loop_test::create_orphaned_wend_test()
 {
-    const std::string name = "create_orphaned_wend_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    Line_Adder add_line(src_mgr, "create_orphaned_continue_test");
+    constexpr int org = 0x1000;
+    std::vector<uint8_t> expected_output;
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
+    add_line();    
+
     add_line(std::format("{}.wend", Tab(0)));
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
 
+/**
+ * @brief Creates a negative test case for an orphaned `.until` statement without a matching repeat loop.
+ * @return Loop_test::Test The generated test instance expecting an assembler error.
+ */
 Loop_test::Test Loop_test::create_orphaned_until_test()
 {
-    const std::string name = "create_orphaned_until_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    Line_Adder add_line(src_mgr, "create_orphaned_until_test");
+    constexpr int org = 0x1000;
+    std::vector<uint8_t> expected_output;
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
+    add_line();    
+
     add_line(std::format("{}.until VAL >= 1", Tab(0)));
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
 
+/**
+ * @brief Creates a negative test case for an unmatched while loop lacking a closing `.wend`.
+ * @return Loop_test::Test The generated test instance expecting an assembler syntax error.
+ */
 Loop_test::Test Loop_test::create_unmatched_while_test()
 {
-    const std::string name = "create_unmatched_while_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    Line_Adder add_line(src_mgr, "create_unmatched_while_test");
+    constexpr int org = 0x1000;
+    std::vector<uint8_t> expected_output;
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
+    add_line();    
+
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.while VAL < 3", Tab(0)));
     add_line(std::format("{}VAL = VAL + 1", Tab(1)));
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
 
+/**
+ * @brief Creates a negative test case for an unmatched repeat loop lacking a closing `.until`.
+ * @return Loop_test::Test The generated test instance expecting an assembler syntax error.
+ */
 Loop_test::Test Loop_test::create_unmatched_repeat_test()
 {
-    const std::string name = "create_unmatched_repeat_test";
-    constexpr int fileid = 0;
-    constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    src_mgr.files.push_back(name);
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line();
-    add_line(std::format("{}; {}", Tab(0), name));
+    Line_Adder add_line(src_mgr, "create_unmatched_repeat_test");
+    constexpr int org = 0x1000;
+    std::vector<uint8_t> expected_output;
+    
     add_line();
     add_line(std::format("{}* = {}", Tab(0), org));
-    add_line();
+    add_line();    
+
     add_line(std::format("{}.var VAL = 0", Tab(0)));
     add_line(std::format("{}.repeat", Tab(0)));
     add_line(std::format("{}VAL = VAL + 1", Tab(1)));
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
