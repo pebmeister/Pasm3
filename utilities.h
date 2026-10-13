@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "PasmTokenizer.hpp"
-#include "ruletype.h"
+#include "optype.h"
 
 // Forward declarations
 struct SourceManager;

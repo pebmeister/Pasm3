@@ -18,9 +18,9 @@
 #include <format>
 #include <cctype>
 
-#define GEN_RULEMAP
-#include "ruletype.h"
-#undef GEN_RULEMAP
+#define GEN_OPMAP
+#include "optype.h"
+#undef GEN_OPMAP
 
 #define GEN_TOKMAP
 #include "tokenkind.h"

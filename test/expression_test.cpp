@@ -2,7 +2,7 @@
 #include <format>
 #include <string>
 
-#include "ruletype.h"
+#include "optype.h"
 #include "tokenkind.h"
 
 #include "AssemblerParser.h"

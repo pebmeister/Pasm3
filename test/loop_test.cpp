@@ -5,7 +5,7 @@
 #include <functional>
 #include <stdexcept>
 
-#include "ruletype.h"
+#include "optype.h"
 #include "tokenkind.h"
 
 #include "AssemblerParser.h"

@@ -18,9 +18,9 @@
 #include <format>
 #include <cctype>
 
-#define GEN_RULEMAP
-#include "ruletype.h"
-#undef GEN_RULEMAP
+#define GEN_OPMAP
+#include "optype.h"
+#undef GEN_OPMAP
 
 #define GEN_TOKMAP
 #include "tokenkind.h"
@@ -35,6 +35,7 @@
 #include "expression_test.h"
 #include "macro_test.h"
 #include "loop_test.h"
+#include "control_flow_test.h"
 
 /**
  * @brief Holds configuration flags and parameters parsed from command-line arguments.
@@ -45,11 +46,13 @@ struct Test_Options {
     bool test_expression = false;         ///< Flag indicating whether to execute Expression verification tests.
     bool test_macros = false;              ///< Flag indicating whether to execute Macro verification tests.
     bool test_loops = false;              ///< Flag indicating whether to execute loop verification tests.
+    bool test_control = false;              ///< Flag indicating whether to execute control verification tests.
     int  opcode_max_iteration = 0xFF;     ///< Maximum operand loop iterations per addressing mode test.
     int  label_max_iteration = 0xFF;      ///< Maximum label iterations per test.
     int  expression_max_iteration = 1;    ///< Maximum expression iterations per test.
     int  macro_max_iteration = 20;        ///< Maximum macro iterations per test.
     int  loop_max_iteration = 25;         ///< Maximum loop iterations per test.
+    int  control_max_iteration = 25;         ///< Maximum loop iterations per test.
 };
 
 /**
@@ -72,6 +75,7 @@ void parse_args(int argc, char* argv[], Test_Options& options)
     options.test_expression = false;
     options.test_macros = false;
     options.test_loops = false;
+    options.test_control = false;
     auto arg_num = 1;
     
     while (arg_num < argc) {
@@ -92,6 +96,15 @@ void parse_args(int argc, char* argv[], Test_Options& options)
                 options.label_max_iteration = std::stoi(argv[arg_num++]);
                 if (options.label_max_iteration < 1) {
                     throw std::runtime_error(std::format("invalid value for max iterations {}. Must be greater than zero.", options.opcode_max_iteration));
+                }
+            }
+        }
+        else if (arg == "-control") {
+            options.test_control = true;
+            if (arg_num < argc) {
+                options.control_max_iteration = std::stoi(argv[arg_num++]);
+                if (options.control_max_iteration < 1) {
+                    throw std::runtime_error(std::format("invalid value for max iterations {}. Must be greater than zero.", options.control_max_iteration));
                 }
             }
         }
@@ -159,7 +172,8 @@ int main(int argc, char* argv[])
         options.test_expression = true;
         options.test_macros = true;
         options.test_loops = true;
-
+        options.test_control = true;
+        
         if (argc > 1) {
             parse_args(argc, argv, options);
         }
@@ -207,6 +221,15 @@ int main(int argc, char* argv[])
             result = loop_test.test(15, true, options.loop_max_iteration);
             if (result) {
                 std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), loop_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+                return -1;
+            }
+        }
+        if (options.test_control) {
+            Control_flow_test control_test;
+            std::cout << std::format("{}{}{}{:15}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "CONTROL TEST");
+            result = control_test.test(15, true, options.control_max_iteration);
+            if (result) {
+                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), control_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
                 return -1;
             }
         }

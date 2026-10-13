@@ -24,7 +24,7 @@ public:
         return line_num - 1;
     }
 
-    Line_Adder(SourceManager mgr, std::string test_name, int org = 0x1000) 
+    Line_Adder(SourceManager mgr, std::string test_name, int org) 
         : src_mgr(std::move(mgr))
         {
             src_mgr.files.push_back(test_name);

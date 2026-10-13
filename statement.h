@@ -126,7 +126,7 @@ struct LabelStatement : Statement {
 struct InstructionStatement : Statement {
     uint16_t address{0};           /**< Assembled target memory address. */
     std::string mnemonic;          /**< Opcode mnemonic string (e.g. "lda", "sta"). */
-    RULE_TYPE mode{RULE_TYPE::Op_Implied}; /**< Target addressing mode category. */
+    OP_TYPE mode{OP_TYPE::Op_Implied}; /**< Target addressing mode category. */
     std::unique_ptr<ExprNode> operand{nullptr}; /**< Expression tree for instruction operand, if present. */
     std::unique_ptr<ExprNode> operand2{nullptr}; /**< Expression tree for instruction zeropage relative operand, if present. */
     std::vector<uint8_t> bytes;    /**< Generated binary machine code byte sequence. */
@@ -139,7 +139,7 @@ struct InstructionStatement : Statement {
      * @param mode Addressing mode identifier.
      * @param op Operand expression AST node smart pointer.
      */
-    InstructionStatement(int file, int line, std::string m, RULE_TYPE mode, std::unique_ptr<ExprNode> op)
+    InstructionStatement(int file, int line, std::string m, OP_TYPE mode, std::unique_ptr<ExprNode> op)
         : Statement(file, line, StmtType::Instruction), mnemonic(std::move(m)), mode(mode), operand(std::move(op)){}
 
     /**
@@ -151,7 +151,7 @@ struct InstructionStatement : Statement {
      * @param op Operand expression AST node smart pointer.
      * @param op2 Operand for Zeropage relative expression AST node smart pointer.
      */
-    InstructionStatement(int file, int line, std::string m, RULE_TYPE mode, std::unique_ptr<ExprNode> op,  std::unique_ptr<ExprNode> op2)
+    InstructionStatement(int file, int line, std::string m, OP_TYPE mode, std::unique_ptr<ExprNode> op,  std::unique_ptr<ExprNode> op2)
         : Statement(file, line, StmtType::Instruction), mnemonic(std::move(m)), mode(mode), operand(std::move(op)), operand2(std::move(op2)){}
 
     std::unique_ptr<Statement> clone() const override {

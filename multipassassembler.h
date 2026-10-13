@@ -10,7 +10,7 @@
 
 #include "anonymouslabel.h"
 #include "options.h"
-#include "ruletype.h"
+#include "optype.h"
 #include "sourceManager.h"
 #include "statement.h"
 #include "symboltable.h"
@@ -63,19 +63,19 @@ private:
 
     /**
      * @brief Formats an instruction operand into an assembly listing string.
-     * @param mode Addressing mode rule (`RULE_TYPE`).
+     * @param mode Addressing mode rule (`OP_TYPE`).
      * @param val Evaluated numeric operand value.
      * @param val2 Evaluated numeric operand value for ZeroPageRelative.
      * @return Formatted operand text representation.
      */
-    std::string FormatOperand(RULE_TYPE mode, int64_t val, int64_t val2);
+    std::string FormatOperand(OP_TYPE mode, int64_t val, int64_t val2);
 
     /**
      * @brief Calculates instruction byte size based on its addressing mode.
-     * @param mode Addressing mode rule (`RULE_TYPE`).
+     * @param mode Addressing mode rule (`OP_TYPE`).
      * @return Memory allocation size in bytes (1, 2, or 3).
      */
-    size_t GetInstructionSize(RULE_TYPE mode);
+    size_t GetInstructionSize(OP_TYPE mode);
 
     std::string parent_scope = "GLOBAL_"; ///< Prefix for active local label scope.
     bool load_address_set = false;        ///< Tracks whether a `.org` directive set the initial load address.
