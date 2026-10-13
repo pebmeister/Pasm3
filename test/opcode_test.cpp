@@ -25,44 +25,28 @@
 #include "anonymouslabel.h"
 #include "macrodef.h"
 #include "multipassassembler.h"
-#include "options.h"
 #include "sourceManager.h"
 #include "utilities.h"
 #include "d64.h"
 #include "autoloader.h"
 #include "ANSI_esc.h"
 #include "test_runner.h"
+#include "line_adder.h"
 
 #include "opcode_test.h"
 
 Opcode_test::Test Opcode_test::make_unit_test(OP_TEST& test, int max)
 {
-    Options options;
-    options.verbose = false;
-
-    SourceManager src_mgr;
-    std::vector<uint8_t> expected_output;
-    std::string line;
-    std::string source_code;
-
-    src_mgr.files.push_back("Opcode_test");
-
     constexpr int org = 0x1000;
-    int line_num = 1;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "Opcode_test", org);
+    std::vector<uint8_t> expected_output;
+
     int count = 0;
-    
-    // helper to add a line of source code
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-    
+        
     add_line(std::format("; {:=>6} {:>4} {:15} {:=>6}", '=', test.op, rulemap[static_cast<RULE_TYPE>(test.mode)], '='));    
     add_line();
-    add_line(std::format("    * = {}", org));
-    add_line();
-
+    
     // Helper for single-instruction modes (Implied, Accumulator)
     auto emit_single = [&](std::string_view suffix = "") {
         expected_output.push_back(test.expected);
@@ -181,5 +165,6 @@ Opcode_test::Test Opcode_test::make_unit_test(OP_TEST& test, int max)
         throw std::runtime_error(std::format("PC exceeded. Lower max iteration."));
     }
     
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, test.negative_test);
 }

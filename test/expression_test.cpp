@@ -16,25 +16,16 @@
 #include "d64.h"
 #include "autoloader.h"
 #include "ANSI_esc.h"
+#include "line_adder.h"
 
 #include "expression_test.h"
 
 Expression_test::Test Expression_test::create_expression_operators_test()
 {
-    constexpr int fileid = 0;
     constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    src_mgr.files.push_back("Expression_test");
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line(std::format("    * = {}", org));
+    Line_Adder add_line(src_mgr, "create_expression_operators_test", org);
+    std::vector<uint8_t> expected_output;
 
     // --- Bitwise & Arithmetic ---
     add_line("res_add   = 100 + 25");      // 125  ($007D)
@@ -84,33 +75,27 @@ Expression_test::Test Expression_test::create_expression_operators_test()
         1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0
     };
 
-    std::vector<uint8_t> expected_output;
     expected_output.reserve(expected_words.size() * 2);
 
     for (uint16_t val : expected_words) {
         expected_output.push_back(static_cast<uint8_t>(val & 0xFF));
         expected_output.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+        }
     }
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);
 }
 
 Expression_test::Test Expression_test::create_expression_order_of_operations_test()
 {
-    constexpr int fileid = 0;
     constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line(std::format("    * = {}", org));
-
+    Line_Adder add_line(src_mgr, "create_expression_operators_test", org);
+    std::vector<uint8_t> expected_output;
+    
     // --- Multiplication / Division vs Addition / Subtraction ---
     add_line("prec_mul_add1 = 2 + 5 * 5");       // 2 + 25 = 27        ($001B)
     add_line("prec_mul_add2 = (2 + 5) * 5");     // 7 * 5  = 35        ($0023)
@@ -159,98 +144,72 @@ Expression_test::Test Expression_test::create_expression_order_of_operations_tes
         1
     };
 
-    std::vector<uint8_t> expected_output;
     expected_output.reserve(expected_words.size() * 2);
 
     for (uint16_t val : expected_words) {
         expected_output.push_back(static_cast<uint8_t>(val & 0xFF));
         expected_output.push_back(static_cast<uint8_t>((val >> 8) & 0xFF));
+        if (org + expected_output.size() >= 0xFFFF) {
+            throw std::runtime_error("PC exceeded 0xFFFF. Lower max iteration.");
+        }
     }
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);
 }
 
 Expression_test::Test Expression_test::create_expression_div_zero_test()
 {
-    constexpr int fileid = 0;
     constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_expression_div_zero_test", org);
+    std::vector<uint8_t> expected_output;
 
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line(std::format("    * = {}", org));
     add_line("bad_val = 100 / 0");
     add_line("    .word bad_val");
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
 
 Expression_test::Test Expression_test::create_expression_mod_zero_test()
 {
-    constexpr int fileid = 0;
     constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line(std::format("    * = {}", org));
+    Line_Adder add_line(src_mgr, "create_expression_mod_zero_test", org);
+    std::vector<uint8_t> expected_output;
+    
     add_line("bad_val = 50 % 0");
     add_line("    .word bad_val");
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
 
 Expression_test::Test Expression_test::create_expression_mismatched_parens_test()
 {
-    constexpr int fileid = 0;
     constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_expression_mismatched_parens_test", org);
+    std::vector<uint8_t> expected_output;
 
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line(std::format("    * = {}", org));
     add_line("bad_val = (10 + 20 * 5"); // Missing closing parenthesis
     add_line("    .word bad_val");
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }
 
 Expression_test::Test Expression_test::create_expression_missing_operand_test()
 {
-    constexpr int fileid = 0;
     constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_expression_missing_operand_test", org);
+    std::vector<uint8_t> expected_output;
 
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    src_mgr.files.push_back("Expression_test");
-    add_line(std::format("    * = {}", org));
     add_line("bad_val = 100 + * 5"); // Missing operand between operators
     add_line("    .word bad_val");
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
 }

@@ -17,27 +17,16 @@
 #include "autoloader.h"
 #include "ANSI_esc.h"
 
+#include "line_adder.h"
 #include "macro_test.h"
 
 
 Macro_test::Test Macro_test::create_macro_test(int max)
 {
-    constexpr int fileid = 0;
     constexpr int org = 0x1000;
     SourceManager src_mgr;
-    int line_num = 1;
-    std::string source_code;
+    Line_Adder add_line(src_mgr, "create_macro_test", org);
     std::vector<uint8_t> expected_output;
-
-    src_mgr.files.push_back("Macro_test");
-
-    auto add_line = [&](std::string line = "") {
-        src_mgr.source[{fileid, line_num}] = line;
-        source_code += (line + "\n");
-        line_num++;
-    };
-
-    add_line(std::format("    * = {}", org));
 
     // Base Case Macro: _BYTE1
     add_line(".macro _BYTE1");
@@ -78,5 +67,6 @@ Macro_test::Test Macro_test::create_macro_test(int max)
         add_line(test_call);
     }
 
+    add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);
 }
