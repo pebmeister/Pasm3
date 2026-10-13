@@ -30,6 +30,7 @@ enum StmtType {
     EndIf,       /**< Conditional construct end marker. */
     Break,       /**< Loop control break statement. */
     Continue,    /**< Loop control continue statement. */
+    IncBin,      /**< LInclude binary statement. */
     Unknown      /**< Unrecognized or uninitialized statement type. */
 };
 
@@ -400,6 +401,28 @@ struct WendStatement : Statement {
 
     std::unique_ptr<Statement> clone() const override {
         return std::make_unique<WendStatement>(file, line);
+    }
+};
+
+/**
+ * @struct IncBinStatement
+ * @brief Represents include binary file.
+ */
+struct IncBinStatement : Statement {
+    /**
+     * @brief Constructs a IncBinStatement node.
+     * @param file Source file index.
+     * @param line Source line index.
+     * @param binfile path to binary fil to include
+     * @param filesize size of the file
+     */
+    std::string binfile; /**< binary file. */
+    uintmax_t filesize; /**< binary file. */
+    explicit IncBinStatement(int file, int line, std::string binfile, uintmax_t filesize)
+        : Statement(file, line, StmtType::IncBin), binfile(binfile), filesize(filesize)  { }
+
+    std::unique_ptr<Statement> clone() const override {
+        return std::make_unique<IncBinStatement>(file, line, binfile, filesize);
     }
 };
 
