@@ -1097,10 +1097,15 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 } else {
                     file_last_printed_line[stmt->file] = stmt->line;
                 }
-                for (auto b = 0; b < count; ++ b) {
-                    emitted_bytes.push_back(0);
+                if (pc >= load_address) {
+                    for (auto b = 0; b < count; ++ b) {
+                        emitted_bytes.push_back(0);
+                    }
+                    emit_bytes(emitted_bytes);
                 }
-                pc += count;
+                else {
+                    pc += count;
+                }
                 break;
             }
             
@@ -1131,7 +1136,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         summary += std::format("{} = ${:04X}", name, vars_.Lookup(name, {var_stmt->file, var_stmt->line}).value_or(0));
                     }
                     emit_listing_row(pc, "", summary);
-                }                break;
+                }                
+                break;
             }
 
             case StmtType::Instruction: {
