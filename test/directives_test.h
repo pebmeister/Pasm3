@@ -70,7 +70,7 @@ public:
         max = max_iterations;
 
         // Stream tests individually directly into the queue
-/*        emit(create_incbin_full_file_test());
+        emit(create_incbin_full_file_test());
         emit(create_incbin_offset_and_length_test());
         emit(create_incbin_missing_file_negative_test());
         emit(create_ifdef_defined_test());
@@ -82,8 +82,7 @@ public:
                 emit(create_fill_directive_test(i, by));
             }
         }
-*/
-        max_iterations = 1;
+
         for (auto i = 1; i <= max_iterations; i++) {
             emit(create_ds_directive_test(i));
         }
