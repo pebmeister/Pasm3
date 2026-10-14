@@ -435,6 +435,12 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             break;
         }
 
+        case StmtType::IncBin: {
+            auto incbin = static_cast<IncBinStatement*>(stmt.get());
+            pc += incbin->filesize;
+            new_statements.push_back(std::move(stmt));
+		}
+
         case StmtType::Instruction: {
             // Instruction
             auto inst = static_cast<InstructionStatement*>(stmt.get());
