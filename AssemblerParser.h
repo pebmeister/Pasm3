@@ -573,12 +573,17 @@ public:
 
                     if (!exists) {
                         throw std::runtime_error(std::format(
-                            "unable to find .include '{}' File : {} Line: {}",
+                            "unable to find .incbin '{}' File : {} Line: {}",
                             inc_filename, src_mgr.GetFileName(Tok.file), Tok.line));
                     }
 
                     std::error_code ec;
                     std::uintmax_t size = fs::file_size(inc_filename, ec);
+                    if (ec) {
+                        throw std::runtime_error(std::format(
+                            "unable to get size of file .incbin '{}' File : {} Line: {}",
+                            inc_filename, src_mgr.GetFileName(Tok.file), Tok.line));
+                    }
                     
                     statements.push_back(std::make_unique<IncBinStatement>(dir_tok.file, dir_tok.line, filepath, size));
                     continue;
