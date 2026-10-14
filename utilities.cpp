@@ -112,3 +112,31 @@ std::optional<int> FindAnonLabel(
 
     return std::nullopt;
 }
+
+std::vector<uint8_t> read_binary_file(const std::string& filepath) 
+{
+    // 1. Open file at the end to get file size immediately
+    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
+    
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open binary file: " + filepath);
+    }
+
+    std::streamsize file_size = file.tellg();
+    
+    // Check for empty file
+    if (file_size <= 0) {
+        return {};
+    }
+
+    // 2. Allocate memory ahead of time
+    std::vector<uint8_t> buffer(static_cast<size_t>(file_size));
+
+    // 3. Move cursor back to beginning and read into buffer
+    file.seekg(0, std::ios::beg);
+    if (!file.read(reinterpret_cast<char*>(buffer.data()), file_size)) {
+        throw std::runtime_error("Failed to read binary content from: " + filepath);
+    }
+
+    return buffer;
+}

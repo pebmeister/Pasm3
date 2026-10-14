@@ -95,6 +95,10 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
         }
     }
 
+    if (pc >= 0xFFFF) {
+        throw std::runtime_error("Program counter exceeded $FFFF.");
+    }
+    
     if (changed) {
         throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +" passes.");
     }
@@ -439,6 +443,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             auto incbin = static_cast<IncBinStatement*>(stmt.get());
             pc += incbin->filesize;
             new_statements.push_back(std::move(stmt));
+            break;
         }
 
         case StmtType::Instruction: {
@@ -975,6 +980,19 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 }
                 else {
                     file_last_printed_line[stmt->file] = stmt->line;
+                }
+                break;
+            }
+
+            case StmtType::IncBin: {
+                auto incbin = static_cast<IncBinStatement*>(stmt.get());
+                auto bytes = read_binary_file(incbin->binfile);
+                if (printstate) {
+                    emit_listing_row(pc, "", std::format(".incbin \"{}\"", incbin->binfile));
+                }
+                emit_bytes(bytes);                
+                if (printstate) {
+                    emit_listing_row(pc, "", "");
                 }
                 break;
             }
