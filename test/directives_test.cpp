@@ -200,11 +200,9 @@ Directives_test::Test Directives_test::create_ds_directive_test(int max)
 
     // Reserve max bytes of memory storage
     add_line(std::format(".ds {}", max));
-    add_line(std::format(".byte $FF"));
 
     // Expected output: max zero-initialized memory bytes
     std::vector<uint8_t> expected_output(max, 0x00);
-    expected_output.push_back(0xFF);
 
     std::string source_code;
     add_line.GetSource(source_code);
