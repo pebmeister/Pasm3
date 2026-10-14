@@ -1097,7 +1097,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 } else {
                     file_last_printed_line[stmt->file] = stmt->line;
                 }
-
+                for (auto b = 0; b < count; ++ b) {
+                    emitted_bytes.push_back(0);
+                }
                 pc += count;
                 break;
             }

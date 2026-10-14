@@ -149,3 +149,64 @@ Directives_test::Test Directives_test::create_ifndef_test()
     add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);
 }
+
+Directives_test::Test Directives_test::create_basic_header_test()
+{
+    constexpr int org = 0x0801;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_basic_header_test", org);
+
+    add_line(".basic_hdr");
+    add_line("    rts");
+
+    // Standard 12-byte C64 BASIC stub for "10 SYS 2061" + assembly payload
+    std::vector<uint8_t> expected_output = {
+        0x0B, 0x08,             // Next BASIC line pointer ($080B)
+        0x0A, 0x00,             // Line number 10
+        0x9E,                   // BASIC SYS token
+        0x32, 0x30, 0x36, 0x31, // ASCII "2061" ($080D)
+        0x00,                   // BASIC line end terminator
+        0x00, 0x00,             // BASIC program end terminator
+        0x60                    // RTS opcode ($080D payload)
+    };
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
+Directives_test::Test Directives_test::create_fill_directive_test(int max, uint8_t byte)
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_fill_directive_test", org);
+
+    // Fill 8 bytes with value $EA (NOP)
+    add_line(std::format(".fill {}, {}", byte, max));
+
+    // Expected output: max consecutive byte bytes
+    std::vector<uint8_t> expected_output(max, byte);
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
+Directives_test::Test Directives_test::create_ds_directive_test(int max)
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_ds_directive_test", org);
+
+    // Reserve max bytes of memory storage
+    add_line(std::format(".ds {}", max));
+    add_line(std::format(".byte $FF"));
+
+    // Expected output: max zero-initialized memory bytes
+    std::vector<uint8_t> expected_output(max, 0x00);
+    expected_output.push_back(0xFF);
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}
