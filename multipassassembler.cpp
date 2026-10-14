@@ -441,7 +441,15 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::IncBin: {
             auto incbin = static_cast<IncBinStatement*>(stmt.get());
-            pc += incbin->filesize;
+            auto length_expr = EvaluateExpr(incbin->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+            auto bytes_to_read = incbin->filesize;
+            if (length_expr.has_value()) {
+                auto length = length_expr.value();
+                if (length > 0) {
+                    bytes_to_read = length;
+                }
+            }
+            pc += bytes_to_read;
             new_statements.push_back(std::move(stmt));
             break;
         }
@@ -985,10 +993,24 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             }
 
             case StmtType::IncBin: {
-                auto incbin = static_cast<IncBinStatement*>(stmt.get());
-                auto bytes = read_binary_file(incbin->binfile);
+                auto incbin_stmt = static_cast<IncBinStatement*>(stmt.get());
+                auto offset_expr = EvaluateExpr(incbin_stmt->offset_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (!offset_expr.has_value()) {
+                    throw std::runtime_error(
+                        std::format("Invalid offset expression for .incbin '{}' at File: {} line: {}", 
+                            incbin_stmt->binfile, src_mgr.GetFileName(incbin_stmt->file), incbin_stmt->line));
+                }                
+                auto offset = offset_expr.value();
+                auto length_expr = EvaluateExpr(incbin_stmt->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (!length_expr.has_value()) {
+                    throw std::runtime_error(
+                        std::format("Invalid length expression for .incbin '{}' at File: {} line: {}", 
+                        incbin_stmt->binfile, src_mgr.GetFileName(incbin_stmt->file), incbin_stmt->line));
+                }                
+                auto length = length_expr.value();                
+                auto bytes = read_binary_file_slice(incbin_stmt->binfile, offset, length);
                 if (printstate) {
-                    emit_listing_row(pc, "", std::format(".incbin \"{}\"", incbin->binfile));
+                    emit_listing_row(pc, "", "");
                 }
                 emit_bytes(bytes);                
                 if (printstate) {

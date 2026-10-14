@@ -539,7 +539,7 @@ public:
                     if (!exists) {
                         throw std::runtime_error(std::format(
                             "unable to find .include '{}' File : {} Line: {}",
-                            inc_filename, src_mgr.GetFileName(Tok.file), Tok.line));
+                            inc_filename, src_mgr.GetFileName(dir_tok.file), dir_tok.line));
                     }
 
                     auto inc_tokens = LoadAndTokenizeFile(filepath, src_mgr, tokenizer);
@@ -556,39 +556,81 @@ public:
                 else if (dir == ".includebinary" || dir == ".incbin") {
                     if (!TokIs(TokenKind::StringLiteral)) {
                         throw std::runtime_error(std::format(
-                            "string filename after .include File: {} Line: {}",
-                            src_mgr.GetFileName(Tok.file), Tok.line));
+                            "Expected string filename after {} at File: {} Line: {}",
+                            dir, src_mgr.GetFileName(dir_tok.file), dir_tok.line));
                     }
 
+                    // 1. Extract string literal contents (strip surrounding quotes)
                     std::string inc_filename = Tok.text.substr(1, Tok.text.size() - 2);
                     ConsumeToken();
 
-                    std::string filepath = inc_filename;
-                    bool exists = fs::exists(filepath);
-
-                    for (size_t index = 0; !exists && index < options.include.size(); ++index) {
-                        filepath = options.include[index] + inc_filename;
-                        exists = fs::exists(filepath);
+                    // 2. Resolve file path via include directories
+                    fs::path filepath = inc_filename;
+                    if (!fs::exists(filepath)) {
+                        for (const auto& dir_path : options.include) {
+                            fs::path candidate = fs::path(dir_path) / inc_filename;
+                            if (fs::exists(candidate)) {
+                                filepath = candidate;
+                                break;
+                            }
+                        }
                     }
 
-                    if (!exists) {
+                    if (!fs::exists(filepath)) {
                         throw std::runtime_error(std::format(
-                            "unable to find .incbin '{}' File : {} Line: {}",
-                            inc_filename, src_mgr.GetFileName(Tok.file), Tok.line));
+                            "Unable to find .incbin file '{}' at File: {} Line: {}",
+                            inc_filename, src_mgr.GetFileName(dir_tok.file), dir_tok.line));
                     }
 
+                    // 3. Get exact file size on resolved path
                     std::error_code ec;
-                    std::uintmax_t size = fs::file_size(inc_filename, ec);
+                    size_t filesize = fs::file_size(filepath, ec);
                     if (ec) {
                         throw std::runtime_error(std::format(
-                            "unable to get size of file .incbin '{}' File : {} Line: {}",
-                            inc_filename, src_mgr.GetFileName(Tok.file), Tok.line));
+                            "Unable to get size of .incbin file '{}' at File: {} Line: {}",
+                            filepath.string(), src_mgr.GetFileName(dir_tok.file), dir_tok.line));
                     }
-                    
-                    statements.push_back(std::make_unique<IncBinStatement>(dir_tok.file, dir_tok.line, filepath, size));
+
+                    // 4. Parse optional Offset and Length expressions
+
+                    std::unique_ptr<ExprNode> offset_node = std::make_unique<NumberExpr>(0);
+                    std::unique_ptr<ExprNode> length_node = std::make_unique<NumberExpr>(0);
+
+                    // Optional Offset argument (requires leading comma if present)
+                    if (TokIs(TokenKind::Comma)) {
+                        ConsumeToken(); // Consume ','
+                        auto off_expr = ParseExpression();
+                        if (off_expr.isInvalid()) {
+                            throw std::runtime_error(
+                                std::format("Invalid expression for offset '{}' at line {}", src_mgr.GetFileName(dir_tok.file), dir_tok.line));
+                        }
+                        offset_node =  off_expr.move();
+                
+                        // Optional Length argument
+                        if (TokIs(TokenKind::Comma)) {
+                            ConsumeToken(); // Consume ','
+                            auto length_expr = ParseExpression();
+                            if (length_expr.isInvalid()) {
+                                throw std::runtime_error(
+                                    std::format("Invalid expression for length '{}' at line {}", src_mgr.GetFileName(dir_tok.file), dir_tok.line));
+                            }
+                            length_node = length_expr.move();
+                        }
+                        
+                    }
+
+                    // 5. Construct AST Statement
+                    inc_filename = filepath.string();
+                    statements.push_back(std::make_unique<IncBinStatement>(
+                        dir_tok.file, 
+                        dir_tok.line, 
+                        inc_filename, 
+                        filesize, 
+                        std::move(offset_node), 
+                        std::move(length_node)
+                    ));                    
                     continue;
                 }
-
 
                 // --- .print ---
                 else if (dir == ".print") {

@@ -113,29 +113,34 @@ std::optional<int> FindAnonLabel(
     return std::nullopt;
 }
 
-std::vector<uint8_t> read_binary_file(const std::string& filepath) 
+std::vector<uint8_t> read_binary_file_slice(const std::string& filepath, size_t offset, size_t length)
 {
-    // 1. Open file at the end to get file size immediately
     std::ifstream file(filepath, std::ios::binary | std::ios::ate);
-    
     if (!file.is_open()) {
-        throw std::runtime_error("Failed to open binary file: " + filepath);
+        throw std::runtime_error("Unable to open file '" + filepath + "'");
     }
 
-    std::streamsize file_size = file.tellg();
+    size_t total_size = static_cast<size_t>(file.tellg());
+
+    if (offset >= total_size) {
+        throw std::runtime_error("Offset exceeds file size");
+    }
+
+    // Calculate actual bytes to read
+    size_t bytes_to_read = total_size - offset;
+    if (length > 0 && length > bytes_to_read) {
+        throw std::runtime_error("Invalid number of bytes to read.");
+    }
     
-    // Check for empty file
-    if (file_size <= 0) {
-        return {};
+    if (length > 0 && length < bytes_to_read) {
+        bytes_to_read = length;
     }
 
-    // 2. Allocate memory ahead of time
-    std::vector<uint8_t> buffer(static_cast<size_t>(file_size));
-
-    // 3. Move cursor back to beginning and read into buffer
-    file.seekg(0, std::ios::beg);
-    if (!file.read(reinterpret_cast<char*>(buffer.data()), file_size)) {
-        throw std::runtime_error("Failed to read binary content from: " + filepath);
+    std::vector<uint8_t> buffer(bytes_to_read);
+    
+    file.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
+    if (!file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(bytes_to_read))) {
+        throw std::runtime_error("Failed reading stream bytes");
     }
 
     return buffer;

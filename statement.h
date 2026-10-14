@@ -415,14 +415,22 @@ struct IncBinStatement : Statement {
      * @param line Source line index.
      * @param binfile path to binary fil to include
      * @param filesize size of the file
+     * @param offset_expr expression that is the offset to read from
+     * @param length_expr expression that is the length to read
      */
     std::string binfile; /**< binary file. */
-    uintmax_t filesize; /**< binary file. */
-    explicit IncBinStatement(int file, int line, std::string binfile, uintmax_t filesize)
-        : Statement(file, line, StmtType::IncBin), binfile(binfile), filesize(filesize)  { }
+    size_t filesize; /**< binary file. */
+    std::unique_ptr<ExprNode> offset_expr;          /**< expression controlling offset to read from begining of file. */
+    std::unique_ptr<ExprNode> length_expr;       /**< expression controlling legth to read of file. */
+    explicit IncBinStatement(int file, int line, std::string binfile, size_t filesize, 
+            std::unique_ptr<ExprNode> offset_expr, 
+            std::unique_ptr<ExprNode> length_expr)
+    
+    : Statement(file, line, StmtType::IncBin), binfile(binfile), filesize(filesize), 
+            offset_expr(std::move(offset_expr)), length_expr(std::move(length_expr))  { }
 
     std::unique_ptr<Statement> clone() const override {
-        return std::make_unique<IncBinStatement>(file, line, binfile, filesize);
+        return std::make_unique<IncBinStatement>(file, line, binfile, filesize, CloneExpr(offset_expr), CloneExpr(length_expr));
     }
 };
 

@@ -121,4 +121,5 @@ std::optional<int> FindAnonLabel(
  * @param filepath path of file to be read.
  * @return std::vector<uint8_t> contents of binary file.
 */
-std::vector<uint8_t> read_binary_file(const std::string& filepath);
+std::vector<uint8_t> read_binary_file_slice(
+    const std::string& filepath, size_t offset, size_t length = 0); 
