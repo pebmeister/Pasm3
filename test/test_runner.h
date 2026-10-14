@@ -46,6 +46,8 @@ public:
     std::string source_code;
 
     virtual void generate_tests(int max_iterations, const std::function<void(Test)>& emit) = 0;
+    virtual void prepair_tests() = 0;
+    virtual void cleanup_tests() = 0;
 
     inline std::string Tab(int level) { return std::string(level*4, ' '); }
 
@@ -73,6 +75,9 @@ public:
         // 1. Producer Thread
         std::thread producer([&]() {
             try {
+                
+                prepair_tests();
+                
                 generate_tests(max_iterations, [&](Test test_item) {
                     if (stop_requested.load(std::memory_order_relaxed)) return;
 
@@ -87,6 +92,7 @@ public:
                     lock.unlock();
                     cv_workers.notify_one();
                 });
+                
             }
             catch (...) {
                 producer_exception = std::current_exception();
@@ -223,6 +229,7 @@ public:
         for (auto& w : workers) {
             if (w.joinable()) w.join();
         }
+        cleanup_tests();
 
         // 4. FINAL TERMINAL SYNC: Guarantee final total is rendered cleanly
         {

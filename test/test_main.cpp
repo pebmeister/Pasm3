@@ -36,6 +36,7 @@
 #include "macro_test.h"
 #include "loop_test.h"
 #include "control_flow_test.h"
+#include "directives_test.h"
 
 /**
  * @brief Holds configuration flags and parameters parsed from command-line arguments.
@@ -44,15 +45,17 @@ struct Test_Options {
     bool test_opcode = false;             ///< Flag indicating whether to execute opcode verification tests.
     bool test_labels = false;             ///< Flag indicating whether to execute label verification tests.
     bool test_expression = false;         ///< Flag indicating whether to execute Expression verification tests.
-    bool test_macros = false;              ///< Flag indicating whether to execute Macro verification tests.
+    bool test_macros = false;             ///< Flag indicating whether to execute Macro verification tests.
     bool test_loops = false;              ///< Flag indicating whether to execute loop verification tests.
-    bool test_control = false;              ///< Flag indicating whether to execute control verification tests.
+    bool test_control = false;            ///< Flag indicating whether to execute control verification tests.
+    bool test_directives = false;         ///< Flag indicating whether to execute directive verification tests.
     int  opcode_max_iteration = 0xFF;     ///< Maximum operand loop iterations per addressing mode test.
     int  label_max_iteration = 0xFF;      ///< Maximum label iterations per test.
     int  expression_max_iteration = 1;    ///< Maximum expression iterations per test.
     int  macro_max_iteration = 20;        ///< Maximum macro iterations per test.
     int  loop_max_iteration = 25;         ///< Maximum loop iterations per test.
-    int  control_max_iteration = 25;         ///< Maximum loop iterations per test.
+    int  control_max_iteration = 25;      ///< Maximum control iterations per test.
+    int  directive_max_iteration = 25;    ///< Maximum directive iterations per test.
 };
 
 /**
@@ -76,6 +79,7 @@ void parse_args(int argc, char* argv[], Test_Options& options)
     options.test_macros = false;
     options.test_loops = false;
     options.test_control = false;
+    options.test_directives = false;
     auto arg_num = 1;
     
     while (arg_num < argc) {
@@ -135,12 +139,23 @@ void parse_args(int argc, char* argv[], Test_Options& options)
                 }
             }
         }        
+        else if (arg == "-directive") {
+            options.test_directives = true;
+            if (arg_num < argc) {
+                options.directive_max_iteration = std::stoi(argv[arg_num++]);
+                if (options.directive_max_iteration < 1) {
+                    throw std::runtime_error(std::format("invalid value for max iterations {}. Must be greater than zero.", options.directive_max_iteration));
+                }
+            }
+        }        
         else if (arg == "-all") {
             options.test_opcode = true;
             options.test_labels = true;
             options.test_expression = true;
             options.test_macros = true;
             options.test_loops = true;
+            options.test_control = true;
+            options.test_directives = true;
         }
         else {
             throw std::runtime_error(std::format("Unknown command line option {}", arg));
@@ -173,6 +188,7 @@ int main(int argc, char* argv[])
         options.test_macros = true;
         options.test_loops = true;
         options.test_control = true;
+        options.test_directives = true;
         
         if (argc > 1) {
             parse_args(argc, argv, options);
@@ -233,6 +249,17 @@ int main(int argc, char* argv[])
                 return -1;
             }
         }
+
+        if (options.test_directives) {
+            Directives_test directive_test;
+            std::cout << std::format("{}{}{}{:15}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "DIRECTIVE TEST");
+            result = directive_test.test(15, true, options.directive_max_iteration);
+            if (result) {
+                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), directive_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+                return -1;
+            }
+        }
+
     }
     catch (std::exception& ex) {
         std::cout << std::format("\n{}{}{}{}{}", 

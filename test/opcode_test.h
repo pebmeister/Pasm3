@@ -56,6 +56,10 @@ private:
     uint16_t opr_indirect = abs_min;
 
 public:
+
+    void prepair_tests() override {}
+    void cleanup_tests() override {}
+
     void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
     {
         for (auto&[_, info]: opcodeDict) {

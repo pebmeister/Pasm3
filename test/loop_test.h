@@ -36,6 +36,10 @@ private:
     Test create_unmatched_repeat_test();
 
 public:
+
+    void prepair_tests() override {}
+    void cleanup_tests() override {}
+
     void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
     {
         // Stream tests individually directly into the queue

@@ -17,6 +17,10 @@ private:
     int max = 0;
     
 public:
+
+    void prepair_tests() override {}
+    void cleanup_tests() override {}
+
     void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
     {
         max = max_iterations;

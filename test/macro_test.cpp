@@ -20,7 +20,6 @@
 #include "line_adder.h"
 #include "macro_test.h"
 
-
 Macro_test::Test Macro_test::create_macro_test(int max)
 {
     constexpr int org = 0x1000;

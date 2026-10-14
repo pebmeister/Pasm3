@@ -25,6 +25,10 @@ private:
     Test create_macro_test(int max);
 
 public:
+
+    void prepair_tests() override {}
+    void cleanup_tests() override {}
+
     void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
     {
         emit(create_macro_test(max_iterations));

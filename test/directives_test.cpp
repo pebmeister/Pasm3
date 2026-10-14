@@ -1,0 +1,91 @@
+#include "directives_test.h"
+
+#include <sstream>
+#include <format>
+#include <string>
+#include <vector>
+#include <filesystem>
+#include <fstream>
+
+#include "optype.h"
+#include "tokenkind.h"
+
+#include "AssemblerParser.h"
+#include "PasmTokenizer.hpp"
+#include "anonymouslabel.h"
+#include "macrodef.h"
+#include "multipassassembler.h"
+#include "options.h"
+#include "sourceManager.h"
+#include "utilities.h"
+#include "d64.h"
+#include "autoloader.h"
+#include "ANSI_esc.h"
+#include "line_adder.h"
+
+namespace fs = std::filesystem;
+
+// Helper to write dummy binary test assets
+void Directives_test::create_temp_bin_file(const std::string& filename, const std::vector<uint8_t>& bytes) {
+    std::ofstream out(filename, std::ios::binary);
+    if (out.is_open()) {
+        out.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    }
+}
+
+// Helper to remove dummy binary test assets
+void Directives_test::remove_temp_file(const std::string& filename) {
+    std::error_code ec;
+    fs::remove(filename, ec);
+}
+
+Directives_test::Test Directives_test::create_incbin_full_file_test()
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_incbin_full_file_test", org);
+
+    add_line(std::format(".incbin \"{}\"", temp_files[0]));
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    
+    std::vector<uint8_t> expected_output(
+        full_bytes.begin(), 
+        full_bytes.end()
+    );
+    
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
+Directives_test::Test Directives_test::create_incbin_offset_and_length_test()
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_incbin_offset_and_length_test", org);
+
+    // Skip 2 bytes (1 + 1), read 4 bytes (2 * 2)}
+    add_line(std::format(".incbin \"{}\", 1 + 1, 2 * 2", temp_files[1]));
+    auto offset = 1 + 1;
+    auto length = 2 * 2;
+    std::vector<uint8_t> expected_output(
+        dummy_bytes.begin() + offset, 
+        dummy_bytes.begin() + offset + length
+    );
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
+Directives_test::Test Directives_test::create_incbin_missing_file_negative_test()
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_incbin_missing_file_negative_test", org);
+
+    add_line(".incbin \"non_existent_binary_xyz123.bin\"");
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, {}, true);
+}
