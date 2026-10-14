@@ -22,6 +22,9 @@ private:
     Test create_incbin_full_file_test();
     Test create_incbin_offset_and_length_test();
     Test create_incbin_missing_file_negative_test();
+    Test create_ifdef_defined_test();
+    Test create_ifdef_undefined_else_test();
+    Test create_ifndef_test();
     
     void create_temp_bin_file(const std::string& filename, const std::vector<uint8_t>& bytes);
     void remove_temp_file(const std::string& filename);
@@ -67,5 +70,8 @@ public:
         emit(create_incbin_full_file_test());
         emit(create_incbin_offset_and_length_test());
         emit(create_incbin_missing_file_negative_test());
+        emit(create_ifdef_defined_test());
+        emit(create_ifdef_undefined_else_test());
+        emit(create_ifndef_test());
     }
 };

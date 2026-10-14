@@ -64,7 +64,7 @@ Directives_test::Test Directives_test::create_incbin_offset_and_length_test()
     SourceManager src_mgr;
     Line_Adder add_line(src_mgr, "create_incbin_offset_and_length_test", org);
 
-    // Skip 2 bytes (1 + 1), read 4 bytes (2 * 2)}
+    // Skip 2 bytes (1 + 1), read 4 bytes (2 * 2)
     add_line(std::format(".incbin \"{}\", 1 + 1, 2 * 2", temp_files[1]));
     auto offset = 1 + 1;
     auto length = 2 * 2;
@@ -88,4 +88,64 @@ Directives_test::Test Directives_test::create_incbin_missing_file_negative_test(
     std::string source_code;
     add_line.GetSource(source_code);
     return Test(src_mgr, source_code, {}, true);
+}
+
+// --- .ifdef / .ifndef Tests ---
+
+Directives_test::Test Directives_test::create_ifdef_defined_test()
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_ifdef_defined_test", org);
+
+    add_line("FEATURE_ENABLED = 1");
+    add_line(".ifdef FEATURE_ENABLED");
+    add_line("    .byte $01, $02");
+    add_line(".else");
+    add_line("    .byte $FF, $FF");
+    add_line(".endif");
+
+    std::vector<uint8_t> expected_output = { 0x01, 0x02 };
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
+Directives_test::Test Directives_test::create_ifdef_undefined_else_test()
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_ifdef_undefined_else_test", org);
+
+    // FEATURE_ENABLED is NOT defined -> execute .else branch
+    // Also tests that dead-code branch contains arbitrary invalid tokens without raising errors
+    add_line(".ifdef UNSET_SYMBOL");
+    add_line("    this is invalid code that should be skipped");
+    add_line(".else");
+    add_line("    .byte $AA, $BB");
+    add_line(".endif");
+
+    std::vector<uint8_t> expected_output = { 0xAA, 0xBB };
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
+Directives_test::Test Directives_test::create_ifndef_test()
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_ifndef_test", org);
+
+    add_line(".ifndef MISSING_SYMBOL");
+    add_line("    .byte $10, $20");
+    add_line(".endif");
+
+    std::vector<uint8_t> expected_output = { 0x10, 0x20 };
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
 }
