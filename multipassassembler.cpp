@@ -1098,7 +1098,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     file_last_printed_line[stmt->file] = stmt->line;
                 }
                 if (pc >= load_address) {
-                    std::vector<unit8_t> bytes;
+                    std::vector<uint8_t> bytes;
                     for (auto b = 0; b < count; ++ b) {
                         bytes.push_back(0);
                     }
