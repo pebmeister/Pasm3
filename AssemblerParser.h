@@ -361,7 +361,7 @@ public:
                 // --- .basic_hdr (C64 BASIC stub wrapper) ---
                 else if (dir == ".basic_hdr") {
                     auto org_addr = std::make_unique<NumberExpr>(static_cast<uint16_t>(0x0801));
-                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, std::move(org_addr)));
+                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, std::move(org_addr), true));
 
                     std::vector<std::unique_ptr<ExprNode>> elems;
                     for (auto by: {
