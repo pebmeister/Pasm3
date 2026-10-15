@@ -128,10 +128,10 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
     switch(stmt->stmt_type) {
         case StmtType::Label : {
             // Label
-            auto lbl = static_cast<const LabelStatement*>(stmt.get());
-            auto name = lbl->name;
+            auto lbl_stmt = static_cast<const LabelStatement*>(stmt.get());
+            auto name = lbl_stmt->name;
 
-            if (lbl->is_anon()) {
+            if (lbl_stmt->is_anon()) {
                 std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
                 auto it = anon_idmap.find(stmt_id);
                 if (it == anon_idmap.end()) {
@@ -153,19 +153,19 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 new_statements.push_back(std::move(stmt));
             }
             else {
-                if (lbl->is_local()) {
+                if (lbl_stmt->is_local()) {
                     name = GetMangledSymbol(name, parent_scope);
                 }
-                else if (!lbl->is_anon()) {
+                else if (!lbl_stmt->is_anon()) {
                     parent_scope = name;
                 }
-                if (vars_.Lookup(name, {lbl->file, lbl->line})) {
+                if (vars_.Lookup(name, {lbl_stmt->file, lbl_stmt->line})) {
                     throw std::runtime_error(
                         std::format("should not be a label at ${:04X} File: {} Line: {}", 
-                                    pc, src_mgr.GetFileName(lbl->file), lbl->line));
+                                    pc, src_mgr.GetFileName(lbl_stmt->file), lbl_stmt->line));
                 }
                 else {
-                    changed |= symbols_.Define(name, pc, {lbl->file, lbl->line});
+                    changed |= symbols_.Define(name, pc, {lbl_stmt->file, lbl_stmt->line});
                 }
                 new_statements.push_back(std::move(stmt));
             }
@@ -174,10 +174,10 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::Org: {
            // Org
-            auto org = static_cast<const OrgStatement*>(stmt.get());
-            if (org->address_expr) {
-                auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val.has_value()) pc = static_cast<uint16_t>(val.value());
+            auto org_stmt = static_cast<const OrgStatement*>(stmt.get());
+            if (org_stmt->address_expr) {
+                auto val_expr = EvaluateExpr(org_stmt->address_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (val_expr.has_value()) pc = static_cast<uint16_t>(val_expr.value());
             }
             new_statements.push_back(std::move(stmt));
             break;
@@ -189,9 +189,9 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 int64_t initial_val = 0;
 
                 if (expr) {
-                    auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                    if (val.has_value()) {
-                        initial_val = val.value();
+                    auto val_expr = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                    if (val_expr.has_value()) {
+                        initial_val = val_expr.value();
                     } else {
                         // If expression fails during pass evaluation, report error or default
                         throw std::runtime_error(
@@ -208,19 +208,19 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
         
         case StmtType::Equ: {
             // Equ
-            auto equ = static_cast<const EquStatement*>(stmt.get());
-            if (equ->value_expr) {
-                auto name = equ->name;
-                if (equ->is_local()) {
+            auto equ_stmt = static_cast<const EquStatement*>(stmt.get());
+            if (equ_stmt->value_expr) {
+                auto name = equ_stmt->name;
+                if (equ_stmt->is_local()) {
                     name = GetMangledSymbol(name, parent_scope);
                 }
-                auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val.has_value()) {                   
-                    if (vars_.Lookup(name, {equ->file, equ->line})) {
-                        vars_.Define(name, static_cast<uint16_t>(val.value()), {equ->file, equ->line});
+                auto val_expr = EvaluateExpr(equ_stmt->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (val_expr.has_value()) {                   
+                    if (vars_.Lookup(name, {equ_stmt->file, equ_stmt->line})) {
+                        vars_.Define(name, static_cast<uint16_t>(val_expr.value()), {equ_stmt->file, equ_stmt->line});
                     }
                     else {
-                        changed |= symbols_.Define(name, static_cast<uint16_t>(val.value()), {equ->file, equ->line});
+                        changed |= symbols_.Define(name, static_cast<uint16_t>(val_expr.value()), {equ_stmt->file, equ_stmt->line});
                     }
                 }
             }
@@ -230,11 +230,11 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::Ds: {
             // Ds
-            auto ds = static_cast<const DsStatement*>(stmt.get());
-            if (ds->size_expr) {
-                auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val.has_value()) {
-                    pc += val.value();
+            auto ds_stmt = static_cast<const DsStatement*>(stmt.get());
+            if (ds_stmt->size_expr) {
+                auto val_expr = EvaluateExpr(ds_stmt->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (val_expr.has_value()) {
+                    pc += val_expr.value();
                 }
             }
             new_statements.push_back(std::move(stmt));
@@ -243,21 +243,21 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::Data: {
             // Data
-            auto data = static_cast<const DataStatement*>(stmt.get());
-            uint16_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
-            pc += static_cast<uint16_t>(data->elements.size() * bytes_per_elem);
+            auto data_stmt = static_cast<const DataStatement*>(stmt.get());
+            uint16_t bytes_per_elem = (data_stmt->width == DataWidth::Byte) ? 1 : 2;
+            pc += static_cast<uint16_t>(data_stmt->elements.size() * bytes_per_elem);
             new_statements.push_back(std::move(stmt));
             break;
         }
 
         case StmtType::Fill: {
             // Fill
-            auto fill = static_cast<const FillStatement*>(stmt.get());
-            if (fill->length_expr) {
-                auto len = EvaluateExpr(fill->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+            auto fill_stmt = static_cast<const FillStatement*>(stmt.get());
+            if (fill_stmt->length_expr) {
+                auto len_expr = EvaluateExpr(fill_stmt->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
-                if (len.has_value()) {
-                    pc += len.value();
+                if (len_expr.has_value()) {
+                    pc += len_expr.value();
                 }
             }
             new_statements.push_back(std::move(stmt));
@@ -289,26 +289,26 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
         case StmtType::Loop: 
         {
             loop_level++;
-            auto loop_statement = static_cast<LoopStatement*>(stmt.get());
+            auto loop_stmt = static_cast<LoopStatement*>(stmt.get());
 
-            if (!loop_statement->condition_expr) {
+            if (!loop_stmt->condition_expr) {
                 throw std::runtime_error(
                     std::format("loop expression must be predefined at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
+                                pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
             }
 
             // Helper lambda to check if a statement is a loop start
-            auto is_loop_start = [&](const std::unique_ptr<Statement>& s) {
-                return s->stmt_type == StmtType::Loop;
+            auto is_loop_start = [&](const std::unique_ptr<Statement>& stmt) {
+                return stmt->stmt_type == StmtType::Loop;
             };
 
             // Helper lambda to check if a statement is a loop end
-            auto is_loop_end = [&](const std::unique_ptr<Statement>& s) {
-                return s->stmt_type == StmtType::Wend || s->stmt_type == StmtType::Until;
+            auto is_loop_end = [&](const std::unique_ptr<Statement>& stmt) {
+                return stmt->stmt_type == StmtType::Wend || stmt->stmt_type == StmtType::Until;
             };
 
             // 1. Capture original loop body template ONCE (depth-aware)
-            if (loop_statement->statements.empty()) {
+            if (loop_stmt->statements.empty()) {
                 size_t scan_idx = st_index + 1;
                 int depth = 1;
 
@@ -321,7 +321,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                             break; // Matched outer end keyword
                         }
                     }
-                    loop_statement->statements.push_back(statements[scan_idx]->clone());
+                    loop_stmt->statements.push_back(statements[scan_idx]->clone());
                     scan_idx++;
                 }
             }
@@ -332,24 +332,24 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             const int MAX_ITERATIONS = 64000;
 
             while (iteration_count < MAX_ITERATIONS) {
-                if (loop_statement->test_at_top) {
-                    auto condition = EvaluateExpr(loop_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (loop_stmt->test_at_top) {
+                    auto condition = EvaluateExpr(loop_stmt->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
                     if (!condition.has_value()) {
                         throw std::runtime_error(
                             std::format("loop expression could not be evaluated at ${:04X} File: {} Line: {}", 
-                                        pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
+                                        pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
                     }
 
-                    auto v = condition.value();
-                    auto exitloop = loop_statement->reverse_logic ? v != 0 : v == 0;
+                    auto val = condition.value();
+                    auto exitloop = loop_stmt->reverse_logic ? val != 0 : val == 0;
                     if (exitloop ) {
                         break; 
                     }
                 }
 
                 std::vector<std::unique_ptr<Statement>> iteration_body;
-                for (const auto& body_stmt : loop_statement->statements) {
+                for (const auto& body_stmt : loop_stmt->statements) {
                     if (body_stmt) {
                         iteration_body.push_back(body_stmt->clone());
                     }
@@ -372,17 +372,17 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
 
                 loopControl = LoopControlKind::normal;
-                if (!loop_statement->test_at_top) {
-                    auto condition = EvaluateExpr(loop_statement->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (!loop_stmt->test_at_top) {
+                    auto condition_expr = EvaluateExpr(loop_stmt->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
-                    if (!condition.has_value()) {
+                    if (!condition_expr.has_value()) {
                         throw std::runtime_error(
                             std::format("loop expression could not be evaluated at ${:04X} File: {} Line: {}", 
-                                        pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
+                                        pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
                     }
 
-                    auto v = condition.value();
-                    auto exitloop=loop_statement->reverse_logic ? v != 0 : v == 0;
+                    auto val = condition_expr.value();
+                    auto exitloop = loop_stmt->reverse_logic ? val != 0 : val == 0;
                     if (exitloop) {
                         break; 
                     }
@@ -394,7 +394,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             if (iteration_count >= MAX_ITERATIONS) {
                 throw std::runtime_error(
                     std::format("infinite loop detected at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
+                                pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
             }
 
             // 3. Advance driver index to the matching outer end statement (depth-aware)
@@ -415,7 +415,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             if (skip_depth != 0) {
                 throw std::runtime_error(
                     std::format("loop missing termination at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(loop_statement->file), loop_statement->line));
+                                pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
             }            
             st_index = skip_idx;
             loop_level--;
@@ -423,9 +423,9 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
         }
 
         case StmtType::IncBin: {
-            auto incbin = static_cast<IncBinStatement*>(stmt.get());
-            auto length_expr = EvaluateExpr(incbin->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-            auto bytes_to_read = incbin->filesize;
+            auto incbin_stmt = static_cast<IncBinStatement*>(stmt.get());
+            auto length_expr = EvaluateExpr(incbin_stmt->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+            auto bytes_to_read = incbin_stmt->filesize;
             if (length_expr.has_value()) {
                 auto length = length_expr.value();
                 if (length > 0) {
@@ -439,17 +439,17 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::Instruction: {
             // Instruction
-            auto inst = static_cast<InstructionStatement*>(stmt.get());
-            const OpCodeInfo* info = FindOpCodeInfo(inst->mnemonic);
+            auto inst_stmt = static_cast<InstructionStatement*>(stmt.get());
+            const OpCodeInfo* info = FindOpCodeInfo(inst_stmt->mnemonic);
             if (!info) {
                 throw std::runtime_error(
-                std::format("Unknown opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
+                std::format("Unknown opcode '{}'  at ${:04X}  File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
             }
 
-            auto mode_it = info->mode_to_opcode.find(inst->mode);
+            auto mode_it = info->mode_to_opcode.find(inst_stmt->mode);
             if (mode_it == info->mode_to_opcode.end()) {
                 
-                switch (inst->mode) {
+                switch (inst_stmt->mode) {
                     case OP_TYPE::Op_Implied:
                         mode_it = info->mode_to_opcode.find(OP_TYPE::Op_Accumulator);
                         break;
@@ -471,14 +471,14 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
                 if (mode_it == info->mode_to_opcode.end()) {
                     throw std::runtime_error(
-                        std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line));
+                        std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
                     }
                 }
-                auto val = EvaluateExpr(inst->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val.has_value()) {
-                    int64_t evaluated = val.value();
-                    if (inst->mode == OP_TYPE::Op_Relative) {
-                        int64_t offset = evaluated - (static_cast<int64_t>(pc) + 2);
+                auto val_expr = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (val_expr.has_value()) {
+                    int64_t operand_value = val_expr.value();
+                    if (inst_stmt->mode == OP_TYPE::Op_Relative) {
+                        int64_t offset = operand_value - (static_cast<int64_t>(pc) + 2);
 
                         if (offset < -128 || offset > 127) {
                             // wait for all symbols to resolve first
@@ -486,18 +486,18 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                         }
                         // wait passes to resolve first
                         if (stable && (offset < -128 || offset > 127)) {
-                             auto target = evaluated;
+                             auto target = operand_value;
                              if (offset > 0) {
                                  target += 3; // add jump island jmp $xxxx
                              }
                              std::string skip_label = std::format("@__island{}", ++ island_counter);
 
-                            auto it = inverted_branches.find(inst->mnemonic);
+                            auto it = inverted_branches.find(inst_stmt->mnemonic);
                             if (it != inverted_branches.end()) {
                                 if (options.warnings) {
                                     std::cout <<
-                                        "Warning: Branch out of range for '" << inst->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " <<
-                                        "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst->file) << " Line: " << std::dec << inst->line <<  "\n";
+                                        "Warning: Branch out of range for '" << inst_stmt->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " <<
+                                        "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst_stmt->file) << " Line: " << std::dec << inst_stmt->line <<  "\n";
                                 }
                                 // 1. Create the JMP statement FIRST by moving the original target expression
                                 auto jmp_inst = std::make_unique<InstructionStatement>(
@@ -505,7 +505,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                                     stmt->line,
                                     "jmp",
                                     OP_TYPE::Op_Absolute,
-                                    std::move(inst->operand) // Safely transfers the unique_ptr ownership to jmp_inst
+                                    std::move(inst_stmt->operand) // Safely transfers the unique_ptr ownership to jmp_inst
                                 );
 
                                 std::pair<int, int> loc = {stmt->file, stmt->line};
@@ -538,44 +538,44 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                         }
                     }
                     else { // range check and optimize for page zero
-                        if (!options.ignore_size && ((evaluated < 0 || evaluated > 0xFFFF))) {
+                        if (!options.ignore_size && ((operand_value < 0 || operand_value > 0xFFFF))) {
                             throw std::runtime_error(
-                                std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst->mnemonic, pc,  src_mgr.GetFileName(inst->file), inst->line)
+                                std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc,  src_mgr.GetFileName(inst_stmt->file), inst_stmt->line)
                             );
                         }
-                        OP_TYPE want_mode = inst->mode;
-                        if (evaluated <= 0xFF) {
-                            if (inst->mode == Op_Absolute) want_mode = Op_ZeroPage;
-                            else if (inst->mode == Op_AbsoluteX) want_mode = Op_ZeroPageX;
-                            else if (inst->mode == Op_AbsoluteY) want_mode = Op_ZeroPageY;
+                        OP_TYPE want_mode = inst_stmt->mode;
+                        if (operand_value <= 0xFF) {
+                            if (inst_stmt->mode == Op_Absolute) want_mode = Op_ZeroPage;
+                            else if (inst_stmt->mode == Op_AbsoluteX) want_mode = Op_ZeroPageX;
+                            else if (inst_stmt->mode == Op_AbsoluteY) want_mode = Op_ZeroPageY;
 
-                            if (want_mode != inst->mode) {
+                            if (want_mode != inst_stmt->mode) {
                                 mode_it = info->mode_to_opcode.find(want_mode);
                                 if (mode_it != info->mode_to_opcode.end()) {
-                                    inst->mode = want_mode;
+                                    inst_stmt->mode = want_mode;
                                 }
                             }
                         }
                         else {
-                            if (inst->mode == Op_ZeroPage) want_mode = Op_Absolute;
-                            else if (inst->mode == Op_ZeroPageX) want_mode = Op_AbsoluteX;
-                            else if (inst->mode == Op_ZeroPageY) want_mode = Op_AbsoluteY;
+                            if (inst_stmt->mode == Op_ZeroPage) want_mode = Op_Absolute;
+                            else if (inst_stmt->mode == Op_ZeroPageX) want_mode = Op_AbsoluteX;
+                            else if (inst_stmt->mode == Op_ZeroPageY) want_mode = Op_AbsoluteY;
 
-                            if (want_mode != inst->mode) {
+                            if (want_mode != inst_stmt->mode) {
                                 mode_it = info->mode_to_opcode.find(want_mode);
                                 if (mode_it != info->mode_to_opcode.end()) {
-                                    inst->mode = want_mode;
+                                    inst_stmt->mode = want_mode;
                                 }
                                 else {
                                     throw std::runtime_error(
-                                        std::format("Operand out of range for '{}'  at ${:04X}  File: {} Line: {}", inst->mnemonic, pc, src_mgr.GetFileName(inst->file), inst->line)
+                                        std::format("Operand out of range for '{}'  at ${:04X}  File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line)
                                 );
                             }
                         }
                     }
                 }
             }
-            pc += GetInstructionSize(inst->mode);
+            pc += GetInstructionSize(inst_stmt->mode);
             new_statements.push_back(std::move(stmt));
             break;
         }
@@ -682,9 +682,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
                 skip_idx++;
             }
-
-
-
             st_index = skip_idx;
             break;
         }
@@ -911,25 +908,25 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
         switch (stmt_type) {
             case StmtType::Label: {
                 // 1. Label Statements
-                auto lbl = static_cast<const LabelStatement*>(stmt.get());
+                auto lbl_stmt = static_cast<const LabelStatement*>(stmt.get());
                 if (printstate) {
-                     emit_listing_row(pc, "", lbl->name);
+                     emit_listing_row(pc, "", lbl_stmt->name);
                 }
                 else {
-                    file_last_printed_line[stmt->file] = stmt->line;
+                    file_last_printed_line[lbl_stmt->file] = lbl_stmt->line;
                 }
 
-                if (!lbl->is_local() && !lbl->is_anon()) {
-                    parent_scope = lbl->name;
+                if (!lbl_stmt->is_local() && !lbl_stmt->is_anon()) {
+                    parent_scope = lbl_stmt->name;
                 }
                 break;
             }
 
             case StmtType::Org: {
                 // 2. Org Directives (*= $XXXX)
-                auto org = static_cast<const OrgStatement*>(stmt.get());
-                if (org->address_expr) {
-                    auto val = EvaluateExpr(org->address_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                auto org_stmt = static_cast<const OrgStatement*>(stmt.get());
+                if (org_stmt->address_expr) {
+                    auto val = EvaluateExpr(org_stmt->address_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                     if (!val.has_value()) {
                         throw std::runtime_error(
                             std::format("Invalid value File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
@@ -941,17 +938,17 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     emit_listing_row(pc, "", std::format("*= ${:04X}", pc));
                 }
                 else {
-                    file_last_printed_line[stmt->file] = stmt->line;
+                    file_last_printed_line[org_stmt->file] = org_stmt->line;
                 }
                 break;
             }
 
             case StmtType::Equ: {
                 // 3. Equate Directives (NAME = $VAL)
-                auto equ = static_cast<const EquStatement*>(stmt.get());
+                auto equ_stmt = static_cast<const EquStatement*>(stmt.get());
                 uint16_t v = 0;
-                if (equ->value_expr) {
-                    auto val = EvaluateExpr(equ->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (equ_stmt->value_expr) {
+                    auto val = EvaluateExpr(equ_stmt->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                     if (!val.has_value()) {
                         throw std::runtime_error(
                             std::format("Invalid value File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
@@ -959,18 +956,18 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                     v = static_cast<uint16_t>(val.value());
                     
-                    if (vars_.Lookup(equ->name, {equ->file, equ->line})) {
-                        vars_.Define(equ->name, v, {equ->file, equ->line} );
+                    if (vars_.Lookup(equ_stmt->name, {equ_stmt->file, equ_stmt->line})) {
+                        vars_.Define(equ_stmt->name, v, {equ_stmt->file, equ_stmt->line} );
                     }
                     else {
-                        symbols_.Define(equ->name, v, {equ->file, equ->line});
+                        symbols_.Define(equ_stmt->name, v, {equ_stmt->file, equ_stmt->line});
                     }
                 }
                 if (printstate) {
-                    emit_listing_row(v, "", std::format("{} = ${:04X}", equ->name, v));
+                    emit_listing_row(v, "", std::format("{} = ${:04X}", equ_stmt->name, v));
                 }
                 else {
-                    file_last_printed_line[stmt->file] = stmt->line;
+                    file_last_printed_line[equ_stmt->file] = equ_stmt->line;
                 }
                 break;
             }
@@ -1004,17 +1001,17 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
             case StmtType::Data: {
                 // 4. Data Directives (.byte / .word)
-                auto data = static_cast<const DataStatement*>(stmt.get());
+                auto data_stmt = static_cast<const DataStatement*>(stmt.get());
                 uint16_t current_pc = pc;
                 std::vector<uint8_t> data_bytes;
                 std::vector<std::string> elem_strs;
 
-                for (const auto& expr : data->elements) {
+                for (const auto& expr : data_stmt->elements) {
                     if (!expr) continue;
-                    auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                    int64_t v = val.value_or(0);
+                    auto val_expr = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                    int64_t v = val_expr.value();
 
-                    if (data->width == DataWidth::Byte) {
+                    if (data_stmt->width == DataWidth::Byte) {
                         uint8_t b = static_cast<uint8_t>(v & 0xFF);
                         data_bytes.push_back(b);
                         elem_strs.push_back(std::format("${:02X}", b));
@@ -1029,13 +1026,13 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 emit_bytes(data_bytes);
 
                 if (!printstate) {
-                    file_last_printed_line[stmt->file] = stmt->line;
+                    file_last_printed_line[data_stmt->file] = data_stmt->line;
                     break;
                 }
 
-                std::string dir_keyword = (data->width == DataWidth::Byte) ? ".byte" : ".word";
-                size_t elems_per_chunk = (data->width == DataWidth::Byte) ? 4 : 2;
-                size_t bytes_per_elem = (data->width == DataWidth::Byte) ? 1 : 2;
+                std::string dir_keyword = (data_stmt->width == DataWidth::Byte) ? ".byte" : ".word";
+                size_t elems_per_chunk = (data_stmt->width == DataWidth::Byte) ? 4 : 2;
+                size_t bytes_per_elem = (data_stmt->width == DataWidth::Byte) ? 1 : 2;
 
                 for (size_t i = 0; i < elem_strs.size(); i += elems_per_chunk) {
                     size_t elem_count = std::min(elems_per_chunk, elem_strs.size() - i);
@@ -1066,19 +1063,19 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 
             case StmtType::Ds: {
                 // .ds Directives
-                auto ds = static_cast<const DsStatement*>(stmt.get());
+                auto ds_stmt = static_cast<const DsStatement*>(stmt.get());
                 uint16_t current_pc = pc;
                 uint16_t count = 0;
 
-                auto val = EvaluateExpr(ds->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val.has_value()) {
-                    count = static_cast<uint16_t>(val.value());
+                auto val_expr = EvaluateExpr(ds_stmt->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (val_expr.has_value()) {
+                    count = static_cast<uint16_t>(val_expr.value());
                 }
 
                 if (printstate) {
                     emit_listing_row(current_pc, "", std::format(".ds {}", count));
                 } else {
-                    file_last_printed_line[stmt->file] = stmt->line;
+                    file_last_printed_line[ds_stmt->file] = ds_stmt->line;
                 }
                 if (pc >= load_address) {
                     std::vector<uint8_t> bytes(count, 0x00);
@@ -1096,9 +1093,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     int64_t initial_val = 0;
 
                     if (expr) {
-                        auto val = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                        if (val.has_value()) {
-                            initial_val = val.value();
+                        auto val_expr = EvaluateExpr(expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                        if (val_expr.has_value()) {
+                            initial_val = val_expr.value();
                         } else {
                             throw std::runtime_error(
                                 std::format("Invalid initializer expression for variable '{}' at File: {} line: {}", 
