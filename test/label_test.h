@@ -37,8 +37,8 @@ public:
         max = max_iterations;
 
         // Stream tests individually directly into the queue
-        emit(create_global_labels_test());
         emit(create_foward_labels_test());
+        emit(create_global_labels_test());
         emit(create_anon_labels_test());
         emit(create_local_label_test());
         emit(create_combined_label_test());
