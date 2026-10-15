@@ -209,6 +209,26 @@ Directives_test::Test Directives_test::create_ds_directive_test(int max)
     return Test(src_mgr, source_code, expected_output, false);
 }
 
+Directives_test::Test Directives_test::create_ds_move_pc_test(int max)
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_ds_move_pc_test", org);
+
+    add_line(std::format("Label"));
+    add_line(std::format("* = {} - {} / 2", org, org));
+    add_line(std::format(".ds {}", 5));
+    add_line(std::format("* = Label"));
+    
+    add_line(std::format(".ds {}", max));
+    
+    // Expected output: max zero-initialized memory bytes
+    std::vector<uint8_t> expected_output(max, 0x00);
+
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
 Directives_test::Test Directives_test::create_byte_directive_test()
 {
     constexpr int org = 0x1000;
