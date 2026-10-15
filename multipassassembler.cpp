@@ -252,32 +252,15 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::Fill: {
             // Fill
-            // Transform FillStatement -> DataStatement
             auto fill = static_cast<const FillStatement*>(stmt.get());
-            if (fill->byte_expr && fill->length_expr) {
-                auto byt = EvaluateExpr(fill->byte_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+            if (fill->length_expr) {
                 auto len = EvaluateExpr(fill->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
-                if (byt.has_value() && len.has_value()) {
-                    std::vector<std::unique_ptr<ExprNode>> elems;
-                    auto b = byt.value();
-
-                    for (auto i = 0; i < len.value(); ++i) {
-                        elems.push_back( std::make_unique<NumberExpr>(static_cast<uint8_t>(b)));
-                    }
-
-                    // Create DataStatement preserving line & source string metadata
-                    auto data_stmt = std::make_unique<DataStatement>(
-                        fill->file, fill->line, DataWidth::Byte, std::move(elems)
-                    );
-                    pc += static_cast<uint16_t>(elems.size());
-                    new_statements.push_back(std::move(data_stmt));
-                }
-                else {
-                    // Keep FillStatement for next pass if expressions couldn't resolve yet
-                    new_statements.push_back(std::move(stmt));
+                if (len.has_value()) {
+                    pc += len.value();
                 }
             }
+            new_statements.push_back(std::move(stmt));
             break;
         }
 
@@ -1136,6 +1119,33 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     emit_listing_row(pc, "", summary);
                 }                
                 break;
+            }
+
+            case StmtType::Fill: {
+                auto fill_stmt = static_cast<const FillStatement*>(stmt.get());
+                if (fill_stmt->byte_expr && fill_stmt->length_expr) {
+                    auto byt = EvaluateExpr(fill_stmt->byte_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                    auto len = EvaluateExpr(fill_stmt->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+
+                    if (byt.has_value() && len.has_value()) {
+                        auto l = len.value();
+                        auto b = byt.value();
+                        std::vector<uint8_t> bytes(l, b);
+                        if (printstate) {
+                            emit_listing_row(pc, "", "");
+                        } else {
+                           file_last_printed_line[stmt->file] = stmt->line;
+                        }
+                        emit_bytes(bytes);
+                        if (printstate) {
+                            emit_listing_row(pc, "", "");
+                        }
+                        break;
+                     }
+                }
+                throw std::runtime_error(
+                        std::format("Invalid fill expression File: {}  Line:{}", src_mgr.GetFileName(fill_stmt->file), fill_stmt->line)
+                    );
             }
 
             case StmtType::Instruction: {
