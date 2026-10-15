@@ -126,64 +126,73 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
     }
 
     switch(stmt->stmt_type) {
-        case StmtType::Label : {
-            // Label
-            auto lbl_stmt = static_cast<const LabelStatement*>(stmt.get());
-            auto name = lbl_stmt->name;
+        case StmtType::Label: {
+            // Label Statement Handler
+            auto label_stmt = static_cast<const LabelStatement*>(stmt.get());
+            std::string name = label_stmt->name;
 
-            if (lbl_stmt->is_anon()) {
-                std::pair<int, size_t> stmt_id = { stmt->file, stmt->line };
-                auto it = anon_idmap.find(stmt_id);
+            if (label_stmt->is_anon()) {
+                std::pair<int, size_t> stmt_key = { label_stmt->file, label_stmt->line };
+                auto it = anon_idmap.find(stmt_key);
+                
                 if (it == anon_idmap.end()) {
                     anonymous_labels.push_back({
                         .type = name[0],
                         .address = pc,
-                        .statement_id = stmt_id
+                        .statement_id = stmt_key
                     });
-                    anon_idmap[stmt_id] = anonymous_labels.size() -1;
+                    anon_idmap[stmt_key] = anonymous_labels.size() - 1;
                     changed = true;
-                }
-                else {
-                    auto index = it->second;
+                } else {
+                    size_t index = it->second;
                     if (anonymous_labels[index].address != pc) {
                         anonymous_labels[index].address = pc;
                         changed = true;
                     }
                 }
                 new_statements.push_back(std::move(stmt));
-            }
-            else {
-                if (lbl_stmt->is_local()) {
+            } else {
+                if (label_stmt->is_local()) {
                     name = GetMangledSymbol(name, parent_scope);
-                }
-                else if (!lbl_stmt->is_anon()) {
+                } else {
+                    // Global label sets the active parent scope for subsequent local labels
                     parent_scope = name;
                 }
-                if (vars_.Lookup(name, {lbl_stmt->file, lbl_stmt->line})) {
+
+                // Ensure label doesn't conflict with an existing variable name
+                if (vars_.Lookup(name, { label_stmt->file, label_stmt->line })) {
                     throw std::runtime_error(
-                        std::format("should not be a label at ${:04X} File: {} Line: {}", 
-                                    pc, src_mgr.GetFileName(lbl_stmt->file), lbl_stmt->line));
+                        std::format("Symbol '{}' is already defined as a variable at ${:04X} File: {} Line: {}", 
+                            name, pc, src_mgr.GetFileName(label_stmt->file), label_stmt->line));
                 }
-                else {
-                    changed |= symbols_.Define(name, pc, {lbl_stmt->file, lbl_stmt->line});
-                }
+
+                changed |= symbols_.Define(name, pc, { label_stmt->file, label_stmt->line });
                 new_statements.push_back(std::move(stmt));
             }
             break;
         }
-
+        
         case StmtType::Org: {
-           // Org
+            // Origin (* = expr) Statement Handler
             auto org_stmt = static_cast<const OrgStatement*>(stmt.get());
             if (org_stmt->address_expr) {
                 auto val_expr = EvaluateExpr(org_stmt->address_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val_expr.has_value()) pc = static_cast<uint16_t>(val_expr.value());
+                if (val_expr.has_value()) {
+                    int32_t raw_addr = val_expr.value();
+                    if (raw_addr < 0 || raw_addr > 0xFFFF) {
+                        throw std::runtime_error(
+                            std::format("Origin address out of range (${:X}) at File: {} Line: {}", 
+                                raw_addr, src_mgr.GetFileName(org_stmt->file), org_stmt->line));
+                    }
+                    pc = static_cast<uint16_t>(raw_addr);
+                }
             }
             new_statements.push_back(std::move(stmt));
             break;
         }
 
         case StmtType::Var: {
+            // Variable (.var / reassignment) Statement Handler
             auto var_stmt = static_cast<const VarStatement*>(stmt.get());            
             for (const auto& [name, expr] : var_stmt->vars) {
                 int64_t initial_val = 0;
@@ -193,41 +202,49 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     if (val_expr.has_value()) {
                         initial_val = val_expr.value();
                     } else {
-                        // If expression fails during pass evaluation, report error or default
                         throw std::runtime_error(
-                            std::format("Invalid initializer expression for variable '{}' at File: {} Line {}", 
-                            name, src_mgr.GetFileName(var_stmt->file), var_stmt->line));
+                            std::format("Invalid or unresolvable initializer expression for variable '{}' at File: {} Line: {}", 
+                                name, src_mgr.GetFileName(var_stmt->file), var_stmt->line));
                     }
                 }
 
-                vars_.Define(name, static_cast<uint16_t>(initial_val), {var_stmt->file, var_stmt->line});
+                // Unconditionally set/update variable value; do NOT mutate 'changed' flag
+                vars_.Define(name, static_cast<uint16_t>(initial_val), { var_stmt->file, var_stmt->line });
             }
             new_statements.push_back(std::move(stmt));
             break;
         }
-        
+
         case StmtType::Equ: {
-            // Equ
+            // Equate (.equ / =) Constant Definition Handler
             auto equ_stmt = static_cast<const EquStatement*>(stmt.get());
             if (equ_stmt->value_expr) {
-                auto name = equ_stmt->name;
+                std::string name = equ_stmt->name;
                 if (equ_stmt->is_local()) {
                     name = GetMangledSymbol(name, parent_scope);
                 }
+
                 auto val_expr = EvaluateExpr(equ_stmt->value_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val_expr.has_value()) {                   
-                    if (vars_.Lookup(name, {equ_stmt->file, equ_stmt->line})) {
-                        vars_.Define(name, static_cast<uint16_t>(val_expr.value()), {equ_stmt->file, equ_stmt->line});
-                    }
-                    else {
-                        changed |= symbols_.Define(name, static_cast<uint16_t>(val_expr.value()), {equ_stmt->file, equ_stmt->line});
+                    // If the name is already defined as a variable (.var), update the variable table
+                    if (vars_.Lookup(name, { equ_stmt->file, equ_stmt->line })) {
+                        vars_.Define(name, static_cast<uint16_t>(val_expr.value()), { equ_stmt->file, equ_stmt->line });
+                    } else {
+                        // Otherwise, define it as an immutable symbol constant
+                        changed |= symbols_.Define(name, static_cast<uint16_t>(val_expr.value()), { equ_stmt->file, equ_stmt->line });
                     }
                 }
+            } else {
+                throw std::runtime_error(
+                    std::format("Missing expression in .equ directive at File: {} Line: {}", 
+                        src_mgr.GetFileName(equ_stmt->file), equ_stmt->line));
             }
+
             new_statements.push_back(std::move(stmt));
             break;
         }
 
+#if 0
         case StmtType::Ds: {
             // Ds
             auto ds_stmt = static_cast<const DsStatement*>(stmt.get());
@@ -240,7 +257,32 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             new_statements.push_back(std::move(stmt));
             break;
         }
+#endif
+        case StmtType::Ds: {
+            // Define Storage (.ds) Statement Handler
+            auto ds_stmt = static_cast<const DsStatement*>(stmt.get());
+            if (ds_stmt->size_expr) {
+                auto val_expr = EvaluateExpr(ds_stmt->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (val_expr.has_value()) {
+                    int32_t count = val_expr.value();
+                    if (count < 0) {
+                        throw std::runtime_error(
+                            std::format("Negative allocation size ({}) in .ds at File: {} Line: {}", 
+                                count, src_mgr.GetFileName(ds_stmt->file), ds_stmt->line));
+                    }
+                    pc += static_cast<uint16_t>(count);
+                } else {
+                    // Unresolved size expression during early pass; PC advance deferred to next pass
+                }
+            } else {
+                throw std::runtime_error(
+                    std::format("Missing size expression in .ds directive at File: {} Line: {}", 
+                        src_mgr.GetFileName(ds_stmt->file), ds_stmt->line));
+            }
 
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
         case StmtType::Data: {
             // Data
             auto data_stmt = static_cast<const DataStatement*>(stmt.get());
@@ -894,7 +936,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             }
             else if (sz + load_address > pc) {
                 throw std::runtime_error(
-                    std::format("Can not move PC backwards and insert data PC {}  File: {}  Line:{}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
+                    std::format("Can not move PC backwards and insert data PC ${:04X}  File: {}  Line:{}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
                 );
             }
             binary_output.insert(binary_output.end(), emitted_bytes.begin(), emitted_bytes.end());
@@ -1069,7 +1111,12 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
                 auto val_expr = EvaluateExpr(ds_stmt->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val_expr.has_value()) {
-                    count = static_cast<uint16_t>(val_expr.value());
+                    int32_t raw_count = val_expr.value();
+                    if (raw_count < 0) {
+                        throw std::runtime_error(
+                            std::format("Negative storage allocation size in .ds ({}) File: {} Line: {}", raw_count, src_mgr.GetFileName(ds_stmt->file), ds_stmt->line));
+                    }
+                    count = static_cast<uint16_t>(raw_count);
                 }
 
                 if (printstate) {
@@ -1077,12 +1124,17 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 } else {
                     file_last_printed_line[ds_stmt->file] = ds_stmt->line;
                 }
-                if (pc >= load_address) {
-                    std::vector<uint8_t> bytes(count, 0x00);
-                    emit_bytes(bytes);
-                }
-                else {
-                    pc += count;
+
+                if (count > 0) {
+                    if (pc >= load_address) {
+                        std::vector<uint8_t> bytes(count, 0x00);
+                        emit_bytes(bytes); // Note: emit_bytes advances pc by bytes.size()
+                        if (printstate) {
+                            emit_listing_row(pc, "", "");
+                        }
+                    } else {
+                        pc += count;
+                    }
                 }
                 break;
             }
@@ -1126,23 +1178,42 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
                     if (byt.has_value() && len.has_value()) {
                         auto l = len.value();
+                        if (l < 0) {
+                            throw std::runtime_error(
+                                std::format("Invalid length '{}' for .fill at File: {} Line: {}", 
+                                    l, src_mgr.GetFileName(fill_stmt->file), fill_stmt->line));
+                        }                        
+                        
                         auto b = byt.value();
-                        std::vector<uint8_t> bytes(l, b);
+                        if (b < 0 || b > 0xFF) { // Fixed: check for exceeding 0xFF ($FF)
+                            throw std::runtime_error(
+                                std::format("Byte value '{}' out of range (0-255) for .fill at File: {} Line: {}", 
+                                    b, src_mgr.GetFileName(fill_stmt->file), fill_stmt->line));
+                        }                        
+                        
+                        std::vector<uint8_t> bytes(static_cast<size_t>(l), static_cast<uint8_t>(b));
+                        
                         if (printstate) {
                             emit_listing_row(pc, "", std::format(".fill ${:02X}, {}", b, l));
                         } else {
                             file_last_printed_line[stmt->file] = stmt->line;
                         }
+                        
                         emit_bytes(bytes);
                         if (printstate) {
                             emit_listing_row(pc, "", "");
                         }
                         break;
-                     }
+                    } else {
+                        // Early pass handling if expressions contain forward labels
+                        break; 
+                    }
                 }
+                
                 throw std::runtime_error(
-                        std::format("Invalid fill expression File: {}  Line:{}", src_mgr.GetFileName(fill_stmt->file), fill_stmt->line)
-                    );
+                    std::format("Invalid fill expression at File: {} Line: {}", 
+                        src_mgr.GetFileName(fill_stmt->file), fill_stmt->line)
+                );
             }
 
             case StmtType::Instruction: {
