@@ -975,6 +975,10 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         );
                     }
                     pc = static_cast<uint16_t>(val.value());
+                    if (org_stmt->isOrg) {
+                        load_address = pc;
+                        load_address_set = true;
+                    }
                 }
                 if (printstate) {
                     emit_listing_row(pc, "", std::format("*= ${:04X}", pc));
