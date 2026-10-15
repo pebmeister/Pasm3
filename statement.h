@@ -169,18 +169,18 @@ struct InstructionStatement : Statement {
  */
 struct OrgStatement : Statement {
     std::unique_ptr<ExprNode> address_expr; /**< Expression defining target start address. */
-
+    bool isOrg = false;
     /**
      * @brief Constructs an OrgStatement node.
      * @param file Source file index.
      * @param line Source line index.
      * @param expr Origin target memory address expression tree.
      */
-    explicit OrgStatement(int file, int line, std::unique_ptr<ExprNode> expr)
-        : Statement(file, line, StmtType::Org), address_expr(std::move(expr)) {}
+    explicit OrgStatement(int file, int line, std::unique_ptr<ExprNode> expr, bool isOrg)
+        : Statement(file, line, StmtType::Org), address_expr(std::move(expr)), isOrg(isOrg) {}
 
     std::unique_ptr<Statement> clone() const override {
-        return std::make_unique<OrgStatement>(file, line, CloneExpr(address_expr));
+        return std::make_unique<OrgStatement>(file, line, CloneExpr(address_expr), isOrg);
     }
 };
 
