@@ -1132,9 +1132,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         auto b = byt.value();
                         std::vector<uint8_t> bytes(l, b);
                         if (printstate) {
-                            emit_listing_row(pc, "", "");
+                            emit_listing_row(pc, "", std::format(".fill ${:02X}, {}", b, l));
                         } else {
-                           file_last_printed_line[stmt->file] = stmt->line;
+                            file_last_printed_line[stmt->file] = stmt->line;
                         }
                         emit_bytes(bytes);
                         if (printstate) {
