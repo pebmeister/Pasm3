@@ -215,15 +215,17 @@ Directives_test::Test Directives_test::create_ds_move_pc_test(int max)
     SourceManager src_mgr;
     Line_Adder add_line(src_mgr, "create_ds_move_pc_test", org);
 
+    add_line(std::format("    .byte 0"));
     add_line(std::format("Label"));
-    add_line(std::format("* = {} - {} / 2", org, org));
-    add_line(std::format(".ds {}", 5));
-    add_line(std::format("* = Label"));
+
+    add_line(std::format("    * = {}", org / 2));
+    add_line(std::format("    .ds {}", 1));
+    add_line(std::format("    * = Label"));
     
-    add_line(std::format(".ds {}", max));
+    add_line(std::format("    .ds {}", max));
     
     // Expected output: max zero-initialized memory bytes
-    std::vector<uint8_t> expected_output(max, 0x00);
+    std::vector<uint8_t> expected_output(max + 1, 0x00);
 
     add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);
