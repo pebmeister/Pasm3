@@ -28,6 +28,8 @@ private:
     Test create_basic_header_test();
     Test create_fill_directive_test(int max, uint8_t byte);
     Test create_ds_directive_test(int max);
+    Test create_byte_directive_test();
+    Test create_word_directive_test();
     
     void create_temp_bin_file(const std::string& filename, const std::vector<uint8_t>& bytes);
     void remove_temp_file(const std::string& filename);
@@ -77,6 +79,9 @@ public:
         emit(create_ifdef_undefined_else_test());
         emit(create_ifndef_test());
         emit(create_basic_header_test());
+        emit(create_byte_directive_test());
+        emit(create_word_directive_test());
+        
         for (auto i = 0; i <= max_iterations; i++) {
             for (auto by = 0; by <= 0xFF; ++by) {
                 emit(create_fill_directive_test(i, by));

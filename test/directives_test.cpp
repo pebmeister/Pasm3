@@ -208,3 +208,45 @@ Directives_test::Test Directives_test::create_ds_directive_test(int max)
     add_line.GetSource(source_code);
     return Test(src_mgr, source_code, expected_output, false);
 }
+
+Directives_test::Test Directives_test::create_byte_directive_test()
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_byte_directive_test", org);
+
+    // Test mixing string literals and numeric byte values
+    add_line(".byte \"hello\", $00, $FF, 1 + 1");
+
+    // Expected output: "hello" ASCII bytes + $00 + $FF + $02
+    std::vector<uint8_t> expected_output = {
+        'h', 'e', 'l', 'l', 'o',
+        0x00,
+        0xFF,
+        0x02
+    };
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}
+
+Directives_test::Test Directives_test::create_word_directive_test()
+{
+    constexpr int org = 0x1000;
+    SourceManager src_mgr;
+    Line_Adder add_line(src_mgr, "create_word_directive_test", org);
+
+    // Test 16-bit little-endian words ($1234 -> $34 $12)
+    add_line(".word $1234, $1000 + $0001");
+
+    // Expected output: 0x34, 0x12, 0x01, 0x10
+    std::vector<uint8_t> expected_output = {
+        0x34, 0x12,
+        0x01, 0x10
+    };
+
+    std::string source_code;
+    add_line.GetSource(source_code);
+    return Test(src_mgr, source_code, expected_output, false);
+}

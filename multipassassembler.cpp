@@ -1069,7 +1069,12 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
                 auto val_expr = EvaluateExpr(ds_stmt->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val_expr.has_value()) {
-                    count = static_cast<uint16_t>(val_expr.value());
+                    int32_t raw_count = val_expr.value();
+                    if (raw_count < 0) {
+                        throw std::runtime_error(
+                            std::format("Negative storage allocation size in .ds ({}) File: {} Line: {}", raw_count, src_mgr.GetFileName(ds_stmt->file), ds_stmt->line));
+                    }
+                    count = static_cast<uint16_t>(raw_count);
                 }
 
                 if (printstate) {
@@ -1077,12 +1082,17 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 } else {
                     file_last_printed_line[ds_stmt->file] = ds_stmt->line;
                 }
-                if (pc >= load_address) {
-                    std::vector<uint8_t> bytes(count, 0x00);
-                    emit_bytes(bytes);
-                }
-                else {
-                    pc += count;
+
+                if (count > 0) {
+                    if (pc >= load_address) {
+                        std::vector<uint8_t> bytes(count, 0x00);
+                        emit_bytes(bytes); // Note: emit_bytes advances pc by bytes.size()
+                        if (printstate) {
+                            emit_listing_row(pc, "", "");
+                        }
+                    } else {
+                        pc += count;
+                    }
                 }
                 break;
             }
@@ -1126,23 +1136,42 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
 
                     if (byt.has_value() && len.has_value()) {
                         auto l = len.value();
+                        if (l < 0) {
+                            throw std::runtime_error(
+                                std::format("Invalid length '{}' for .fill at File: {} Line: {}", 
+                                    l, src_mgr.GetFileName(fill_stmt->file), fill_stmt->line));
+                        }                        
+                        
                         auto b = byt.value();
-                        std::vector<uint8_t> bytes(l, b);
+                        if (b < 0 || b > 0xFF) { // Fixed: check for exceeding 0xFF ($FF)
+                            throw std::runtime_error(
+                                std::format("Byte value '{}' out of range (0-255) for .fill at File: {} Line: {}", 
+                                    b, src_mgr.GetFileName(fill_stmt->file), fill_stmt->line));
+                        }                        
+                        
+                        std::vector<uint8_t> bytes(static_cast<size_t>(l), static_cast<uint8_t>(b));
+                        
                         if (printstate) {
                             emit_listing_row(pc, "", std::format(".fill ${:02X}, {}", b, l));
                         } else {
                             file_last_printed_line[stmt->file] = stmt->line;
                         }
+                        
                         emit_bytes(bytes);
                         if (printstate) {
                             emit_listing_row(pc, "", "");
                         }
                         break;
-                     }
+                    } else {
+                        // Early pass handling if expressions contain forward labels
+                        break; 
+                    }
                 }
+                
                 throw std::runtime_error(
-                        std::format("Invalid fill expression File: {}  Line:{}", src_mgr.GetFileName(fill_stmt->file), fill_stmt->line)
-                    );
+                    std::format("Invalid fill expression at File: {} Line: {}", 
+                        src_mgr.GetFileName(fill_stmt->file), fill_stmt->line)
+                );
             }
 
             case StmtType::Instruction: {
