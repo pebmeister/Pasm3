@@ -312,7 +312,7 @@ public:
                 ConsumeToken(); // consume '*'
                 ConsumeToken(); // consume '='
                 auto addr_expr = ParseExpression();
-                statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.move()));
+                statements.push_back(std::make_unique<OrgStatement>(Tok.file, Tok.line, addr_expr.move(), false));
                 continue;
             }
 
@@ -355,7 +355,7 @@ public:
                 // --- .org ---
                 if (dir == ".org") {
                     auto addr_expr = ParseExpression();
-                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, addr_expr.move()));
+                    statements.push_back(std::make_unique<OrgStatement>(dir_tok.file, dir_tok.line, addr_expr.move(), true));
                 }
                 
                 // --- .basic_hdr (C64 BASIC stub wrapper) ---
