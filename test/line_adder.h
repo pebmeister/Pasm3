@@ -27,7 +27,6 @@ public:
     Line_Adder(SourceManager mgr, std::string test_name, const int org, bool set_org = true)
         : src_mgr(std::move(mgr))
         {
-            set_org = setOrg;
             src_mgr.files.push_back(test_name);
 
             std::string line =  std::format("; {}", test_name);
