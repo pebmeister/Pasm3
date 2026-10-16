@@ -921,6 +921,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
         // helper to write bytes to output
         auto emit_bytes = [&](std::vector<uint8_t>& emitted_bytes) {
             if (!load_address_set) {
+                std::cout << std::format("auto set loadaddress ${:04X}", pc);                         
+
                 load_address = pc;
                 load_address_set = true;
                 if (options.verbose) {
@@ -977,12 +979,12 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                             std::format("Invalid value File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line)
                         );
                     }
-                    pc = static_cast<uint16_t>(val.value());
+                    pc = static_cast<uint16_t>(val.value());                   
                     if (org_stmt->isOrg && load_address_set) {
                         throw std::runtime_error(
                             std::format("Org already set ${:04X} File: {}  Line:{}", load_address, src_mgr.GetFileName(stmt->file), stmt->line));
                     }
-                    if (!load_address_set) {
+                    if (!load_address_set) {                        
                         load_address = pc;
                         load_address_set = true;
                     }
@@ -1141,7 +1143,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 }
 
                 if (count > 0) {
-                    if (pc >= load_address) {
+                    auto sz = binary_output.size();
+                    if (sz + load_address == pc) {
                         std::vector<uint8_t> bytes(count, 0x00);
                         emit_bytes(bytes); // Note: emit_bytes advances pc by bytes.size()
                         if (printstate) {
