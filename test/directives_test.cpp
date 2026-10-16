@@ -217,7 +217,7 @@ Directives_test::Test Directives_test::create_ds_move_pc_test(int max)
 
     add_line(std::format("Label"));
 
-    add_line(std::format("    * = ${:04X}, org / 2));
+    add_line(std::format("    * = ${:04X}", org / 2));
     add_line(std::format("    .ds {}", 1));
     add_line(std::format("    * = Label"));
     
