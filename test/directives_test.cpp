@@ -215,10 +215,9 @@ Directives_test::Test Directives_test::create_ds_move_pc_test(int max)
     SourceManager src_mgr;
     Line_Adder add_line(src_mgr, "create_ds_move_pc_test", org);
 
-    add_line(std::format("    .org {}", org));
     add_line(std::format("Label"));
 
-    add_line(std::format("    * = {}", org / 2));
+    add_line(std::format("    * = %{:04}", org / 2));
     add_line(std::format("    .ds {}", 1));
     add_line(std::format("    * = Label"));
     
