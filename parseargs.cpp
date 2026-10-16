@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <format>
 #include <cctype>
+#include <algorithm>
 #include <unordered_set>
 
 #include "AssemblerParser.h"
@@ -35,36 +36,37 @@ void help()
 {
     std::cout <<
 R"(Usage: 
-    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-i directory] [-st symbol] [-d symbol value] [-cart [options]] [-d64 disk] [-al] [-debug] [-run] [-ops] [-mp maxpass] [-xref] inputfile inputfile2 ...
+    pasm3 [-h] [-o outfile] [-v] [-vs symfile] [-c64] [-cpu type] [-i directory] [-st symbol] [-d symbol value] [-cart [options]] [-d64 disk] [-al] [-debug] [-run] [-ops] [-mp maxpass] [-xref] inputfile inputfile2 ...
 
-    -h                  Print help.
-    -o [outfile]        Specifies to create an output file.
-    -v                  Specifies verbose output.
-    -vs [file]          Create VICE symbol file.
-    -c64                Specifies Commodore 64 program format. 
-                        It places the load address in first two bytes.
-    -i directory        Specifies include directory. Can be specified more than once.
-    -st symbol          Specifies symbol trace. Displays symbol and value and when modified.
-                        Can be specified multiple times.
-    -d symbol value     Defines a symbol and value.
-                        Can be specified more than once.
-    -cart [options]     Runs cartconv on the outputfile with the specified options enclosed in quotes.
-                        Load address and inputname are auto specified.
-                        VICE must be installed and in the path.
-    -d64 [diskname]     Creates d64 disk and installs the output file.
-    -al                 Creates auto loader. This will also create a .d64 disk if -d64 is not specified.
-    -debug              Launch VICE monitor and debug. Can not be used with -launch.
-    -run                Launch in VICE. Can not be used with -debug.
-    -mp maxpass         Sets the max number of passes. Default is 10.
-    -xref               Display a cross refrerence symbol file.
-    -ops [op1][op2]..   Display a allowed opcodes and modes. No argument displays all.
+    -h                 Print help.
+    -o [outfile]       Specifies to create an output file.
+    -v                 Specifies verbose output.
+    -vs [file]         Create VICE symbol file.
+    -c64               Specifies Commodore 64 program format. 
+                       It places the load address in first two bytes.
+    -cpu 6502|65c02    Specifies target CPU architecture (default: 6502).
+    -i directory       Specifies include directory. Can be specified more than once.
+    -st symbol         Specifies symbol trace. Displays symbol and value and when modified.
+                       Can be specified multiple times.
+    -d symbol value    Defines a symbol and value.
+                       Can be specified more than once.
+    -cart [options]    Runs cartconv on the outputfile with the specified options enclosed in quotes.
+                       Load address and inputname are auto specified.
+                       VICE must be installed and in the path.
+    -d64 [diskname]    Creates d64 disk and installs the output file.
+    -al                Creates auto loader. This will also create a .d64 disk if -d64 is not specified.
+    -debug             Launch VICE monitor and debug. Can not be used with -launch.
+    -run               Launch in VICE. Can not be used with -debug.
+    -mp maxpass        Sets the max number of passes. Default is 10.
+    -xref              Display a cross reference symbol file.
+    -ops [op1][op2]..  Display allowed opcodes and modes. No argument displays all.
 )";
 }
 
 /**
  * @brief Parses the input arguments.
  * 
- * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `-run`, `-mp`, `-xref`, `-ops`)
+ * Parses CLI flags (`-h`, `-o`, `-debug`, `-v`, `-c64`, `-cpu`, `-vs`, `-i`, `-st`, `-d`, `-cart`, `-d64`, `-al`, `-run`, `-mp`, `-xref`, `-ops`)
  * 
  * @param argc Count of command-line arguments.
  * @param argv Array of command-line argument strings.
@@ -100,6 +102,25 @@ Options parse_args(int argc, char* argv[])
         }
         else if (arg_str == "-c64") {
             options.c64 = true;
+        }
+        else if (arg_str == "-cpu") {
+            if ((arg + 1) >= argc) {
+                help();
+                throw std::runtime_error("CPU architecture type not specified for -cpu");
+            }
+            std::string cpu_type = argv[++arg];
+            
+            // Normalize input string
+            std::transform(cpu_type.begin(), cpu_type.end(), cpu_type.begin(), ::tolower);
+            
+            if (cpu_type == "6502") {
+                options.cpu = CPU::_6502;
+            } else if (cpu_type == "65c02" || cpu_type == "65c02s" || cpu_type == "w65c02") {
+                options.cpu = CPU::_65C02;
+            } else {
+                help();
+                throw std::runtime_error(std::format("Unsupported CPU target '{}'. Allowed values are '6502' or '65c02'", cpu_type));
+            }
         }
         else if (arg_str == "-vs") {
             options.vs = true;
@@ -156,10 +177,9 @@ Options parse_args(int argc, char* argv[])
             options.launch = true;
         }
         else if (arg_str == "-xref") {
-            options.xref = true; // Fixed typo (xfref -> xref)
+            options.xref = true;
         }
         else if (arg_str == "-d") {
-            // Needs two trailing parameters: symbol name and value
             if ((arg + 2) >= argc) {
                 help();
                 throw std::runtime_error("No symbol or value defined for -d");
@@ -183,13 +203,10 @@ Options parse_args(int argc, char* argv[])
             
             options.defined_symbols.push_back({sym, symval});
         }
-        
         else if (arg_str == "-ops") {
-            // Collect all subsequent non-flag arguments (e.g., -ops LDA STA JSR)
             std::unordered_set<std::string> target_ops;
             while (arg + 1 < argc && argv[arg + 1][0] != '-') {
                 std::string op_arg = argv[++arg];
-                // Normalize to uppercase for case-insensitive matching
                 std::transform(op_arg.begin(), op_arg.end(), op_arg.begin(), ::toupper);
                 target_ops.insert(op_arg);
             }
@@ -197,21 +214,16 @@ Options parse_args(int argc, char* argv[])
             std::unordered_set<std::string> found_ops;
 
             for (auto& [op, opcodeinfo] : opcodeDict) {
-                // Normalize instruction mnemonic to uppercase
                 std::string mnemonic_upper(opcodeinfo.mnemonic);
                 std::transform(mnemonic_upper.begin(), mnemonic_upper.end(), mnemonic_upper.begin(), ::toupper);
 
-                // If target opcodes were specified, skip non-matching entries
                 if (!target_ops.empty() && !target_ops.contains(mnemonic_upper)) {
                     continue;
                 }
 
                 found_ops.insert(mnemonic_upper);
 
-                // Print header with Mnemonic and Description
                 std::cout << std::format("\n\n  {} ({})\n", opcodeinfo.mnemonic, opcodeinfo.description);
-                
-                // Header with Cycles added
                 std::cout << std::format("  {:<22} {:<8}{:<8} {}\n", "Addressing Mode", "Hex", "Cycles", "Syntax Example");
                 std::cout << std::format("  {}\n", std::string(60, '-'));
 
@@ -236,32 +248,32 @@ Options parse_args(int argc, char* argv[])
                             break;
 
                         case OP_TYPE::Op_ZeroPage:
-                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X}\n", 
+                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {}${:02X}\n", 
                                 "Zero Page", hex_val, cycles, opcodeinfo.mnemonic, 0x15);
                             break;                    
 
                         case OP_TYPE::Op_ZeroPageX:
-                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X},X\n", 
+                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {}${:02X},X\n", 
                                 "Zero Page, X", hex_val, cycles, opcodeinfo.mnemonic, 0x16);
                             break;                    
 
                         case OP_TYPE::Op_ZeroPageY:
-                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X},Y\n", 
+                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {}${:02X},Y\n", 
                                 "Zero Page, Y", hex_val, cycles, opcodeinfo.mnemonic, 0x17);
                             break;
 
                         case OP_TYPE::Op_Absolute:
-                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:04X}\n", 
+                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {}${:04X}\n", 
                                 "Absolute", hex_val, cycles, opcodeinfo.mnemonic, 0x1234);
                             break;
 
                         case OP_TYPE::Op_AbsoluteX:
-                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:04X},X\n", 
+                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {}${:04X},X\n", 
                                 "Absolute, X", hex_val, cycles, opcodeinfo.mnemonic, 0x3456);
                             break;                    
 
                         case OP_TYPE::Op_AbsoluteY:
-                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:04X},Y\n", 
+                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {}${:04X},Y\n", 
                                 "Absolute, Y", hex_val, cycles, opcodeinfo.mnemonic, 0x1246);
                             break;                    
 
@@ -281,12 +293,12 @@ Options parse_args(int argc, char* argv[])
                             break;                    
 
                         case OP_TYPE::Op_Relative:
-                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:04X}\n", 
+                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {}${:04X}\n", 
                                 "Relative", hex_val, cycles, opcodeinfo.mnemonic, 0x8012);
                             break;                    
 
                         case OP_TYPE::Op_ZeroPageRelative:
-                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X}, ${:04X}\n", 
+                            std::cout << std::format("  {:<22} ${:02X}     {:<8} {} ${:02X},${:04X}\n", 
                                 "ZP Relative (65C02)", hex_val, cycles, opcodeinfo.mnemonic, 0x51, 0x8012);
                             break;
 
@@ -296,7 +308,6 @@ Options parse_args(int argc, char* argv[])
                 }   
             }
 
-            // Report any requested opcodes that were not found in opcodeDict
             if (!target_ops.empty()) {
                 for (const auto& requested : target_ops) {
                     if (!found_ops.contains(requested)) {
@@ -307,8 +318,6 @@ Options parse_args(int argc, char* argv[])
 
             exit(0);
         }
-
-        
         else { 
             help();
             throw std::runtime_error(std::format("Unknown option '{}'", arg_str));
@@ -343,10 +352,7 @@ Options parse_args(int argc, char* argv[])
                 namespace fs = std::filesystem;
                 fs::path p(fname);
                 
-                // Get just the uppercase filename without path or extension (e.g., "MYCODE")
                 auto prg_name = GetBasename(fname);
-                
-                // Rebuild the output path cleanly in the same directory with the uppercase name
                 options.outfile = (p.parent_path() / (prg_name + ".prg")).string();
             }
         }

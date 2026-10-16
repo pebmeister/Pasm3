@@ -42,5 +42,5 @@ struct Options {
     bool launch = false;                                       /**< Flag to launch with VICE */    
     bool xref = false;                                         /**< Flag to create a cross reference symbol file */    
     bool out = false;                                          /**< Flag to create an output file */  
-    CPU cpu = CPU::_65C02;                                      /**< Flag for cpu type */
+    CPU cpu = CPU::_6502;                                      /**< Flag for cpu type */
 };
