@@ -86,7 +86,9 @@ Expression_test::Test Expression_test::create_expression_operators_test()
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Expression_test::Test Expression_test::create_expression_order_of_operations_test()
@@ -155,7 +157,9 @@ Expression_test::Test Expression_test::create_expression_order_of_operations_tes
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Expression_test::Test Expression_test::create_expression_div_zero_test()
@@ -169,7 +173,9 @@ Expression_test::Test Expression_test::create_expression_div_zero_test()
     add_line("    .word bad_val");
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, {}, true, std::move(options));
 }
 
 Expression_test::Test Expression_test::create_expression_mod_zero_test()
@@ -183,7 +189,9 @@ Expression_test::Test Expression_test::create_expression_mod_zero_test()
     add_line("    .word bad_val");
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, {}, true, std::move(options));
 }
 
 Expression_test::Test Expression_test::create_expression_mismatched_parens_test()
@@ -197,7 +205,9 @@ Expression_test::Test Expression_test::create_expression_mismatched_parens_test(
     add_line("    .word bad_val");
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, {}, true, std::move(options));
 }
 
 Expression_test::Test Expression_test::create_expression_missing_operand_test()
@@ -211,5 +221,7 @@ Expression_test::Test Expression_test::create_expression_missing_operand_test()
     add_line("    .word bad_val");
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, {}, true, std::move(options));
 }

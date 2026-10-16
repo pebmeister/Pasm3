@@ -244,20 +244,6 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             break;
         }
 
-#if 0
-        case StmtType::Ds: {
-            // Ds
-            auto ds_stmt = static_cast<const DsStatement*>(stmt.get());
-            if (ds_stmt->size_expr) {
-                auto val_expr = EvaluateExpr(ds_stmt->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val_expr.has_value()) {
-                    pc += val_expr.value();
-                }
-            }
-            new_statements.push_back(std::move(stmt));
-            break;
-        }
-#endif
         case StmtType::Ds: {
             // Define Storage (.ds) Statement Handler
             auto ds_stmt = static_cast<const DsStatement*>(stmt.get());
@@ -283,73 +269,96 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             new_statements.push_back(std::move(stmt));
             break;
         }
+
         case StmtType::Data: {
-            // Data
+            // Data (.byte, .word) Statement Handler
             auto data_stmt = static_cast<const DataStatement*>(stmt.get());
             uint16_t bytes_per_elem = (data_stmt->width == DataWidth::Byte) ? 1 : 2;
+            
+            // Parser flattens string literals into individual NumberExpr nodes,
+            // making elements.size() exact for total byte/word count.
             pc += static_cast<uint16_t>(data_stmt->elements.size() * bytes_per_elem);
+
             new_statements.push_back(std::move(stmt));
             break;
         }
 
         case StmtType::Fill: {
-            // Fill
+            // Fill (.fill length, value) Statement Handler
             auto fill_stmt = static_cast<const FillStatement*>(stmt.get());
             if (fill_stmt->length_expr) {
                 auto len_expr = EvaluateExpr(fill_stmt->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
                 if (len_expr.has_value()) {
-                    pc += len_expr.value();
+                    int32_t len_val = len_expr.value();
+                    if (len_val < 0) {
+                        throw std::runtime_error(
+                            std::format("Negative length value ({}) in .fill directive at File: {} Line: {}", 
+                                len_val, src_mgr.GetFileName(fill_stmt->file), fill_stmt->line));
+                    }
+                    pc += static_cast<uint16_t>(len_val);
+                } else {
+                    // Early pass handling if length expression contains forward references
                 }
+            } else {
+                throw std::runtime_error(
+                    std::format("Missing length expression in .fill directive at File: {} Line: {}", 
+                        src_mgr.GetFileName(fill_stmt->file), fill_stmt->line));
             }
+
             new_statements.push_back(std::move(stmt));
             break;
         }
 
-        case StmtType::Break: {            
+        case StmtType::Break: {
+            // Loop Break (.break) Statement Handler
             if (loop_level < 1) {
                 throw std::runtime_error(
-                    std::format("Break without a loop at ${:04X}  File: {} Line: {}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
+                    std::format(".break used outside of a loop at ${:04X} File: {} Line: {}", 
+                        pc, src_mgr.GetFileName(stmt->file), stmt->line)
                 );
-            }                           
+            }
+            
             loopControl = LoopControlKind::break_loop;
             new_statements.push_back(std::move(stmt));
             break;
         }
             
         case StmtType::Continue: {
+            // Loop Continue (.continue) Statement Handler
             if (loop_level < 1) {
                 throw std::runtime_error(
-                    std::format("Continue without a loop at ${:04X}  File: {} Line: {}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
+                    std::format(".continue used outside of a loop at ${:04X} File: {} Line: {}", 
+                        pc, src_mgr.GetFileName(stmt->file), stmt->line)
                 );
-            }                
+            }
+            
             loopControl = LoopControlKind::continue_loop;
             new_statements.push_back(std::move(stmt));
             break;
         }
             
-        case StmtType::Loop: 
-        {
+        case StmtType::Loop: {
+            // Loop Directive (.while / .repeat) Execution Engine
             loop_level++;
             auto loop_stmt = static_cast<LoopStatement*>(stmt.get());
 
             if (!loop_stmt->condition_expr) {
                 throw std::runtime_error(
-                    std::format("loop expression must be predefined at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
+                    std::format("Loop condition expression must be defined at ${:04X} File: {} Line: {}", 
+                        pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
             }
 
-            // Helper lambda to check if a statement is a loop start
-            auto is_loop_start = [&](const std::unique_ptr<Statement>& stmt) {
-                return stmt->stmt_type == StmtType::Loop;
+            // Helper lambda to check for loop boundaries
+            auto is_loop_start = [](const std::unique_ptr<Statement>& s) {
+                return s && s->stmt_type == StmtType::Loop;
             };
 
-            // Helper lambda to check if a statement is a loop end
-            auto is_loop_end = [&](const std::unique_ptr<Statement>& stmt) {
-                return stmt->stmt_type == StmtType::Wend || stmt->stmt_type == StmtType::Until;
+            auto is_loop_end = [](const std::unique_ptr<Statement>& s) {
+                return s && (s->stmt_type == StmtType::Wend || s->stmt_type == StmtType::Until);
             };
 
-            // 1. Capture original loop body template ONCE (depth-aware)
+            // 1. Capture original loop body template ONCE on first pass (depth-aware)
             if (loop_stmt->statements.empty()) {
                 size_t scan_idx = st_index + 1;
                 int depth = 1;
@@ -360,7 +369,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     } else if (is_loop_end(statements[scan_idx])) {
                         depth--;
                         if (depth == 0) {
-                            break; // Matched outer end keyword
+                            break; // Found matching outer closing keyword (.wend / .until)
                         }
                     }
                     loop_stmt->statements.push_back(statements[scan_idx]->clone());
@@ -369,63 +378,70 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             }
 
             loopControl = LoopControlKind::normal;
-            // 2. Unroll loop iterations into new_statements for THIS pass
+
+            // 2. Unroll and execute loop iterations into new_statements for THIS pass
             int iteration_count = 0;
             const int MAX_ITERATIONS = 64000;
 
             while (iteration_count < MAX_ITERATIONS) {
+                // Top-tested loop condition (.while)
                 if (loop_stmt->test_at_top) {
                     auto condition = EvaluateExpr(loop_stmt->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
                     if (!condition.has_value()) {
                         throw std::runtime_error(
-                            std::format("loop expression could not be evaluated at ${:04X} File: {} Line: {}", 
-                                        pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
+                            std::format("Loop expression could not be evaluated at ${:04X} File: {} Line: {}", 
+                                pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
                     }
 
-                    auto val = condition.value();
-                    auto exitloop = loop_stmt->reverse_logic ? val != 0 : val == 0;
-                    if (exitloop ) {
+                    int32_t val = condition.value();
+                    bool exit_loop = loop_stmt->reverse_logic ? (val != 0) : (val == 0);
+                    if (exit_loop) {
                         break; 
                     }
                 }
 
+                // Clone template statements for current iteration
                 std::vector<std::unique_ptr<Statement>> iteration_body;
+                iteration_body.reserve(loop_stmt->statements.size());
                 for (const auto& body_stmt : loop_stmt->statements) {
                     if (body_stmt) {
                         iteration_body.push_back(body_stmt->clone());
                     }
                 }
 
+                // Process iteration body statements
                 size_t inner_index = 0;
                 while (inner_index < iteration_body.size()) {
-                 
                     ProcessStatement(iteration_body, new_statements, inner_index, anonymous_labels);
-                    if (loopControl == LoopControlKind::break_loop) {
-                        break;
-                    }
-                    else if (loopControl == LoopControlKind::continue_loop) {
+
+                    if (loopControl == LoopControlKind::break_loop || loopControl == LoopControlKind::continue_loop) {
                         break;
                     }
                 }
+
+                // Handle .break exit
                 if (loopControl == LoopControlKind::break_loop) {
                     loopControl = LoopControlKind::normal;
                     break;
                 }
 
+                // Reset loop control flag for next iteration (.continue resets to normal)
                 loopControl = LoopControlKind::normal;
-                if (!loop_stmt->test_at_top) {
-                    auto condition_expr = EvaluateExpr(loop_stmt->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
 
-                    if (!condition_expr.has_value()) {
+                // Bottom-tested loop condition (.repeat ... .until)
+                if (!loop_stmt->test_at_top) {
+                    auto condition = EvaluateExpr(loop_stmt->condition_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+
+                    if (!condition.has_value()) {
                         throw std::runtime_error(
-                            std::format("loop expression could not be evaluated at ${:04X} File: {} Line: {}", 
-                                        pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
+                            std::format("Loop expression could not be evaluated at ${:04X} File: {} Line: {}", 
+                                pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
                     }
 
-                    auto val = condition_expr.value();
-                    auto exitloop = loop_stmt->reverse_logic ? val != 0 : val == 0;
-                    if (exitloop) {
+                    int32_t val = condition.value();
+                    bool exit_loop = loop_stmt->reverse_logic ? (val != 0) : (val == 0);
+                    if (exit_loop) {
                         break; 
                     }
                 }
@@ -435,11 +451,11 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
             if (iteration_count >= MAX_ITERATIONS) {
                 throw std::runtime_error(
-                    std::format("infinite loop detected at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
+                    std::format("Infinite loop iteration limit reached ({}) at ${:04X} File: {} Line: {}", 
+                        MAX_ITERATIONS, pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
             }
 
-            // 3. Advance driver index to the matching outer end statement (depth-aware)
+            // 3. Advance main driver index past the matching outer end keyword
             size_t skip_idx = st_index + 1;
             size_t skip_depth = 1;
 
@@ -454,169 +470,352 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
                 skip_idx++;
             }
+
             if (skip_depth != 0) {
                 throw std::runtime_error(
-                    std::format("loop missing termination at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
-            }            
+                    std::format("Loop missing closing termination directive (.wend / .until) at ${:04X} File: {} Line: {}", 
+                        pc, src_mgr.GetFileName(loop_stmt->file), loop_stmt->line));
+            }           
+
             st_index = skip_idx;
             loop_level--;
             break;
         }
 
         case StmtType::IncBin: {
-            auto incbin_stmt = static_cast<IncBinStatement*>(stmt.get());
-            auto length_expr = EvaluateExpr(incbin_stmt->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-            auto bytes_to_read = incbin_stmt->filesize;
-            if (length_expr.has_value()) {
-                auto length = length_expr.value();
-                if (length > 0) {
-                    bytes_to_read = length;
+            // Binary File Inclusion (.incbin) Statement Handler
+            auto incbin_stmt = static_cast<const IncBinStatement*>(stmt.get());
+            size_t bytes_to_read = incbin_stmt->filesize;
+
+            if (incbin_stmt->length_expr) {
+                auto length_expr = EvaluateExpr(incbin_stmt->length_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+                if (length_expr.has_value()) {
+                    int32_t length = length_expr.value();
+                    if (length < 0) {
+                        throw std::runtime_error(
+                            std::format("Negative length ({}) in .incbin directive at File: {} Line: {}", 
+                                length, src_mgr.GetFileName(incbin_stmt->file), incbin_stmt->line));
+                    }
+                    if (length > 0) {
+                        bytes_to_read = static_cast<size_t>(length);
+                    }
+                } else {
+                    // Unresolved length expression during early pass; defer length calculations
                 }
             }
-            pc += bytes_to_read;
+
+            pc += static_cast<uint16_t>(bytes_to_read);
             new_statements.push_back(std::move(stmt));
             break;
         }
 
+#if 0
         case StmtType::Instruction: {
-            // Instruction
+            // 6502 Opcode Instruction Handler & Optimization Engine
             auto inst_stmt = static_cast<InstructionStatement*>(stmt.get());
             const OpCodeInfo* info = FindOpCodeInfo(inst_stmt->mnemonic);
             if (!info) {
                 throw std::runtime_error(
-                std::format("Unknown opcode '{}'  at ${:04X}  File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                    std::format("Unknown opcode '{}' at ${:04X} File: {} Line: {}", 
+                        inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
             }
 
+            // 1. Initial Addressing Mode Resolution & Fallback Lookup
             auto mode_it = info->mode_to_opcode.find(inst_stmt->mode);
             if (mode_it == info->mode_to_opcode.end()) {
-                
                 switch (inst_stmt->mode) {
                     case OP_TYPE::Op_Implied:
                         mode_it = info->mode_to_opcode.find(OP_TYPE::Op_Accumulator);
                         break;
-                        
                     case OP_TYPE::Op_Absolute:
                         mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPage);
                         break;
-                     
                     case OP_TYPE::Op_AbsoluteX:
                         mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPageX);
                         break;
-                     
                     case OP_TYPE::Op_AbsoluteY:
                         mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPageY);
                         break;
-                     
                     default:
                         break;
                 }
+
                 if (mode_it == info->mode_to_opcode.end()) {
                     throw std::runtime_error(
-                        std::format("Unsupported mode for opcode '{}'  at ${:04X}  File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
-                    }
+                        std::format("Unsupported addressing mode for opcode '{}' at ${:04X} File: {} Line: {}", 
+                            inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
                 }
-                auto val_expr = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
-                if (val_expr.has_value()) {
-                    int64_t operand_value = val_expr.value();
-                    if (inst_stmt->mode == OP_TYPE::Op_Relative) {
-                        int64_t offset = operand_value - (static_cast<int64_t>(pc) + 2);
+            }
 
-                        if (offset < -128 || offset > 127) {
-                            // wait for all symbols to resolve first
-                            wait_stable = true;
+            // 2. Operand Evaluation & Mode Optimization / Relaxation
+            auto val_expr = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+            if (val_expr.has_value()) {
+                int64_t operand_value = val_expr.value();
+
+                if (inst_stmt->mode == OP_TYPE::Op_Relative) {
+                    // Branch Distance Calculation
+                    int64_t offset = operand_value - (static_cast<int64_t>(pc) + 2);
+
+                    if (offset < -128 || offset > 127) {
+                        wait_stable = true;
+                    }
+
+                    // Perform Long Branch Relaxation / Trampoline Island Insertion once pass state is stable
+                    if (stable && (offset < -128 || offset > 127)) {
+                        int64_t target = operand_value;
+                        if (offset > 0) {
+                            target += 3; // Account for inserted 3-byte JMP island
                         }
-                        // wait passes to resolve first
-                        if (stable && (offset < -128 || offset > 127)) {
-                             auto target = operand_value;
-                             if (offset > 0) {
-                                 target += 3; // add jump island jmp $xxxx
-                             }
-                             std::string skip_label = std::format("@__island{}", ++ island_counter);
 
-                            auto it = inverted_branches.find(inst_stmt->mnemonic);
-                            if (it != inverted_branches.end()) {
-                                if (options.warnings) {
-                                    std::cout <<
-                                        "Warning: Branch out of range for '" << inst_stmt->mnemonic << "' $" << std::hex << target << std::dec << " [" << offset << "] " <<
-                                        "at $" << std::hex << pc << " File: " << src_mgr.GetFileName(inst_stmt->file) << " Line: " << std::dec << inst_stmt->line <<  "\n";
-                                }
-                                // 1. Create the JMP statement FIRST by moving the original target expression
-                                auto jmp_inst = std::make_unique<InstructionStatement>(
-                                    stmt->file,
-                                    stmt->line,
-                                    "jmp",
-                                    OP_TYPE::Op_Absolute,
-                                    std::move(inst_stmt->operand) // Safely transfers the unique_ptr ownership to jmp_inst
-                                );
+                        std::string skip_label = std::format("@__island{}", ++island_counter);
+                        auto it = inverted_branches.find(inst_stmt->mnemonic);
 
-                                std::pair<int, int> loc = {stmt->file, stmt->line};
-                                // 2. create inverted branch
-                                auto branch_inst = std::make_unique<InstructionStatement>(
-                                    stmt->file,
-                                    stmt->line,
-                                    it->second,
-                                    OP_TYPE::Op_Relative,
-                                    std::make_unique<SymbolExpr>(skip_label, loc)
-                                );
-
-                                // 3. create the target label
-                                auto label_inst = std::make_unique<LabelStatement>(
-                                    stmt->file,
-                                    stmt->line,
-                                    skip_label
-                                );
-
-                                // 4. adjust the pc
-                                pc += GetInstructionSize(OP_TYPE::Op_Relative);
-                                pc += GetInstructionSize(OP_TYPE::Op_Absolute);
-
-                                // 5. Push the new branch first, followed immediately by the new JMP and label
-                                new_statements.push_back(std::move(branch_inst));
-                                new_statements.push_back(std::move(jmp_inst));
-                                new_statements.push_back(std::move(label_inst));
-                                break;
+                        if (it != inverted_branches.end()) {
+                            if (options.warnings) {
+                                std::cout << std::format(
+                                    "Warning: Branch out of range for '{}' target: ${:04X} [{}] at ${:04X} File: {} Line: {}\n",
+                                    inst_stmt->mnemonic, target, offset, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line);
                             }
+
+                            std::pair<int, int> loc = { stmt->file, stmt->line };
+
+                            // Create JMP target instruction using original operand
+                            auto jmp_inst = std::make_unique<InstructionStatement>(
+                                stmt->file, stmt->line, "jmp", OP_TYPE::Op_Absolute, std::move(inst_stmt->operand)
+                            );
+
+                            // Create inverted conditional branch jumping over the JMP
+                            auto branch_inst = std::make_unique<InstructionStatement>(
+                                stmt->file, stmt->line, it->second, OP_TYPE::Op_Relative,
+                                std::make_unique<SymbolExpr>(skip_label, loc)
+                            );
+
+                            // Create landing label past the JMP instruction
+                            auto label_inst = std::make_unique<LabelStatement>(
+                                stmt->file, stmt->line, skip_label
+                            );
+
+                            // Update Program Counter for generated instructions
+                            pc += GetInstructionSize(OP_TYPE::Op_Relative);
+                            pc += GetInstructionSize(OP_TYPE::Op_Absolute);
+
+                            // Emit relaxation sequence
+                            new_statements.push_back(std::move(branch_inst));
+                            new_statements.push_back(std::move(jmp_inst));
+                            new_statements.push_back(std::move(label_inst));
+                            break;
+                        } else {
+                            throw std::runtime_error(
+                                std::format("Relative branch out of range for uninvertible mnemonic '{}' at ${:04X} File: {} Line: {}",
+                                    inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
                         }
                     }
-                    else { // range check and optimize for page zero
-                        if (!options.ignore_size && ((operand_value < 0 || operand_value > 0xFFFF))) {
-                            throw std::runtime_error(
-                                std::format("Operand out of range for '{}'  at ${:04X} File: {} Line: {}", inst_stmt->mnemonic, pc,  src_mgr.GetFileName(inst_stmt->file), inst_stmt->line)
-                            );
-                        }
-                        OP_TYPE want_mode = inst_stmt->mode;
-                        if (operand_value <= 0xFF) {
-                            if (inst_stmt->mode == Op_Absolute) want_mode = Op_ZeroPage;
-                            else if (inst_stmt->mode == Op_AbsoluteX) want_mode = Op_ZeroPageX;
-                            else if (inst_stmt->mode == Op_AbsoluteY) want_mode = Op_ZeroPageY;
+                } else {
+                    // Absolute / Zero-Page Address Range Optimization
+                    if (!options.ignore_size && (operand_value < 0 || operand_value > 0xFFFF)) {
+                        throw std::runtime_error(
+                            std::format("Operand address out of range (${:X}) for '{}' at ${:04X} File: {} Line: {}", 
+                                operand_value, inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                    }
 
-                            if (want_mode != inst_stmt->mode) {
-                                mode_it = info->mode_to_opcode.find(want_mode);
-                                if (mode_it != info->mode_to_opcode.end()) {
-                                    inst_stmt->mode = want_mode;
-                                }
+                    OP_TYPE want_mode = inst_stmt->mode;
+
+                    if (operand_value <= 0xFF) {
+                        // Demote Absolute -> ZeroPage when address fits in single byte
+                        if (inst_stmt->mode == OP_TYPE::Op_Absolute) want_mode = OP_TYPE::Op_ZeroPage;
+                        else if (inst_stmt->mode == OP_TYPE::Op_AbsoluteX) want_mode = OP_TYPE::Op_ZeroPageX;
+                        else if (inst_stmt->mode == OP_TYPE::Op_AbsoluteY) want_mode = OP_TYPE::Op_ZeroPageY;
+
+                        if (want_mode != inst_stmt->mode) {
+                            if (info->mode_to_opcode.contains(want_mode)) {
+                                inst_stmt->mode = want_mode;
                             }
                         }
-                        else {
-                            if (inst_stmt->mode == Op_ZeroPage) want_mode = Op_Absolute;
-                            else if (inst_stmt->mode == Op_ZeroPageX) want_mode = Op_AbsoluteX;
-                            else if (inst_stmt->mode == Op_ZeroPageY) want_mode = Op_AbsoluteY;
+                    } else {
+                        // Promote ZeroPage -> Absolute when address exceeds single byte
+                        if (inst_stmt->mode == OP_TYPE::Op_ZeroPage) want_mode = OP_TYPE::Op_Absolute;
+                        else if (inst_stmt->mode == OP_TYPE::Op_ZeroPageX) want_mode = OP_TYPE::Op_AbsoluteX;
+                        else if (inst_stmt->mode == OP_TYPE::Op_ZeroPageY) want_mode = OP_TYPE::Op_AbsoluteY;
 
-                            if (want_mode != inst_stmt->mode) {
-                                mode_it = info->mode_to_opcode.find(want_mode);
-                                if (mode_it != info->mode_to_opcode.end()) {
-                                    inst_stmt->mode = want_mode;
-                                }
-                                else {
-                                    throw std::runtime_error(
-                                        std::format("Operand out of range for '{}'  at ${:04X}  File: {} Line: {}", inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line)
-                                );
+                        if (want_mode != inst_stmt->mode) {
+                            if (info->mode_to_opcode.contains(want_mode)) {
+                                inst_stmt->mode = want_mode;
+                            } else {
+                                throw std::runtime_error(
+                                    std::format("Operand out of range for Zero-Page instruction '{}' at ${:04X} File: {} Line: {}", 
+                                        inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
                             }
                         }
                     }
                 }
             }
+
+            pc += GetInstructionSize(inst_stmt->mode);
+            new_statements.push_back(std::move(stmt));
+            break;
+        }
+#endif
+        case StmtType::Instruction: {
+            // 6502 / 65C02 Opcode Instruction Handler & Optimization Engine
+            auto inst_stmt = static_cast<InstructionStatement*>(stmt.get());
+            const OpCodeInfo* info = FindOpCodeInfo(inst_stmt->mnemonic);
+            if (!info) {
+                throw std::runtime_error(
+                    std::format("Unknown opcode '{}' at ${:04X} File: {} Line: {}", 
+                        inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+            }
+
+            // Guard: Validate CPU architecture requirements for 65C02-only instructions/modes
+            if (info->is_65c02 && options.cpu != CPU::_65C02) {
+                throw std::runtime_error(
+                    std::format("Instruction '{}' requires 65C02 mode (CPU mode set to standard 6502) at ${:04X} File: {} Line: {}", 
+                        inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+            }
+
+            // 1. Initial Addressing Mode Resolution & Fallback Lookup
+            auto mode_it = info->mode_to_opcode.find(inst_stmt->mode);
+            if (mode_it == info->mode_to_opcode.end()) {
+                switch (inst_stmt->mode) {
+                    case OP_TYPE::Op_Implied:
+                        mode_it = info->mode_to_opcode.find(OP_TYPE::Op_Accumulator);
+                        break;
+                    case OP_TYPE::Op_Absolute:
+                        mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPage);
+                        break;
+                    case OP_TYPE::Op_AbsoluteX:
+                        mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPageX);
+                        break;
+                    case OP_TYPE::Op_AbsoluteY:
+                        mode_it = info->mode_to_opcode.find(OP_TYPE::Op_ZeroPageY);
+                        break;
+                    default:
+                        break;
+                }
+
+                if (mode_it == info->mode_to_opcode.end()) {
+                    throw std::runtime_error(
+                        std::format("Unsupported addressing mode for opcode '{}' at ${:04X} File: {} Line: {}", 
+                            inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                }
+            }
+
+            // Guard: Validate opcode requirement (e.g. BRA, STZ, PHY, PLY, BBR, BBS, etc.)
+            if (info->is_65c02 && options.cpu != CPU::_65C02) {
+                throw std::runtime_error(
+                    std::format("Instruction '{}' requires 65C02 mode at ${:04X} File: {} Line: {}", 
+                        inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+            }
+
+            // Guard: Validate 65C02-specific operand addressing modes
+            if (inst_stmt->mode == OP_TYPE::Op_ZeroPageRelative && options.cpu != CPU::_65C02) {
+                throw std::runtime_error(
+                    std::format("Addressing mode for '{}' requires 65C02 mode at ${:04X} File: {} Line: {}", 
+                        inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+            }
+
+            // 2. Operand Evaluation & Mode Optimization / Relaxation
+            auto val_expr = EvaluateExpr(inst_stmt->operand.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
+            if (val_expr.has_value()) {
+                int64_t operand_value = val_expr.value();
+
+                if (inst_stmt->mode == OP_TYPE::Op_Relative) {
+                    // Branch Distance Calculation
+                    int64_t offset = operand_value - (static_cast<int64_t>(pc) + 2);
+
+                    if (offset < -128 || offset > 127) {
+                        wait_stable = true;
+                    }
+
+                    // Perform Long Branch Relaxation / Trampoline Island Insertion once pass state is stable
+                    if (stable && (offset < -128 || offset > 127)) {
+                        int64_t target = operand_value;
+                        if (offset > 0) {
+                            target += 3; // Account for inserted 3-byte JMP island
+                        }
+
+                        std::string skip_label = std::format("@__island{}", ++island_counter);
+                        auto it = inverted_branches.find(inst_stmt->mnemonic);
+
+                        if (it != inverted_branches.end()) {
+                            if (options.warnings) {
+                                std::cout << std::format(
+                                    "Warning: Branch out of range for '{}' target: ${:04X} [{}] at ${:04X} File: {} Line: {}\n",
+                                    inst_stmt->mnemonic, target, offset, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line);
+                            }
+
+                            std::pair<int, int> loc = { stmt->file, stmt->line };
+
+                            // Create JMP target instruction using original operand
+                            auto jmp_inst = std::make_unique<InstructionStatement>(
+                                stmt->file, stmt->line, "jmp", OP_TYPE::Op_Absolute, std::move(inst_stmt->operand)
+                            );
+
+                            // Create inverted conditional branch jumping over the JMP
+                            auto branch_inst = std::make_unique<InstructionStatement>(
+                                stmt->file, stmt->line, it->second, OP_TYPE::Op_Relative,
+                                std::make_unique<SymbolExpr>(skip_label, loc)
+                            );
+
+                            // Create landing label past the JMP instruction
+                            auto label_inst = std::make_unique<LabelStatement>(
+                                stmt->file, stmt->line, skip_label
+                            );
+
+                            // Update Program Counter for generated instructions
+                            pc += GetInstructionSize(OP_TYPE::Op_Relative);
+                            pc += GetInstructionSize(OP_TYPE::Op_Absolute);
+
+                            // Emit relaxation sequence
+                            new_statements.push_back(std::move(branch_inst));
+                            new_statements.push_back(std::move(jmp_inst));
+                            new_statements.push_back(std::move(label_inst));
+                            break;
+                        } else {
+                            throw std::runtime_error(
+                                std::format("Relative branch out of range for uninvertible mnemonic '{}' at ${:04X} File: {} Line: {}",
+                                    inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                        }
+                    }
+                } else {
+                    // Absolute / Zero-Page Address Range Optimization
+                    if (!options.ignore_size && (operand_value < 0 || operand_value > 0xFFFF)) {
+                        throw std::runtime_error(
+                            std::format("Operand address out of range (${:X}) for '{}' at ${:04X} File: {} Line: {}", 
+                                operand_value, inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                    }
+
+                    OP_TYPE want_mode = inst_stmt->mode;
+
+                    if (operand_value <= 0xFF) {
+                        // Demote Absolute -> ZeroPage when address fits in single byte
+                        if (inst_stmt->mode == OP_TYPE::Op_Absolute) want_mode = OP_TYPE::Op_ZeroPage;
+                        else if (inst_stmt->mode == OP_TYPE::Op_AbsoluteX) want_mode = OP_TYPE::Op_ZeroPageX;
+                        else if (inst_stmt->mode == OP_TYPE::Op_AbsoluteY) want_mode = OP_TYPE::Op_ZeroPageY;
+
+                        if (want_mode != inst_stmt->mode) {
+                            if (info->mode_to_opcode.contains(want_mode)) {
+                                inst_stmt->mode = want_mode;
+                            }
+                        }
+                    } else {
+                        // Promote ZeroPage -> Absolute when address exceeds single byte
+                        if (inst_stmt->mode == OP_TYPE::Op_ZeroPage) want_mode = OP_TYPE::Op_Absolute;
+                        else if (inst_stmt->mode == OP_TYPE::Op_ZeroPageX) want_mode = OP_TYPE::Op_AbsoluteX;
+                        else if (inst_stmt->mode == OP_TYPE::Op_ZeroPageY) want_mode = OP_TYPE::Op_AbsoluteY;
+
+                        if (want_mode != inst_stmt->mode) {
+                            if (info->mode_to_opcode.contains(want_mode)) {
+                                inst_stmt->mode = want_mode;
+                            } else {
+                                throw std::runtime_error(
+                                    std::format("Operand out of range for Zero-Page instruction '{}' at ${:04X} File: {} Line: {}", 
+                                        inst_stmt->mnemonic, pc, src_mgr.GetFileName(inst_stmt->file), inst_stmt->line));
+                            }
+                        }
+                    }
+                }
+            }
+
             pc += GetInstructionSize(inst_stmt->mode);
             new_statements.push_back(std::move(stmt));
             break;
@@ -624,25 +823,28 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
         case StmtType::Until:
         case StmtType::Wend: {
+            // Loop Termination (.until / .wend) Statement Handler
             if (loop_level < 1) {
                 throw std::runtime_error(
-                    std::format("loop termination without a loop at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(stmt->file), stmt->line));
-            }            
+                    std::format("Loop termination directive used outside of a loop at ${:04X} File: {} Line: {}", 
+                        pc, src_mgr.GetFileName(stmt->file), stmt->line));
+            }           
+            
             new_statements.push_back(std::move(stmt));
             break;
         }
 
         case StmtType::If: {
+            // Conditional Assembly (.if / .else / .endif) Handler
             auto if_stmt = static_cast<IfStatement*>(stmt.get());
 
             if (!if_stmt->condition_expr) {
                 throw std::runtime_error(
                     std::format("'if' condition expression missing at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
+                        pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
             }
 
-            // 1. Capture 'then' and 'else' statement bodies (depth-aware) if not pre-populated
+            // 1. Capture 'then' and 'else' statement bodies ONCE on first pass (depth-aware)
             if (if_stmt->then_statements.empty() && if_stmt->else_statements.empty()) {
                 size_t scan_idx = st_index + 1;
                 int depth = 1;
@@ -656,13 +858,13 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                     } else if (st_type == StmtType::EndIf) {
                         depth--;
                         if (depth == 0) {
-                            break; // Matched outer endif
+                            break; // Matched outer closing .endif
                         }
                     } else if (st_type == StmtType::Else && depth == 1) {
                         if (in_else) {
                             throw std::runtime_error(
-                                std::format("duplicate 'else' directive at ${:04X} File: {} Line: {}", 
-                                            pc, src_mgr.GetFileName(statements[scan_idx]->file), statements[scan_idx]->line));
+                                std::format("Duplicate 'else' directive at ${:04X} File: {} Line: {}", 
+                                    pc, src_mgr.GetFileName(statements[scan_idx]->file), statements[scan_idx]->line));
                         }
                         in_else = true;
                         scan_idx++;
@@ -679,8 +881,8 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
 
                 if (depth != 0) {
                     throw std::runtime_error(
-                        std::format("unmatched 'if' directive at ${:04X} File: {} Line: {}", 
-                                    pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
+                        std::format("Unmatched 'if' directive missing 'endif' at ${:04X} File: {} Line: {}", 
+                            pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
                 }
             }
 
@@ -690,13 +892,14 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
             if (!condition.has_value()) {
                 throw std::runtime_error(
                     std::format("'if' condition could not be evaluated at ${:04X} File: {} Line: {}", 
-                                pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
+                        pc, src_mgr.GetFileName(if_stmt->file), if_stmt->line));
             }
 
-            // 3. Recursively process only the active branch into new_statements
+            // 3. Process active branch statements into new_statements
             const auto& active_branch = (condition.value() != 0) ? if_stmt->then_statements : if_stmt->else_statements;
 
             std::vector<std::unique_ptr<Statement>> branch_body;
+            branch_body.reserve(active_branch.size());
             for (const auto& body_stmt : active_branch) {
                 if (body_stmt) {
                     branch_body.push_back(body_stmt->clone());
@@ -708,7 +911,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 ProcessStatement(branch_body, new_statements, inner_index, anonymous_labels);
             }
 
-            // 4. Advance driver index to matching outer 'endif'
+            // 4. Advance driver index past the matching outer 'endif'
             size_t skip_idx = st_index + 1;
             int skip_depth = 1;
 
@@ -724,37 +927,37 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 }
                 skip_idx++;
             }
+
             st_index = skip_idx;
             break;
         }
 
         case StmtType::Else: {
+            // Orphaned .else Directive Trap
             throw std::runtime_error(
-                std::format("unexpected 'else' directive without matching 'if' at ${:04X} File: {} Line: {}", 
-                            pc, src_mgr.GetFileName(stmt->file), stmt->line));
+                std::format("Unexpected 'else' directive without matching 'if' at ${:04X} File: {} Line: {}", 
+                    pc, src_mgr.GetFileName(stmt->file), stmt->line));
         }
 
         case StmtType::EndIf: {
+            // Orphaned .endif Directive Trap
             throw std::runtime_error(
-                std::format("unexpected 'endif' directive without matching 'if' at ${:04X} File: {} Line: {}", 
-                            pc, src_mgr.GetFileName(stmt->file), stmt->line));
+                std::format("Unexpected 'endif' directive without matching 'if' at ${:04X} File: {} Line: {}", 
+                    pc, src_mgr.GetFileName(stmt->file), stmt->line));
         }
 
         case StmtType::Print: {
-            // Print
+            // Print (.print) Directive Handler
             new_statements.push_back(std::move(stmt));
             break;
         }
 
         default: {
+            // Unknown or Unhandled AST Node Catch-All
             throw std::runtime_error(
-                std::format("Unknown statement at ${:04X}  File: {} Line: {}", pc, src_mgr.GetFileName(stmt->file), stmt->line)
-            );
-            // never going to get here. Place holder If we want warning instead of error
-            // new_statements.push_back(std::move(stmt));
-            break;
-        }
-    }
+                std::format("Unknown statement type at ${:04X} File: {} Line: {}", 
+                    pc, src_mgr.GetFileName(stmt->file), stmt->line));
+        }    }
     st_index++;
 }
 

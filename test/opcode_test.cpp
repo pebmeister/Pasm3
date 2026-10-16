@@ -166,5 +166,10 @@ Opcode_test::Test Opcode_test::make_unit_test(OP_TEST& test, int max)
     }
     
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, test.negative_test);
+
+    Options options;
+    options.verbose = false;
+    options.cpu = CPU::_65C02;
+  
+    return Test(src_mgr, source_code, expected_output, test.negative_test, std::move(options));
 }

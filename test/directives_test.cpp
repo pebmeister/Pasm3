@@ -55,7 +55,9 @@ Directives_test::Test Directives_test::create_incbin_full_file_test()
         full_bytes.end()
     );
     
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }
 
 Directives_test::Test Directives_test::create_incbin_offset_and_length_test()
@@ -74,7 +76,9 @@ Directives_test::Test Directives_test::create_incbin_offset_and_length_test()
     );
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Directives_test::Test Directives_test::create_incbin_missing_file_negative_test()
@@ -87,7 +91,9 @@ Directives_test::Test Directives_test::create_incbin_missing_file_negative_test(
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, {}, true,std::move(options));
 }
 
 // --- .ifdef / .ifndef Tests ---
@@ -109,7 +115,9 @@ Directives_test::Test Directives_test::create_ifdef_defined_test()
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Directives_test::Test Directives_test::create_ifdef_undefined_else_test()
@@ -130,7 +138,9 @@ Directives_test::Test Directives_test::create_ifdef_undefined_else_test()
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }
 
 Directives_test::Test Directives_test::create_ifndef_test()
@@ -147,7 +157,9 @@ Directives_test::Test Directives_test::create_ifndef_test()
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }
 
 Directives_test::Test Directives_test::create_basic_header_test()
@@ -172,7 +184,9 @@ Directives_test::Test Directives_test::create_basic_header_test()
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }
 
 Directives_test::Test Directives_test::create_fill_directive_test(int max, uint8_t byte)
@@ -189,7 +203,9 @@ Directives_test::Test Directives_test::create_fill_directive_test(int max, uint8
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }
 
 Directives_test::Test Directives_test::create_ds_directive_test(int max)
@@ -206,7 +222,9 @@ Directives_test::Test Directives_test::create_ds_directive_test(int max)
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }
 
 Directives_test::Test Directives_test::create_ds_move_pc_test(int max)
@@ -227,7 +245,9 @@ Directives_test::Test Directives_test::create_ds_move_pc_test(int max)
     std::vector<uint8_t> expected_output(max, 0x00);
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }
 
 Directives_test::Test Directives_test::create_byte_directive_test()
@@ -249,7 +269,9 @@ Directives_test::Test Directives_test::create_byte_directive_test()
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }
 
 Directives_test::Test Directives_test::create_word_directive_test()
@@ -269,5 +291,7 @@ Directives_test::Test Directives_test::create_word_directive_test()
 
     std::string source_code;
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false,std::move(options));
 }

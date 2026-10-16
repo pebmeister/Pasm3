@@ -61,11 +61,12 @@ public:
                 emit(create_while_loop_nested_continue_test(i, j));
             }
         }
+
         emit(create_orphaned_continue_test());
         emit(create_orphaned_break_test());
         emit(create_orphaned_wend_test());
         emit(create_orphaned_until_test());
         emit(create_unmatched_while_test());
-        emit(create_unmatched_repeat_test());
+        emit(create_unmatched_repeat_test());        
     }
 };

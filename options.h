@@ -10,6 +10,11 @@
 #include <utility>
 #include <vector>
 
+enum CPU {
+    _6502,
+    _65C02
+};
+
 /**
  * @struct Options
  * @brief Holds assembler execution options, input/output paths, and symbol definitions.
@@ -36,5 +41,6 @@ struct Options {
     bool debug = false;                                        /**< Flag to debug with VICE */    
     bool launch = false;                                       /**< Flag to launch with VICE */    
     bool xref = false;                                         /**< Flag to create a cross reference symbol file */    
-    bool out = false;                                          /**< Flag to create aan output file */    
+    bool out = false;                                          /**< Flag to create an output file */  
+    CPU cpu = CPU::_65C02;                                      /**< Flag for cpu type */
 };

@@ -60,7 +60,7 @@ public:
     void cleanup_tests() override {}
 
     void generate_tests(int max_iterations, const std::function<void(Test)>& emit) override
-    {
+    {        
         for (auto&[_, info]: opcodeDict) {
             auto& op = info.mnemonic;
             for (int mode = OP_TYPE::Op_Implied; mode <= OP_TYPE::Op_ZeroPageRelative; ++mode) {
