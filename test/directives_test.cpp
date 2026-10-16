@@ -154,7 +154,7 @@ Directives_test::Test Directives_test::create_basic_header_test()
 {
     constexpr int org = 0x0801;
     SourceManager src_mgr;
-    Line_Adder add_line(src_mgr, "create_basic_header_test", org);
+    Line_Adder add_line(src_mgr, "create_basic_header_test", org, false);
 
     add_line(".basic_hdr");
     add_line("    rts");
