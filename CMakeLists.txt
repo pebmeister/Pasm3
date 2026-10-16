@@ -152,6 +152,8 @@ add_executable(pasm_tests
     test/loop_test.cpp
     test/control_flow_test.cpp
     test/directives_test.cpp
+    parseargs.cpp
+    parseargs.h    
     test/opcode_test.h
     test/label_test.h
     test/expression_test.h

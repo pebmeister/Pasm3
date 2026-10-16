@@ -67,5 +67,8 @@ Macro_test::Test Macro_test::create_macro_test(int max)
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }

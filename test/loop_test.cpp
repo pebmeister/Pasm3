@@ -53,7 +53,9 @@ Loop_test::Test Loop_test::create_basic_while_loop_test(int max_iterations)
     }
     
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);    
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));    
 }
 
 /**
@@ -87,7 +89,9 @@ Loop_test::Test Loop_test::create_basic_repeat_loop_test(int max_iterations)
     } while (val < max_iterations);
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 /**
@@ -145,7 +149,9 @@ Loop_test::Test Loop_test::create_while_loop_nested_test(int max_iterations)
 
     simulate_loop(0);
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);    
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));    
 }
 
 /**
@@ -202,7 +208,9 @@ Loop_test::Test Loop_test::create_repeat_loop_nested_test(int max_iterations)
 
     simulate_loop(0);
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);    
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));    
 }
 
 /**
@@ -283,7 +291,9 @@ Loop_test::Test Loop_test::create_mixed_loop_nested_test(int max_iterations)
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);        
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));    
 }
 
 /**
@@ -327,7 +337,9 @@ Loop_test::Test Loop_test::create_while_continue_loop_test(int max_iterations, i
     }
     
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);    
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));    
 }
 
 /**
@@ -369,7 +381,9 @@ Loop_test::Test Loop_test::create_while_break_loop_test(int max_iterations, int 
     }
     
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);    
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));    
 }
 
 /**
@@ -442,7 +456,9 @@ Loop_test::Test Loop_test::create_while_loop_nested_continue_test(int max_iterat
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));    
 }
 
 /**
@@ -459,7 +475,9 @@ Loop_test::Test Loop_test::create_orphaned_continue_test()
     add_line(std::format("{}.continue", Tab(0)));
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, true, std::move(options));    
 }
 
 /**
@@ -476,7 +494,9 @@ Loop_test::Test Loop_test::create_orphaned_break_test()
     add_line(std::format("{}.break", Tab(0)));
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, true, std::move(options));    
 }
 
 /**
@@ -493,7 +513,9 @@ Loop_test::Test Loop_test::create_orphaned_wend_test()
     add_line(std::format("{}.wend", Tab(0)));
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, true, std::move(options));    
 }
 
 /**
@@ -510,7 +532,9 @@ Loop_test::Test Loop_test::create_orphaned_until_test()
     add_line(std::format("{}.until VAL >= 1", Tab(0)));
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, true, std::move(options));    
 }
 
 /**
@@ -529,7 +553,9 @@ Loop_test::Test Loop_test::create_unmatched_while_test()
     add_line(std::format("{}VAL = VAL + 1", Tab(1)));
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, true, std::move(options));    
 }
 
 /**
@@ -548,5 +574,7 @@ Loop_test::Test Loop_test::create_unmatched_repeat_test()
     add_line(std::format("{}VAL = VAL + 1", Tab(1)));
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, true, std::move(options));    
 }

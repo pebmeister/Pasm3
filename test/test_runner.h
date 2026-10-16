@@ -30,16 +30,20 @@ public:
         std::string source_code;
         std::vector<uint8_t> expected;
         bool negative_test;
+        Options options;
 
         Test(
             SourceManager src_mgr,
             std::string_view source_code,
             std::vector<uint8_t> expected,
-            bool negative_test = false) 
+            bool negative_test,
+            Options options) 
             : src_mgr(std::move(src_mgr)),
               source_code(std::move(source_code)),
               expected(std::move(expected)),
-              negative_test(negative_test) {}
+              negative_test(negative_test),
+              options(options) {
+              }
     };
 
     std::string error;
@@ -112,15 +116,12 @@ public:
 
         std::vector<std::thread> workers;
         workers.reserve(num_workers);
-
         for (unsigned int i = 0; i < num_workers; ++i) {
             workers.emplace_back([&]() {
                 PasmTokenizer tokenizer;
-                Options options;
-                options.verbose = false;
-
+      
                 while (true) {
-                    Test current_test(SourceManager{}, "", {});
+                    Test current_test(SourceManager{}, "", {}, false, Options{});
 
                     {
                         std::unique_lock<std::mutex> lock(queue_mutex);
@@ -145,9 +146,9 @@ public:
 
                     try {
                         auto tokens = tokenizer.tokenize(current_test.source_code, fileid);
-                        AssemblerParser parser(tokens, options, current_test.src_mgr);
+                        AssemblerParser parser(tokens, current_test.options, current_test.src_mgr);
                         auto statements = parser.ParseProgram(tokenizer);
-                        MultiPassAssembler assembler(options, current_test.src_mgr);
+                        MultiPassAssembler assembler(current_test.options, current_test.src_mgr);
                         assembler.Assemble(statements);
 
                         if (current_test.negative_test) {

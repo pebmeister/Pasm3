@@ -53,7 +53,9 @@ Label_test::Test Label_test::create_foward_labels_test()
     }
     
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);    
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));    
 }
 
 Label_test::Test Label_test::create_global_labels_test()
@@ -92,7 +94,9 @@ Label_test::Test Label_test::create_global_labels_test()
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Label_test::Test Label_test::create_anon_labels_test()
@@ -198,7 +202,9 @@ Label_test::Test Label_test::create_anon_labels_test()
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Label_test::Test Label_test::create_local_label_test()
@@ -275,7 +281,9 @@ Label_test::Test Label_test::create_local_label_test()
     pc += 3;
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Label_test::Test Label_test::create_combined_label_test()
@@ -367,5 +375,7 @@ Label_test::Test Label_test::create_combined_label_test()
     pc += 3;
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }

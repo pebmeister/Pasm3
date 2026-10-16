@@ -45,7 +45,9 @@ Control_flow_test::Test Control_flow_test::create_basic_if_test()
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Control_flow_test::Test Control_flow_test::create_if_else_test()
@@ -73,7 +75,9 @@ Control_flow_test::Test Control_flow_test::create_if_else_test()
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Control_flow_test::Test Control_flow_test::create_nested_if_test()
@@ -106,7 +110,9 @@ Control_flow_test::Test Control_flow_test::create_nested_if_test()
     }
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, expected_output, false);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, expected_output, false, std::move(options));
 }
 
 Control_flow_test::Test Control_flow_test::create_orphaned_else_test()
@@ -121,7 +127,9 @@ Control_flow_test::Test Control_flow_test::create_orphaned_else_test()
     add_line(std::format("{}.else", Tab(0))); // Invalid without preceding .if
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, {}, true, std::move(options));
 }
 
 Control_flow_test::Test Control_flow_test::create_orphaned_endif_test()
@@ -136,7 +144,9 @@ Control_flow_test::Test Control_flow_test::create_orphaned_endif_test()
     add_line(std::format("{}.endif", Tab(0))); // Invalid without preceding .if
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, {}, true, std::move(options));
 }
 
 Control_flow_test::Test Control_flow_test::create_unmatched_if_test()
@@ -153,5 +163,7 @@ Control_flow_test::Test Control_flow_test::create_unmatched_if_test()
     // Missing matching .endif
 
     add_line.GetSource(source_code);
-    return Test(src_mgr, source_code, {}, true);
+    Options options;
+    options.verbose = false;
+    return Test(src_mgr, source_code, {}, true, std::move(options));
 }
