@@ -980,7 +980,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     pc = static_cast<uint16_t>(val.value());
                     if (org_stmt->isOrg && load_address_set) {
                         throw std::runtime_error(
-                            std::format("Org already set ${:04X} File: {}  Line:{}", load_address, src_mgr.GetFileName(stmt->file), stmt->line);
+                            std::format("Org already set ${:04X} File: {}  Line:{}", load_address, src_mgr.GetFileName(stmt->file), stmt->line));
                     }
                     if (!load_address_set) {
                         load_address = pc;
@@ -989,7 +989,7 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 }
                 else {
                     throw std::runtime_error(
-                    std::format("Org missing expression File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line);
+                    std::format("Org missing expression File: {}  Line:{}", src_mgr.GetFileName(stmt->file), stmt->line));
                 }
                 if (printstate) {
                     emit_listing_row(pc, "", std::format("*= ${:04X}", pc));
