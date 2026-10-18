@@ -1109,6 +1109,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 if (printstate) {
                     emit_listing_row(pc, "", std::format(".incbin \"{}\"", incbin_stmt->binfile));
                 }
+                else {
+                    file_last_printed_line[incbin_stmt->file] = incbin_stmt->line;
+                }
 
                 emit_bytes(bytes);               
                 break;
@@ -1242,6 +1245,9 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                     }
                     emit_listing_row(pc, "", summary);
                 }               
+                else {
+                    file_last_printed_line[var_stmt->file] = var_stmt->line;
+                }
                 break;
             }
 
@@ -1273,7 +1279,6 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                         } else {
                             file_last_printed_line[stmt->file] = stmt->line;
                         }
-                        
                         emit_bytes(bytes);
                         break;
                     }
