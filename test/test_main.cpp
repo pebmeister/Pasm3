@@ -39,6 +39,7 @@
 #include "loop_test.h"
 #include "control_flow_test.h"
 #include "directives_test.h"
+#include "macro_lib_test.h"
 
 #include "parseargs.h"
 
@@ -264,6 +265,7 @@ struct Test_Options {
     bool test_control = false;            ///< Flag indicating whether to execute control verification tests.
     bool test_directives = false;         ///< Flag indicating whether to execute directive verification tests.
     bool test_parseargs = false;          ///< Flag indicating whether to execute directive verification tests.
+    bool test_macrolib = false;           ///< Flag indicating whether to execute macro libe verification tests.
 
     int  opcode_max_iteration = 0xFF;     ///< Maximum operand loop iterations per addressing mode test.
     int  label_max_iteration = 0xFF;      ///< Maximum label iterations per test.
@@ -272,6 +274,7 @@ struct Test_Options {
     int  loop_max_iteration = 25;         ///< Maximum loop iterations per test.
     int  control_max_iteration = 25;      ///< Maximum control iterations per test.
     int  directive_max_iteration = 25;    ///< Maximum directive iterations per test.
+    int  macrolib_max_iteration = 100;    ///< Maximum directive iterations per test.
 };
 
 /**
@@ -297,6 +300,8 @@ void parse_test_args(int argc, char* argv[], Test_Options& options)
     options.test_control = false;
     options.test_directives = false;
     options.test_parseargs = false;
+    options.test_macrolib = false;
+    
     auto arg_num = 1;
     
     while (arg_num < argc) {
@@ -352,6 +357,15 @@ void parse_test_args(int argc, char* argv[], Test_Options& options)
                 }
             }
         }        
+        else if (arg == "-macrolib") {
+            options.test_macrolib = true;
+            if (arg_num < argc) {
+                options.macrolib_max_iteration = std::stoi(argv[arg_num++]);
+                if (options.macrolib_max_iteration < 1) {
+                    throw std::runtime_error(std::format("invalid value for max iterations {}. Must be greater than zero.", options.macrolib_max_iteration));
+                }
+            }
+        }        
         else if (arg == "-loop") {
             options.test_loops = true;
             if (arg_num < argc) {
@@ -379,6 +393,7 @@ void parse_test_args(int argc, char* argv[], Test_Options& options)
             options.test_control = true;
             options.test_directives = true;
             options.test_parseargs = true;
+            options.test_macrolib = true;
         }
         else {
             throw std::runtime_error(std::format("Unknown command line option {}", arg));
@@ -412,6 +427,7 @@ int main(int argc, char* argv[])
         options.test_control = true;
         options.test_directives = true;
         options.test_parseargs = true;
+        options.test_macrolib = true;
         
         if (argc > 1) {
             parse_test_args(argc, argv, options);
@@ -462,6 +478,15 @@ int main(int argc, char* argv[])
             result = macro_test.test(15, true, options.macro_max_iteration);
             if (result) {
                 std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), macro_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
+                return -1;
+            }
+        }
+        if (options.test_macrolib) {
+            Macro_lib_test macrolib_test;
+            std::cout << std::format("{}{}{}{:15}", es.down(1), es.column(1), es.gr(es.BRIGHT_YELLOW_FOREGROUND), "MACRO LIB TEST");
+            result = macrolib_test.test(15, true, options.macrolib_max_iteration);
+            if (result) {
+                std::cout << std::format("{}{}{}{}{}{}", es.down(1), es.column(1), es.gr(es.BRIGHT_RED_FOREGROUND), macrolib_test.source_code, es.gr(es.BRIGHT_WHITE_FOREGROUND), es.SHOW_CURSOR );
                 return -1;
             }
         }
