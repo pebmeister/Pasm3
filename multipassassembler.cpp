@@ -62,7 +62,6 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     auto lastpasschanged = false;
     std::vector<AnonymousLabel> anonymous_labels;
 
-
     if (options.verbose) {
         std::cout << "--- Starting Multi-Pass Symbol Resolution ---\n";
     }
@@ -138,7 +137,7 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                 if (it == anon_idmap.end()) {
                     anonymous_labels.push_back({
                         .type = name[0],
-                        .address = pc,
+                        .address = static_cast<uint16_t>(pc),
                         .statement_id = stmt_key
                     });
                     anon_idmap[stmt_key] = anonymous_labels.size() - 1;
