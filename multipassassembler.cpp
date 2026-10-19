@@ -979,6 +979,41 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
             }
         };
 
+        // Helper: Format and emit listing bytes
+        auto emit_bytes_listing = [&](auto& current_pc, std::string_view directive_text, const std::vector<uint8_t>& bytes) {
+            if (bytes.empty()) return;
+
+            auto total_bytes = bytes.size();
+            size_t cur_byte = 0;
+            bool is_first_row = true;
+
+            // Process full 4-byte rows
+            while (cur_byte + 4 <= total_bytes) {
+                std::string hex_str = std::format("{:02X} {:02X} {:02X} {:02X} ", 
+                    bytes[cur_byte], bytes[cur_byte + 1], bytes[cur_byte + 2], bytes[cur_byte + 3]);
+                
+                emit_listing_row(current_pc, hex_str, is_first_row ? std::string(directive_text) : "");
+                
+                current_pc += 4;
+                cur_byte += 4;
+                is_first_row = false;
+            }
+
+            // Handle any remaining partial row at the end (< 4 bytes)
+            if (cur_byte < total_bytes) {
+                auto bytes_in_row = total_bytes - cur_byte;
+                std::string hex_str;
+                hex_str.reserve(bytes_in_row * 3);
+                
+                for (size_t i = 0; i < bytes_in_row; ++i) {
+                    hex_str += std::format("{:02X} ", bytes[cur_byte + i]);
+                }
+
+                emit_listing_row(current_pc, hex_str, is_first_row ? std::string(directive_text) : "");
+                current_pc += bytes_in_row;
+            }
+        };
+        
         // Helper: Append emitted byte buffer to binary output image
         auto emit_bytes = [&](const std::vector<uint8_t>& emitted_bytes) {
             if (!load_address_set) {
@@ -1105,15 +1140,16 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 }               
                 auto length = length_expr.value();               
                 
-                auto bytes = read_binary_file_slice(incbin_stmt->binfile, offset, length);
+                auto data_bytes = read_binary_file_slice(incbin_stmt->binfile, offset, length);
                 if (printstate) {
-                    emit_listing_row(pc, "", std::format(".incbin \"{}\"", incbin_stmt->binfile));
+                    auto current_pc = pc;
+                    emit_bytes_listing(current_pc, std::format(".incbin \"{}\"", incbin_stmt->binfile), data_bytes);
                 }
                 else {
                     file_last_printed_line[incbin_stmt->file] = incbin_stmt->line;
                 }
 
-                emit_bytes(bytes);               
+                emit_bytes(data_bytes);               
                 break;
             }
 
@@ -1188,7 +1224,6 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 auto ds_stmt = static_cast<const DsStatement*>(stmt.get());
                 uint16_t current_pc = pc;
                 uint16_t count = 0;
-
                 auto val_expr = EvaluateExpr(ds_stmt->size_expr.get(), anonymous_labels, symbols_, vars_, parent_scope, pc);
                 if (val_expr.has_value()) {
                     int32_t raw_count = val_expr.value();
@@ -1201,7 +1236,8 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                 }
 
                 if (printstate) {
-                    emit_listing_row(current_pc, "", std::format(".ds {}", count));
+                    std::vector<uint8_t> zeros(count, 0);
+                    emit_bytes_listing(current_pc, std::format(".ds {}", count), zeros);
                 } else {
                     file_last_printed_line[ds_stmt->file] = ds_stmt->line;
                 }
@@ -1272,14 +1308,15 @@ void MultiPassAssembler::EmitFinalPass(const std::vector<std::unique_ptr<Stateme
                                     b, src_mgr.GetFileName(fill_stmt->file), fill_stmt->line));
                         }                       
                         
-                        std::vector<uint8_t> bytes(static_cast<size_t>(l), static_cast<uint8_t>(b));
+                        std::vector<uint8_t> data_bytes(static_cast<size_t>(l), static_cast<uint8_t>(b));
                         
                         if (printstate) {
-                            emit_listing_row(pc, "", std::format(".fill ${:02X}, {}", b, l));
+                            auto current_pc = pc;
+                            emit_bytes_listing(current_pc, std::format(".fill ${:02X}, {}", b, l), data_bytes);
                         } else {
                             file_last_printed_line[stmt->file] = stmt->line;
                         }
-                        emit_bytes(bytes);
+                        emit_bytes(data_bytes);
                         break;
                     }
                 }
