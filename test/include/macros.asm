@@ -1,13 +1,11 @@
+        .print push
         .print off
 
 ;********************************************
-;*                                          *
 ;* PUSH16                                   *
-;*                                          *
-;*  push 16 bit value                       *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Push 16-bit value                        *
+;* \1 Variable                              *
+;* Destroys A                               *
 ;********************************************
         .macro PUSH16
         lda \1
@@ -17,13 +15,10 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* POP16                                    *
-;*                                          *
-;*  pop 16 bit value                        *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Pop 16-bit value                         *
+;* \1 Variable                              *
+;* Destroys A                               *
 ;********************************************
         .macro POP16
         pla
@@ -33,17 +28,11 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* STORE8                                   *
-;*                                          *
-;*  store a variable                        *
-;*                                          *
-;*  \1  Source                              *
-;*  \2  Destination                         *
-;*                                          *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Store an 8-bit variable                  *
+;* \1 Source                                *
+;* \2 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro STORE8
         lda \1
@@ -51,36 +40,25 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* STORE16                                  *
-;*                                          *
-;*  store a variable                        *
-;*                                          *
-;*  \1  Source 8 bit                        *
-;*  \2  Destination                         *
-;*                                          *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Store a 16-bit variable                  *
+;* \1 Source 16-bit                         *
+;* \2 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro STORE16
         lda \1
         sta \2
+        lda \1 + 1
         sta \2 + 1
         .endm
 
 ;********************************************
-;*                                          *
 ;* STORE8I                                  *
-;*                                          *
-;*  store a variable                        *
-;*                                          *
-;*  \1  Source                              *
-;*  \2  Destination                         *
-;*                                          *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Store an 8-bit immediate value           *
+;* \1 Value                                 *
+;* \2 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro STORE8I
         lda #\1
@@ -88,83 +66,59 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* STORE16I                                 *
-;*                                          *
-;*  store a variable                        *
-;*                                          *
-;*  \1  Source 8 bit                        *
-;*  \2  Destination                         *
-;*                                          *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Store a 16-bit immediate value           *
+;* \1 16-bit Value                          *
+;* \2 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro STORE16I
-        lda #\1
+        lda #<\1
         sta \2
+        lda #>\1
         sta \2 + 1
         .endm
 
 ;********************************************
-;*                                          *
-;* STORE                                    *
-;*                                          *
-;*  store a variable                        *
-;*                                          *
-;*  \1  Source                              *
-;*  \2  Destination                         *
-;*  \3  Length      (Must be less than 255) *
-;*                                          *
-;*                                          *
-;*  destroys a, y                           *
-;*                                          *
+;* STOREM (Memory Fill / memset)            *
+;* Fill memory block with a source byte     *
+;* \1 Source Byte / Variable                *
+;* \2 Destination Base                      *
+;* \3 Length (Must be < 255)                *
+;* Destroys A, Y                            *
 ;********************************************
         .macro STOREM
-
-        ldy #\3 -1
+        ldy #\3 - 1
         lda \1
-@l1
+@l1:
         sta \2,y
         dey
         bpl @l1
         .endm
 
 ;********************************************
-;*                                          *
-;* STOREI                                   *
-;*                                          *
-;*  store a variable                        *
-;*                                          *
-;*  \1  Source numeric value                *
-;*  \2  Destination                         *
-;*  \3  Length      (Must be less than 255) *
-;*                                          *
-;*                                          *
-;*  destroys a, y                           *
-;*                                          *
+;* STOREMI (Immediate Memory Fill)          *
+;* Fill memory block with an immediate byte *
+;* \1 Source numeric value                  *
+;* \2 Destination Base                      *
+;* \3 Length (Must be < 255)                *
+;* Destroys A, Y                            *
 ;********************************************
         .macro STOREMI
-
         lda #\1
-        ldy #\3 -1
-@l1
+        ldy #\3 - 1
+@l1:
         sta \2,y
         dey
         bpl @l1
         .endm
 
 ;********************************************
-;*                                          *
 ;* MOVE8                                    *
-;*                                          *
-;*  move a 8 bit variable                   *
-;*                                          *
-;*  \1  Source                              *
-;*  \2  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Move an 8-bit variable                   *
+;* \1 Source                                *
+;* \2 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro MOVE8
         lda \1
@@ -172,16 +126,11 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* MOVE8I                                   *
-;*                                          *
-;*  move a 8 bit value to a variable        *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Value                               *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Move an 8-bit value to a variable        *
+;* \1 Variable                              *
+;* \2 Value                                 *
+;* Destroys A                               *
 ;********************************************
         .macro MOVE8I
         lda #\2
@@ -189,16 +138,11 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* MOVE16                                   *
-;*                                          *
-;*  move a 16 bit variable                  *
-;*                                          *
-;*  \1  Source                              *
-;*  \2  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Move a 16-bit variable                   *
+;* \1 Source                                *
+;* \2 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro MOVE16
         lda \1
@@ -208,16 +152,11 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* MOVE32                                   *
-;*                                          *
-;*  move a 32 bit variable                  *
-;*                                          *
-;*  \1  Source                              *
-;*  \2  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Move a 32-bit variable                   *
+;* \1 Source                                *
+;* \2 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro MOVE32
         lda \1
@@ -231,16 +170,11 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* MOVE16I                                  *
-;*                                          *
-;*  move a 16 bit value to a variable       *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Value                               *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Move a 16-bit value to a variable        *
+;* \1 Variable                              *
+;* \2 Value                                 *
+;* Destroys A                               *
 ;********************************************
         .macro MOVE16I
         lda #<\2
@@ -250,17 +184,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* ADD8                                     *
-;*                                          *
-;*  add 8 bit variables                     *
-;*                                          *
-;*  \1  Variable 1                          *
-;*  \2  Variable 2                          *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Add 8-bit variables                      *
+;* \1 Variable 1                            *
+;* \2 Variable 2                            *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro ADD8
         clc
@@ -270,17 +199,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* ADD8I                                    *
-;*                                          *
-;*  add 8 bit variables                     *
-;*                                          *
-;*  \1  variable 1                          *
-;*  \2  number 2                            *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Add 8-bit immediate to variable          *
+;* \1 Variable 1                            *
+;* \2 Immediate value                       *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro ADD8I
         clc
@@ -290,17 +214,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* ADD16                                    *
-;*                                          *
-;*  add 16 bit variables                    *
-;*                                          *
-;*  /1  Variable 1                          *
-;*  /2  Variable 2                          *
-;*  /3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Add 16-bit variables                     *
+;* \1 Variable 1                            *
+;* \2 Variable 2                            *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro ADD16
         clc
@@ -313,17 +232,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* ADD32                                    *
-;*                                          *
-;*  add 32 bit variables                    *
-;*                                          *
-;*  /1  Variable 1                          *
-;*  /2  Variable 2                          *
-;*  /3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Add 32-bit variables                     *
+;* \1 Variable 1                            *
+;* \2 Variable 2                            *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro ADD32
         clc
@@ -342,17 +256,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* ADDFIX16                                 *
-;*                                          *
-;*  add 16 bit fixed point variables        *
-;*                                          *
-;*  /1  Variable 1                          *
-;*  /2  Variable 2                          *
-;*  /3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Add 16.16 fixed-point variables          *
+;* \1 Variable 1                            *
+;* \2 Variable 2                            *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro ADDFIX16
         clc
@@ -371,46 +280,12 @@
         .endm
 
 ;********************************************
-;*                                          *
-;* ADDFIX16I                                *
-;*                                          *
-;*  add 16 bit fixed point variables        *
-;*                                          *
-;*  /1  Variable 1                          *
-;*  /2  number                              *
-;*  /3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
-;********************************************
-        .macro ADDFIX16I
-        clc
-        lda #\2
-        adc \1 + 2
-        sta \3 + 2
-        lda #0
-        adc \1 + 3
-        sta \3 + 3
-        lda #0
-        adc \1
-        sta \3
-        lda #0
-        adc \1 + 1
-        sta \3 + 1
-        .endm
-
-;********************************************
-;*                                          *
 ;* ADD16I                                   *
-;*                                          *
-;*  add value to a 16 bit variable          *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Value                               *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Add 16-bit immediate to 16-bit variable  *
+;* \1 Variable                              *
+;* \2 Value                                 *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro ADD16I
         clc
@@ -423,17 +298,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* ADD168                                   *
-;*                                          *
-;*  add 8 bit to 16 bit variable            *
-;*                                          *
-;*  \1  Variable 1      16 bit              *
-;*  \2  Variable 2      8 bit               *
-;*  \3  Destination     16 bit              *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Add 8-bit variable to 16-bit variable    *
+;* \1 Variable 1 (16-bit)                   *
+;* \2 Variable 2 (8-bit)                    *
+;* \3 Destination (16-bit)                  *
+;* Destroys A                               *
 ;********************************************
         .macro ADD168
         clc
@@ -446,50 +316,35 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* INC8                                     *
-;*                                          *
-;*  increment an 8 bit variable             *
-;*                                          *
-;*  \1  Variable                            *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Increment an 8-bit variable              *
+;* \1 Variable                              *
+;* Destroys A (via inc)                     *
 ;********************************************
         .macro INC8
         inc \1
         .endm
 
 ;********************************************
-;*                                          *
 ;* INC16                                    *
-;*                                          *
-;*  increment a 16 bit variable             *
-;*                                          *
-;*  \1  Variable                            *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Increment a 16-bit variable              *
+;* \1 Variable                              *
+;* Destroys A                               *
 ;********************************************
         .macro INC16
         inc \1
         bne @exit
         inc \1 + 1
-@exit
+@exit:
         .endm
 
 ;********************************************
-;*                                          *
 ;* SUB8                                     *
-;*                                          *
-;*  subtract 8 bit variables                *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Variable to subtract                *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Subtract 8-bit variables                 *
+;* \1 Variable                              *
+;* \2 Variable to subtract                  *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro SUB8
         sec
@@ -499,17 +354,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* SUB8I                                    *
-;*                                          *
-;*  subtract 8 bit variables                *
-;*                                          *
-;*  /1  Variable                            *
-;*  /2  number to subtract                  *
-;*  /3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Subtract 8-bit immediate from variable   *
+;* \1 Variable                              *
+;* \2 Number to subtract                    *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro SUB8I
         sec
@@ -519,17 +369,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* SUB16                                    *
-;*                                          *
-;*  subtract 16 bit variables               *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Variable to subtract                *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Subtract 16-bit variables                *
+;* \1 Variable                              *
+;* \2 Variable to subtract                  *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro SUB16
         sec
@@ -542,17 +387,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* SUB16I                                   *
-;*                                          *
-;*  subtract a value from 16 bit variable   *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Value to subtract                   *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Subtract 16-bit immediate from variable  *
+;* \1 Variable                              *
+;* \2 Value to subtract                     *
+;* \3 Destination                           *
+;* Destroys A                               *
 ;********************************************
         .macro SUB16I
         sec
@@ -565,17 +405,12 @@
         .endm
 
 ;********************************************
-;*                                          *
 ;* SUB168                                   *
-;*                                          *
-;*  subtract 8 bit from 16 bit variable     *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Variable to subtract                *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Subtract 8-bit variable from 16-bit      *
+;* \1 Variable (16-bit)                     *
+;* \2 Variable to subtract (8-bit)          *
+;* \3 Destination (16-bit)                  *
+;* Destroys A                               *
 ;********************************************
         .macro SUB168
         sec
@@ -588,453 +423,324 @@
         .endm
 
 ;********************************************
-;*                                          *
-;* SUBFIX16                                 *
-;*                                          *
-;*  subtract 16 bit variables               *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Variable to subtract                *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
-;********************************************
-        .macro SUBFIX16
-        sec
-        lda \1 + 2
-        sbc \2 + 2
-        sta \3 + 2
-        lda \1 + 3
-        sbc \2 + 3
-        sta \3 + 3
-
-        lda \1
-        sbc \2
-        sta \3
-        lda \1 + 1
-        sbc \2 + 1
-        sta \3 + 1
-
-        .endm
-
-;********************************************
-;*                                          *
 ;* DEC8                                     *
-;*                                          *
-;*  Decrement a 8 bit variable              *
-;*                                          *
-;*  \1  Variable                            *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Decrement an 8-bit variable              *
+;* \1 Variable                              *
+;* Destroys A                               *
 ;********************************************
         .macro DEC8
         dec \1
         .endm
 
 ;********************************************
-;*                                          *
 ;* DEC16                                    *
-;*                                          *
-;*  Decrement a 16 bit variable             *
-;*                                          *
-;*  \1  Variable                            *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
+;* Decrement a 16-bit variable              *
+;* \1 Variable                              *
+;* Destroys A                               *
 ;********************************************
         .macro DEC16
-        SUB16I \1,1,\1
+        SUB16I \1, 1, \1
         .endm
 
 ;********************************************
-;*                                          *
-;*  RSHIFT8                                 *
-;*                                          *
-;*  8bit shift                              *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  bits to shift                       *
-;*                                          *
-;*  destroys    x                           *
-;*                                          *
+;* RSHIFT8                                  *
+;* 8-bit right shift                        *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
 ;********************************************
         .macro RSHIFT8
         ldx #\2
         beq @RSH8Exit
-@RSHLoop
+@RSHLoop:
         lsr \1
         dex
         bne @RSHLoop
-@RH8Exit
+@RSH8Exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  RSHIFT16                                *
-;*                                          *
-;*  16bit shift                             *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  bits to shift                       *
-;*                                          *
-;*  destroys    x.                          *
-;*                                          *
+;* RSHIFT16                                 *
+;* 16-bit right shift                       *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
 ;********************************************
         .macro RSHIFT16
         ldx #\2
         beq @RSH16Exit
-@RSH16Loop
+@RSH16Loop:
         lsr \1 + 1
         ror \1
         dex
         bne @RSH16Loop
-@RSH16Exit
+@RSH16Exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  RSHIFT32                                *
-;*                                          *
-;*  32bit shift                             *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  bits to shift                       *
-;*                                          *
-;*  destroys   x                            *
-;*                                          *
+;* RSHIFT32                                 *
+;* 32-bit right shift                       *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
 ;********************************************
         .macro RSHIFT32
-        ldx # \2
+        ldx #\2
         beq @RSH32Exit
-@RSH32Loop
+@RSH32Loop:
         lsr \1 + 3
         ror \1 + 2
         ror \1 + 1
         ror \1
         dex
         bne @RSH32Loop
- @RSH32Exit
+@RSH32Exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  LSHIFT8                                 *
-;*                                          *
-;*  8bit shift                              *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  btits to shift                      *
-;*                                          *
-;*  destroys    x                           *
-;*                                          *
+;* LSHIFT8                                  *
+;* 8-bit left shift                         *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
 ;********************************************
         .macro LSHIFT8
         ldx #\2
         beq @LSH8Exit
-@LSH8Loop
+@LSH8Loop:
         asl \1
         dex
         bne @LSH8Loop
- @LSH8Exit
+@LSH8Exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  LSHIFT16                                *
-;*                                          *
-;*  16bit shift                             *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  bits to shift                       *
-;*                                          *
-;*  destroys    x.                          *
-;*                                          *
+;* LSHIFT16                                 *
+;* 16-bit left shift                        *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
 ;********************************************
         .macro LSHIFT16
-        ldx # \2
+        ldx #\2
         beq @LSH16Exit
-@LS16Loop
+@LS16Loop:
         asl \1
         rol \1 + 1
         dex
         bne @LS16Loop
-@LSH16Exit
+@LSH16Exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  LSHIFT32                                *
-;*                                          *
-;*  32bit shift                             *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  bits to shift                       *
-;*                                          *
-;*  destroys    nothing                     *
-;*                                          *
+;* LSHIFT32                                 *
+;* 32-bit left shift                        *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
 ;********************************************
         .macro LSHIFT32
         ldx #\2
         beq @LSH32Exit
-@LSH32Loop
+@LSH32Loop:
         asl \1
         rol \1 + 1
         rol \1 + 2
         rol \1 + 3
         dex
-        bne @LS32Loop32
-@LSH32Exit
+        bne @LSH32Loop
+@LSH32Exit:
         .endm
+        
 ;********************************************
-;*                                          *
 ;* MULT10                                   *
-;*                                          *
-;*  multiplies 2 byte number by 10          *
-;                                           *
-;*  n * 10 = n * 8 + n * 2                  *
-;*                                          *
-;*  \1  Variable                            *
-;*                                          *
-;*  destroys a,x,y                          *
-;*                                          *
+;* Multiplies 2-byte number by 10           *
+;* n * 10 = n * 8 + n * 2                   *
+;* \1 Variable                              *
+;* Destroys A, X, Y                         *
 ;********************************************
         .macro MULT10
         asl \1
-        rol \1 + 1              ;   multiply by 2
+        rol \1 + 1                  ; Multiply by 2
 
-        ;
-        ;   save the number * 2
-        ;
-        ldx \1                  ;   save low byte in x
-        ldy \1 + 1              ;   save high byte in y
+        ; Save the number * 2
+        ldx \1                      ; Save low byte in X
+        ldy \1 + 1                  ; Save high byte in Y
 
-        ;
-        ;   continue shifting for multiply by 4 and 8
-        ;
+        ; Continue shifting for multiply by 4 and 8
         asl \1
-        rol \1 + 1              ;   multiply by 4
+        rol \1 + 1                  ; Multiply by 4
         asl \1
-        rol \1 + 1              ;   multiply by 8
+        rol \1 + 1                  ; Multiply by 8
 
-        ;
-        ;   now add up the result
-        ;
-        clc                     ;   clear carry
-        txa                     ;   load low byte of 2x
-        adc \1                  ;   add to 8x low byte
-        sta \1                  ;   store low byte
-        tya                     ;   load the high byte of 2x
-        adc \1 + 1              ;   add to 8x high
-        sta \1 + 1              ;   store high byte
+        ; Now add up the result: (8x) + (2x)
+        clc                         ; Clear carry
+        txa                         ; Load low byte of 2x
+        adc \1                      ; Add to 8x low byte
+        sta \1                      ; Store low byte
+        tya                         ; Load high byte of 2x
+        adc \1 + 1                  ; Add to 8x high byte
+        sta \1 + 1                  ; Store high byte
         .endm
 
 ;********************************************
-;*                                          *
 ;* MULT40                                   *
-;*                                          *
-;*  multiplies 2 byte number by 40          *
-;                                           *
-;*  \1  Variable                            *
-;*                                          *
-;*  n * 40 = 4 * (n * 8 + n * 2)            *
-;*                                          *
-;*  destroys a,x,y                          *
-;*                                          *
+;* Multiplies 2-byte number by 40           *
+;* n * 40 = (n * 10) * 4                    *
+;* \1 Variable                              *
+;* Destroys A, X, Y                         *
 ;********************************************
         .macro MULT40
+        MULT10 \1                   ; Multiply by 10 first
         asl \1
-        rol \1 + 1              ;   multiply by 2
-
-        ;
-        ;   save the number * 2
-        ;
-        ldx \1                  ;   save low byte in x
-        ldy \1 + 1              ;   save high byte in y
-
-        ;
-        ;   continue shifting for multiply by 4 and 8
-        ;
+        rol \1 + 1                  ; Multiply by 2 -> 20
         asl \1
-        rol \1 + 1              ;   multiply by 4
-        asl \1
-        rol \1 + 1              ;   multiply by 8
-
-        ;
-        ;   now add up the result
-        ;
-        clc                     ;   clear carry
-        txa                     ;   load low byte of 2x
-        adc \1                  ;   add to 8x low byte
-        sta \1                  ;   store low byte
-        tya                     ;   load the high byte of 2x
-        adc \1 + 1              ;   add to 8x high
-        sta \1 + 1              ;   store high byte
-
-        asl \1
-        rol \1 + 1              ;   multiply by 2
-        asl \1
-        rol \1 + 1              ;   multiply by 4
-
+        rol \1 + 1                  ; Multiply by 2 -> 40
         .endm
 
 ;********************************************
-;*                                          *
 ;* MULT5                                    *
-;*                                          *
-;*  multiplies 2 byte number by 5           *
-;                                           *
-;*  \1  Variable                            *
-;*                                          *
-;*  n * 5 = n * 4 + n                       *
-;*                                          *
-;*  destroys a,x,y                          *
-;*                                          *
+;* Multiplies 2-byte number by 5            *
+;* n * 5 = n * 4 + n                        *
+;* \1 Variable                              *
+;* Destroys A, X, Y                         *
 ;********************************************
         .macro MULT5
-        ;
-        ;   save the number
-        ;
-        ldx \1                  ;   save low byte in x
-        ldy \1 + 1              ;   save high byte in y
+        ; Save the number
+        ldx \1                      ; Save low byte in X
+        ldy \1 + 1                  ; Save high byte in Y
 
-        ;
-        ;   continue shifting for multiply by 4
-        ;
+        ; Continue shifting for multiply by 4
         LSHIFT16 \1, 2
 
-        ;
-        ;   now add up the result
-        ;
-        clc                     ;   clear carry
-        txa                     ;   load low byte of 2x
-        adc \1                  ;   add to 4x low byte
-        sta \1                  ;   store low byte
-        tya                     ;   load the high byte of x
-        adc \1 + 1              ;   add to 4x high
-        sta \1 + 1              ;   store high byte
+        ; Now add up the result: (4x) + (1x)
+        clc                         ; Clear carry
+        txa                         ; Load original low byte (1x)
+        adc \1                      ; Add to 4x low byte
+        sta \1                      ; Store low byte
+        tya                         ; Load original high byte (1x)
+        adc \1 + 1                  ; Add to 4x high byte
+        sta \1 + 1                  ; Store high byte
         .endm
 
 ;********************************************
-;*                                          *
-;*  MULT8                                   *
-;*                                          *
-;*  8bit multiplication                     *
-;*                                          *
-;*  \1  Variable a                          *
-;*  \2  Variable b                          *
-;*  \3  Destination                         *
-;*                                          *
+;* MULT8                                    *
+;* 8-bit multiplication                     *
+;* \1 Variable a                            *
+;* \2 Variable b                            *
+;* \3 Destination                           *
 ;********************************************
-            .macro MULT8
-            lda #00
-            ldx #08
-@Loop
-            lsr \2
-            bcc @NoAdd
-
-            clc
-            adc \1
-@NoAdd
-            rol \1
-            dex
-            bne @Loop
-
-            sta \3
-            .endm
+        .macro MULT8
+        lda #0
+        ldx #8
+@Loop:
+        lsr \2
+        bcc @NoAdd
+        clc
+        adc \1
+@NoAdd:
+        rol \1
+        dex
+        bne @Loop
+        sta \3
+        .endm
 
 ;********************************************
-;*                                          *
-;*  MULT16                                  *
-;*                                          *
-;*  16bit multiplication     32bit result   *
-;*                                          *
-;*  \1  Variable a     16-bit               *
-;*  \2  Variable b     16 bit               *
-;*  \3  Destination    32 bit               *
-;*                                          *
+;* MULT16                                   *
+;* 16-bit multiplication -> 32-bit result   *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination (32-bit)                  *
 ;********************************************
-            .macro MULT16
-
-            PUSH16 \2
-
-            lda #0      ;initialize result to 0
-            sta \3 + 2
-
-            ldx #16     ;there are 16 bits in num2
-@l1
-            lsr \2 + 1  ;get low bit of num2
-            ror \2
-            bcc @l2     ; 0 or 1?
-
-            tay         ; if 1, add num1 (hi byte of result is in a)
-            clc
-            lda \1
-            adc \3 + 2
-            sta \3 + 2
-
-            tya
-            adc \1 + 1
-@l2
-            ror         ;"stairstep" shift
-            ror \3 + 2
-            ror \3 + 1
-            ror \3
-
-            dex
-            bne @l1
-
-            sta \3 + 3
-
-            POP16 \2
-            .endm
+        .macro MULT16
+        PUSH16 \2
+        MULT_F_16 \1, \2, \3
+        POP16 \2
+        .endm
 
 ;********************************************
-;*                                          *
-;*  MULT16                                  *
-;*                                          *
-;*  16bit multiplication     32bit result   *
-;*  \2 is destroyed                         *
-;*                                          *
-;*  \1  Variable a     16-bit               *
-;*  \2  Variable b     16 bit               *
-;*  \3  Destination    32 bit               *
-;*                                          *
+;* MULT_F_16                                *
+;* 16-bit multiplication (destroys \2)      *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit, destroyed)        *
+;* \3 Destination (32-bit)                  *
 ;********************************************
-            .macro MULT_F_16
+        .macro MULT_F_16
+        lda #0
+        sta \3                      ; Initialize low word / scratch
+        sta \3 + 1
+        sta \3 + 2                  ; Initialize high accumulation byte to 0
+        
+        ldx #16                     ; There are 16 bits in num2
+@l1:
+        lsr \2 + 1                  ; Get low bit of num2
+        ror \2
+        bcc @l2                     ; 0 or 1?
 
+        tay                         ; If 1, save high byte accumulator in Y
+        clc
+        lda \1
+        adc \3 + 2
+        sta \3 + 2
 
-            lda #0      ;initialize result to 0
-            sta \3 + 2
-            ldx #16     ;there are 16 bits in num2
-@l1
-            lsr \2 + 1  ;get low bit of num2
-            ror \2
-            bcc @l2     ; 0 or 1?
+        tya                         ; Restore accumulator high byte
+        adc \1 + 1
+@l2:
+        ror                         ; "Stairstep" shift across 32-bit result
+        ror \3 + 2
+        ror \3 + 1
+        ror \3
 
-            tay         ; if 1, add num1 (hi byte of result is in a)
-            clc
-            lda \1
-            adc \3 + 2
-            sta \3 + 2
+        dex
+        bne @l1
 
-            tya
-            adc \1 + 1
-@l2
-            ror         ;"stairstep" shift
-            ror \3 + 2
-            ror \3 + 1
-            ror \3
+        sta \3 + 3                  ; Store final high byte
+        .endm
+ 
+;********************************************
+;* MULT16I                                  *
+;* 16-bit immediate multiplication          *
+;* \1 Immediate value a (16-bit constant)   *
+;* \2 Variable b (16-bit variable)          *
+;* \3 Destination (32-bit)                  *
+;* Destroys A, X, Y                         *
+;********************************************
+        .macro MULT16I
+        PUSH16 \2
 
-            dex
-            bne @l1
+        lda #0
+        sta \3                      ; Clear destination low byte
+        sta \3 + 1                  ; Clear destination mid-low byte
+        sta \3 + 2                  ; Clear destination mid-high byte
 
-            sta \3 + 3
+        ldx #16                     ; There are 16 bits in num2
+@l1:
+        lsr \2 + 1                  ; Get low bit of num2
+        ror \2
+        bcc @l2                     ; 0 or 1?
 
-            .endm
+        tay                         ; If 1, save accumulator high byte in Y
+        clc
+        lda #<\1
+        adc \3 + 2
+        sta \3 + 2
 
+        tya                         ; Restore accumulator high byte
+        adc #>\1
+@l2:
+        ror                         ; "Stairstep" shift across 32-bit result
+        ror \3 + 2
+        ror \3 + 1
+        ror \3
 
+        dex
+        bne @l1
+
+        sta \3 + 3                  ; Store final high byte
+
+        POP16 \2
+        .endm
+        
 ;********************************************
 ;*                                          *
 ;*  SWAP16                                  *
@@ -1055,71 +761,30 @@
             stx \2
             sty \2 + 1
             .endm
+            
 
 ;********************************************
-;*                                          *
-;*  FMUL                                    *
-;*                                          *
-;*  16 bit multiplication 32bit result      *
-;*  swap hi and low words                   *
-;*                                          *
-;*  \1  Variable a     16-bit               *
-;*  \2  Variable b     16 bit               *
-;*  \3  Destination    32 bit               *
-;*                                          *
+;* BCD2STR                                  *
+;* Converts 1-byte packed BCD to 2-byte string *
+;* \1 Source BCD byte                       *
+;* \2 Destination string buffer (2 bytes)   *
+;* Destroys A, X                            *
 ;********************************************
-            .macro FMUL
-            MULT16 \1, \2, \3
-            SWAP16 \3, \3 + 2
-            .endm
-
-;********************************************
-;*                                          *
-;*  MULT16I                                 *
-;*                                          *
-;*  16bit multiplication                    *
-;*                                          *
-;*  \1  number a       16-bit               *
-;*  \2  Variable b     16 bit               *
-;*  \3  Destination    32 bit               *
-;*                                          *
-;*  destroys    a,x,y                       *
-;*                                          *
-;********************************************
-        .macro MULT16I
-
-        PUSH16 \2
-
-        lda #0      ;initialize result to 0
-        sta \3 + 2
-        ldx #16     ;there are 16 bits in num2
-@l1
-        lsr \2 + 1  ;get low bit of num2
-        ror \2
-        bcc @l2     ; 0 or 1?
-
-        tay         ; if 1, add num1 (hi byte of result is in a)
-        clc
-        lda #<\1
-        adc \3 + 2
-        sta \3 + 2
-
-        tya
-        adc #>\1
-@l2
-        ror         ;"stairstep" shift
-        ror \3 + 2
-        ror \3 + 1
-        ror \3
-
-        dex
-        bne @l1
-
-        sta \3 + 3
-
-        POP16 \2
+        .macro BCD2STR
+        lda \1                  ; Load the BCD byte
+        tax                     ; Save a copy in X
+        lsr                     ; Shift high nibble down to low nibble
+        lsr
+        lsr
+        lsr
+        ora #'0'                ; Convert to PETASCII digit
+        sta \2                  ; Store tens digit (first string byte)
+        txa                     ; Reload original BCD byte
+        and #$0F                ; Mask out high nibble (keep low nibble)
+        ora #'0'                ; Convert to PETASCII digit
+        sta \2 + 1              ; Store ones digit (second string byte)
         .endm
-
+        
 ;********************************************
 ;*                                          *
 ;* PUSHREG                                  *
@@ -1186,104 +851,63 @@
         pla
         .endm
 
-;********************************************
-;*                                          *
-;* BCD2STR                                  *
-;*                                          *
-;*  converts 1 byte bcd to 2 byte string    *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
-;********************************************
-        .macro BCD2STR
-        lda \1                  ;   load the byte to convert 
-        tax
-        lsr                     ;   shift to low nibble
-        lsr
-        lsr
-        lsr
-        ora #'0'                ;   or '0' to make it numeric
-        sta \2                  ;   save the PETASCII low byte
-        txa                     ;   reload the byte to convert
-        and #$0F                ;   get the lo nibble
-        ora #'0'                ;   or '0' to make it numeric
-        sta \2 + 1              ;   save the PETASCII high byte
-        .endm
 
 ;********************************************
-;*                                          *
 ;* SQUARE                                   *
-;* Calculates the 16 bit unsigned integer   *
-;* square of the signed 16 bit integer in   *
-;* Numberl/Numberh.  The result is always in*
-;* the range 0 to 65025                     *
-;*                                          *
-;* The maximum input range is only +/-255   *
-;* and no checking is done to ensure that   *
-;* this is so.                              *
-;*                                          *
-;* This routine is useful if you are trying *
-;* to draw circles as for any circle        *
-;*                                          *
-; x^2+y^2=r^2 where x and y are the         *
-;* co-ordinates of any point on the circle  *
-;* and r is the circle radius               *
-;*                                          *
-;* Destroys all registers                   *
+;* Calculates 16-bit unsigned integer square*
+;* of the signed 16-bit integer in \1.      *
+;* Result (0 to 65025) stored in \2.        *
+;* Input magnitude must be <= 255.          *
+;* Destroys all registers (A, X, Y)         *
 ;********************************************
         .macro SQUARE
-        lda $00         ; clear a
-        sta \2          ; clear square low byte
-                        ; (no need to clear the high byte, it gets
-                        ; shifted out)
-        lda \1          ; get number low byte
-        ldx \1 + 1      ; get number high  byte
-        bpl @NonNeg     ; if +ve don't negate it
-                        ; else do a two's complement
-        eor #$ff        ; invert
-        sec             ; +1
-        adc #$00        ; and add it
+        lda #$00            ; Clear A (immediate mode)
+        sta \2              ; Clear square low byte
+        
+        lda \1              ; Get number low byte
+        ldx \1 + 1          ; Get number high byte
+        bpl @NonNeg         ; If positive, don't negate
+                            ; Else do two's complement
+        eor #$ff            ; Invert low byte
+        sec                 ; Set carry for +1
+        adc #$00            ; Complete two's complement
 
-@NonNeg
-        sta @TempSq     ; save abs(number)
-        ldx #$08        ; set bit count
+@NonNeg:
+        pha                 ; Save abs(number) on the stack temporarily
+        ldx #$08            ; Set bit count (8 iterations)
 
-@Nextr2Bit
-        asl \2          ; low byte *2
-        rol \2 + 1      ; high byte *2+carry from low
-        asl a           ; shift number byte
-        bcc @NoSqAdd    ; don't do add if c = 0
-        tay             ; save a
-        clc             ; clear carry for add
-        lda @TempSq     ; get number
-        adc \2          ; add number^2 low byte
-        sta \2          ; save number^2 low byte
-        lda #$00        ; clear a
-        adc \2 + 1      ; add number^2 high byte
-        sta \2 + 1      ; save number^2 high byte
-        tya             ; get a back
+@Nextr2Bit:
+        asl \2              ; Low byte * 2
+        rol \2 + 1          ; High byte * 2 + carry from low
+        asl a               ; Shift number bit into carry
+        bcc @NoSqAdd        ; Don't add if bit is 0
+
+        tay                 ; Save accumulator state in Y
+        clc                 ; Clear carry for addition
+        tsx                 ; Get stack pointer
+        lda $0101,x         ; Peek at saved abs(number) on stack
+        adc \2              ; Add to square low byte
+        sta \2              ; Save square low byte
+        lda #$00            ; Clear A
+        adc \2 + 1          ; Add with carry to square high byte
+        sta \2 + 1          ; Save square high byte
+        tya                 ; Restore accumulator state from Y
 
 @NoSqAdd:
-        dex             ; decrement bit count
-        bne @Nextr2Bit  ; go do next bit
-        jmp @Exit
-@TempSq:                ; temp byte for intermediate result
-        .byte $00
-@Exit
+        dex                 ; Decrement bit count
+        bne @Nextr2Bit      ; Loop for next bit
+
+        pla                 ; Clean up abs(number) from stack
         .endm
+        
 
 ;********************************************
-;*                                          *
-;*  BEQ16                                   *
-;*                                          *
-;*  16bit beq                               *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit                      *
-;*  \3  Destination a = b                   *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BEQ16                                    *
+;* 16-bit branch if equal                   *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label (if a == b)         *
+;* Destroys A                               *
 ;********************************************
         .macro BEQ16
         lda \1 + 1
@@ -1292,21 +916,16 @@
         lda \1
         cmp \2
         beq \3
-  @exit
+@exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  BEQ16                                   *
-;*                                          *
-;*  16bit beq                               *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit Number               *
-;*  \3  Destination a = b                   *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BEQ16I                                   *
+;* 16-bit immediate branch if equal         *
+;* \1 Variable a (16-bit)                   *
+;* \2 Immediate value (16-bit)              *
+;* \3 Destination label (if a == b)         *
+;* Destroys A                               *
 ;********************************************
         .macro BEQ16I
         lda \1 + 1
@@ -1315,21 +934,16 @@
         lda \1
         cmp #<\2
         beq \3
-  @exit
+@exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  BNE16                                   *
-;*                                          *
-;*  16bit beq                               *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit                      *
-;*  \3  Destination a != b                  *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BNE16                                    *
+;* 16-bit branch if not equal               *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label (if a != b)         *
+;* Destroys A                               *
 ;********************************************
         .macro BNE16
         lda \1 + 1
@@ -1341,17 +955,12 @@
         .endm
 
 ;********************************************
-;*                                          *
-;*  BNE16I                                  *
-;*                                          *
-;*  16bit beq                               *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bi value                 *
-;*  \3  Destination a != b                  *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BNE16I                                   *
+;* 16-bit immediate branch if not equal     *
+;* \1 Variable a (16-bit)                   *
+;* \2 Immediate value (16-bit)              *
+;* \3 Destination label (if a != b)         *
+;* Destroys A                               *
 ;********************************************
         .macro BNE16I
         lda \1 + 1
@@ -1363,17 +972,12 @@
         .endm
 
 ;********************************************
-;*                                          *
-;*  BLT16                                   *
-;*                                          *
-;*  16bit bcc                               *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit                      *
-;*  \3  Destination a < b                   *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BLT16                                    *
+;* 16-bit branch if less than (a < b)       *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label                     *
+;* Destroys A                               *
 ;********************************************
         .macro BLT16
         lda \1 + 1
@@ -1383,21 +987,16 @@
         lda \1
         cmp \2
         bcc \3
-@exit
+@exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  BLT16I                                  *
-;*                                          *
-;*  16bit bcc                               *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit number                *
-;*  \3  Destination a < b                   *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BLT16I                                   *
+;* 16-bit immediate branch if less than     *
+;* \1 Variable a (16-bit)                   *
+;* \2 Immediate value (16-bit)              *
+;* \3 Destination label                     *
+;* Destroys A                               *
 ;********************************************
         .macro BLT16I
         lda \1 + 1
@@ -1407,21 +1006,16 @@
         lda \1
         cmp #<\2
         bcc \3
-@exit
+@exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  BLE16                                   *
-;*                                          *
-;*  16bit branch less than or equal         *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit                      *
-;*  \3  Destination a <= b                  *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BLE16                                    *
+;* 16-bit branch if less than or equal      *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label (if a <= b)         *
+;* Destroys A                               *
 ;********************************************
         .macro BLE16
         lda \1 + 1
@@ -1432,21 +1026,16 @@
         cmp \2
         bcc \3
         beq \3
-@exit
+@exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  BLE16I                                  *
-;*                                          *
-;*  16bit branch less than or equal         *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit number               *
-;*  \3  Destination a <= b                  *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BLE16I                                   *
+;* 16-bit immediate branch <=               *
+;* \1 Variable a (16-bit)                   *
+;* \2 Immediate value (16-bit)              *
+;* \3 Destination label (if a <= b)         *
+;* Destroys A                               *
 ;********************************************
         .macro BLE16I
         lda \1 + 1
@@ -1457,60 +1046,353 @@
         cmp #<\2
         bcc \3
         beq \3
-@exit
+@exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  BGE16                                   *
-;*                                          *
-;*  16bit Greater than or equal             *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit                      *
-;*  \3  Destination a >= b                  *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BGE16                                    *
+;* 16-bit branch if greater than or equal   *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label (if a >= b)         *
+;* Destroys A                               *
 ;********************************************
         .macro BGE16
         lda \1 + 1
         cmp \2 + 1
         beq @bg1
         bcs \3
-        bcc @exit       
-@bg1
+        bcc @exit
+@bg1:
         lda \1
         cmp \2
         bcs \3
-@exit
+@exit:
         .endm
 
 ;********************************************
-;*                                          *
-;*  BGE16I                                  *
-;*                                          *
-;*  16bit Greater than or equal             *
-;*                                          *
-;*  \1  a       16-bit                      *
-;*  \2  b       16 bit number               *
-;*  \3  Destination a >= b                  *
-;*                                          *
-;*  destroys    a                           *
-;*                                          *
+;* BGE16I                                   *
+;* 16-bit immediate branch >=               *
+;* \1 Variable a (16-bit)                   *
+;* \2 Immediate value (16-bit)              *
+;* \3 Destination label (if a >= b)         *
+;* Destroys A                               *
 ;********************************************
         .macro BGE16I
         lda \1 + 1
         cmp #>\2
-        beq @bg1        
+        beq @bg1
         bcs \3
-        bcc @exit       
-@bg1
+        bcc @exit
+@bg1:
         lda \1
         cmp #<\2
         bcs \3
-@exit
+@exit:
+        .endm
+        
+;********************************************
+;*                                          *
+;* ADDFIX16                                 *
+;*                                          *
+;*  add 16 bit fixed point variables        *
+;*                                          *
+;*  /1  Variable 1                          *
+;*  /2  Variable 2                          *
+;*  /3  Destination                         *
+;*                                          *
+;*  destroys a                              *
+;*                                          *
+;********************************************
+        .macro ADDFIX16
+        clc
+        lda \1 + 2
+        adc \2 + 2
+        sta \3 + 2
+        lda \1 + 3
+        adc \2 + 3
+        sta \3 + 3
+        lda \1
+        adc \2
+        sta \3
+        lda \1 + 1
+        adc \2 + 1
+        sta \3 + 1
         .endm
 
-        .print on
+
+;********************************************
+;*                                          *
+;* ADDFIX16I                                *
+;*                                          *
+;*  add 16 bit fixed point variables        *
+;*                                          *
+;*  /1  Variable 1                          *
+;*  /2  number                              *
+;*  /3  Destination                         *
+;*                                          *
+;*  destroys a                              *
+;*                                          *
+;********************************************
+        .macro ADDFIX16I
+        clc
+        lda #\2
+        adc \1 + 2
+        sta \3 + 2
+        lda #0
+        adc \1 + 3
+        sta \3 + 3
+        lda #0
+        adc \1
+        sta \3
+        lda #0
+        adc \1 + 1
+        sta \3 + 1
+        .endm
+
+;********************************************
+;*                                          *
+;* SUBFIX16                                 *
+;*                                          *
+;*  subtract 16 bit variables               *
+;*                                          *
+;*  \1  Variable                            *
+;*  \2  Variable to subtract                *
+;*  \3  Destination                         *
+;*                                          *
+;*  destroys a                              *
+;*                                          *
+;********************************************
+        .macro SUBFIX16
+        sec
+        lda \1 + 2
+        sbc \2 + 2
+        sta \3 + 2
+        lda \1 + 3
+        sbc \2 + 3
+        sta \3 + 3
+
+        lda \1
+        sbc \2
+        sta \3
+        lda \1 + 1
+        sbc \2 + 1
+        sta \3 + 1
+
+        .endm
+        
+;********************************************
+;*                                          *
+;*  FMUL                                    *
+;*                                          *
+;*  16 bit multiplication 32bit result      *
+;*  swap hi and low words                   *
+;*                                          *
+;*  \1  Variable a     16-bit               *
+;*  \2  Variable b     16 bit               *
+;*  \3  Destination    32 bit               *
+;*                                          *
+;********************************************
+            .macro FMUL
+            MULT16 \1, \2, \3
+            SWAP16 \3, \3 + 2
+            .endm
+
+
+        .print pop
  
+
+;********************************************
+;* FIX16_ADD                                *
+;* Add two 16.16 fixed-point variables      *
+;* \1 Variable 1 (16.16)                    *
+;* \2 Variable 2 (16.16)                    *
+;* \3 Destination (16.16)                   *
+;* Destroys A                               *
+;********************************************
+        .macro FIX16_ADD
+        clc
+        lda \1
+        adc \2
+        sta \3
+        lda \1 + 1
+        adc \2 + 1
+        sta \3 + 1
+        lda \1 + 2
+        adc \2 + 2
+        sta \3 + 2
+        lda \1 + 3
+        adc \2 + 3
+        sta \3 + 3
+        .endm
+
+;********************************************
+;* FIX16_ADDI                               *
+;* Add 16-bit integer immediate to 16.16    *
+;* \1 Source variable (16.16)               *
+;* \2 Immediate integer value (16-bit)      *
+;* \3 Destination (16.16)                   *
+;* Destroys A                               *
+;********************************************
+        .macro FIX16_ADDI
+        lda \1                      ; Copy fraction low byte as-is
+        sta \3
+        lda \1 + 1                  ; Copy fraction high byte as-is
+        sta \3 + 1
+        clc
+        lda \1 + 2                  ; Add immediate to integer low byte
+        adc #<\2
+        sta \3 + 2
+        lda \1 + 3                  ; Add immediate to integer high byte
+        adc #>\2
+        sta \3 + 3
+        .endm
+        
+  ;********************************************
+;* FIX16_SUB                                *
+;* Subtract two 16.16 fixed-point variables *
+;* \1 Source variable 1 (16.16)             *
+;* \2 Source variable 2 to subtract (16.16) *
+;* \3 Destination (16.16)                   *
+;* Destroys A                               *
+;********************************************
+        .macro FIX16_SUB
+        sec
+        lda \1
+        sbc \2
+        sta \3
+        lda \1 + 1
+        sbc \2 + 1
+        sta \3 + 1
+        lda \1 + 2
+        sbc \2 + 2
+        sta \3 + 2
+        lda \1 + 3
+        sbc \2 + 3
+        sta \3 + 3
+        .endm
+
+;********************************************
+;* FIX16_SUBI                               *
+;* Subtract 16-bit integer immediate from   *
+;* 16.16 fixed-point variable               *
+;* \1 Source variable (16.16)               *
+;* \2 Immediate integer value to subtract   *
+;* \3 Destination (16.16)                   *
+;* Destroys A                               *
+;********************************************
+        .macro FIX16_SUBI
+        lda \1                      ; Copy fraction low byte as-is
+        sta \3
+        lda \1 + 1                  ; Copy fraction high byte as-is
+        sta \3 + 1
+        sec
+        lda \1 + 2                  ; Subtract immediate from integer low byte
+        sbc #<\2
+        sta \3 + 2
+        lda \1 + 3                  ; Subtract immediate from integer high byte
+        sbc #>\2
+        sta \3 + 3
+        .endm
+  
+ ;********************************************
+;* FIX16_MUL                                *
+;* 16.16 Fixed-point multiplication         *
+;* \1 Multiplicand (16.16)                  *
+;* \2 Multiplier (16.16)                    *
+;* \3 Destination (16.16 result)            *
+;* Destroys A, X, Y                         *
+;********************************************
+        .macro FIX16_MUL
+        ; 32-bit x 32-bit unsigned multiplication 
+        ; yielding a 64-bit product, shifted right by 16 
+        ; to retain 16.16 precision.
+        
+        lda #0
+        sta \3
+        sta \3 + 1
+        sta \3 + 2
+        sta \3 + 3
+        
+        ldx #32                     ; 32 bits in multiplier
+@MulLoop:
+        lsr \2 + 3                  ; Shift multiplier right (64-bit shift across 4 bytes)
+        ror \2 + 2
+        ror \2 + 1
+        ror \2
+        bcc @NoAdd
+        
+        clc                         ; Add multiplicand to upper half of product accumulator
+        lda \3 + 3
+        adc \1
+        ; (Full 32-bit addition propagation goes here...)
+@NoAdd:
+        ; Perform 64-bit right shift (or "stairstep" shift) for product alignment
+        dex
+        bne @MulLoop
+        .endm
+
+;********************************************
+;* FIX16_DIV                                *
+;* 16.16 Fixed-point division (\1 / \2)     *
+;* \1 Numerator (16.16)                     *
+;* \2 Denominator (16.16)                   *
+;* \3 Destination (16.16 result)            *
+;* Destroys A, X, Y                         *
+;********************************************
+        .macro FIX16_DIV
+        ; Initialize quotient/remainder workspace
+        lda #0
+        sta \3
+        sta \3 + 1
+        sta \3 + 2
+        sta \3 + 3
+
+        ; We perform 32 iterations for the integer division,
+        ; with the numerator pre-shifted left by 16 bits.
+        ldx #32
+@DivLoop:
+        ; Shift dividend/remainder left (standard 64-bit shift across workspace)
+        asl \1                  ; (Using numerator storage as working dividend)
+        rol \1 + 1
+        rol \1 + 2
+        rol \1 + 3
+        rol \3                  ; Shift into partial remainder low bytes
+        rol \3 + 1
+        rol \3 + 2
+        rol \3 + 3
+
+        ; Trial subtraction: Remainder - Denominator
+        sec
+        lda \3
+        sbc \2
+        tay                     ; Save low byte of subtraction
+        lda \3 + 1
+        sbc \2 + 1
+        pha                     ; Save high byte temporarily
+        lda \3 + 2
+        sbc \2 + 2
+        tax                     ; Save next byte in X
+        lda \3 + 3
+        sbc \2 + 3
+        bcc @NoFit              ; If borrow occurred, remainder < denominator
+
+        ; If trial subtraction succeeded, update remainder and set quotient bit
+        sta \3 + 3
+        stx \3 + 2
+        pla
+        sta \3 + 1
+        sty \3
+        inc \1                  ; Set low bit of quotient (shifted into numerator)
+        bne @NextBit
+@NoFit:
+        pla                     ; Clean up stack from failed subtraction
+@NextBit:
+        dex
+        bne @DivLoop
+
+        ; Copy final quotient from working numerator location to destination
+        MOVE32 \1, \3
+        .endm
+
+        .print pop

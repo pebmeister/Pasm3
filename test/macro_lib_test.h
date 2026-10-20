@@ -24,6 +24,7 @@ class Macro_lib_test  : public TestRunner {
 private:
     Test create_macro_PUSH16_test(int max_iterations);
     Test create_macro_POP16_test(int max_iterations);
+    Test create_macro_STORE8_test(int max_iterations);
 
 public:
 
@@ -34,5 +35,6 @@ public:
     {
         emit(create_macro_PUSH16_test(max_iterations));
         emit(create_macro_POP16_test(max_iterations));
+        emit(create_macro_STORE8_test(max_iterations));
     }
 };
