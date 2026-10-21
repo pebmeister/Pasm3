@@ -1,3 +1,4 @@
+.print push
 .print off
 
 STMDSP  = $A00C
@@ -282,5 +283,6 @@ UNDEFINEDFUNCTION       = 27
 MSGVERIFY               = 28
 MSGLOAD                 = 29
 
-.print on
+.print pop
+
 

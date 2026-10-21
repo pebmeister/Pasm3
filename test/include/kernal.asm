@@ -1,4 +1,7 @@
+.print push
 .print off
+
+
 TEXT    = $0286
 IERROR  = $0300
 IMAIN   = $0302
@@ -61,5 +64,6 @@ BORDER  = $D020
 SCREENC = $D021
 
 
-.print on
+.print pop
+
 

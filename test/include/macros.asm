@@ -1,5 +1,5 @@
-        .print push
-        .print off
+.print push
+.print off
 
 ;********************************************
 ;* PUSH16                                   *
@@ -253,30 +253,6 @@
         lda \1 + 3
         adc \2 + 3
         sta \3 + 3
-        .endm
-
-;********************************************
-;* ADDFIX16                                 *
-;* Add 16.16 fixed-point variables          *
-;* \1 Variable 1                            *
-;* \2 Variable 2                            *
-;* \3 Destination                           *
-;* Destroys A                               *
-;********************************************
-        .macro ADDFIX16
-        clc
-        lda \1 + 2
-        adc \2 + 2
-        sta \3 + 2
-        lda \1 + 3
-        adc \2 + 3
-        sta \3 + 3
-        lda \1
-        adc \2
-        sta \3
-        lda \1 + 1
-        adc \2 + 1
-        sta \3 + 1
         .endm
 
 ;********************************************
@@ -551,7 +527,7 @@
         bne @LSH32Loop
 @LSH32Exit:
         .endm
-        
+
 ;********************************************
 ;* MULT10                                   *
 ;* Multiplies 2-byte number by 10           *
@@ -670,7 +646,7 @@
         sta \3                      ; Initialize low word / scratch
         sta \3 + 1
         sta \3 + 2                  ; Initialize high accumulation byte to 0
-        
+
         ldx #16                     ; There are 16 bits in num2
 @l1:
         lsr \2 + 1                  ; Get low bit of num2
@@ -696,7 +672,7 @@
 
         sta \3 + 3                  ; Store final high byte
         .endm
- 
+
 ;********************************************
 ;* MULT16I                                  *
 ;* 16-bit immediate multiplication          *
@@ -705,30 +681,34 @@
 ;* \3 Destination (32-bit)                  *
 ;* Destroys A, X, Y                         *
 ;********************************************
+
         .macro MULT16I
         PUSH16 \2
 
         lda #0
-        sta \3                      ; Clear destination low byte
-        sta \3 + 1                  ; Clear destination mid-low byte
-        sta \3 + 2                  ; Clear destination mid-high byte
+        sta \3                      ; Result byte 0
+        sta \3 + 1                  ; Result byte 1
+        sta \3 + 2                  ; Result byte 2
+        ; A must also start at zero!
+        ; Do this after clearing the destination.
+        lda #0
 
-        ldx #16                     ; There are 16 bits in num2
+        ldx #16
 @l1:
-        lsr \2 + 1                  ; Get low bit of num2
+        lsr \2 + 1
         ror \2
-        bcc @l2                     ; 0 or 1?
+        bcc @l2
 
-        tay                         ; If 1, save accumulator high byte in Y
+        tay
         clc
         lda #<\1
         adc \3 + 2
         sta \3 + 2
 
-        tya                         ; Restore accumulator high byte
+        tya
         adc #>\1
 @l2:
-        ror                         ; "Stairstep" shift across 32-bit result
+        ror
         ror \3 + 2
         ror \3 + 1
         ror \3
@@ -736,11 +716,10 @@
         dex
         bne @l1
 
-        sta \3 + 3                  ; Store final high byte
-
+        sta \3 + 3
         POP16 \2
         .endm
-        
+
 ;********************************************
 ;*                                          *
 ;*  SWAP16                                  *
@@ -761,7 +740,7 @@
             stx \2
             sty \2 + 1
             .endm
-            
+
 
 ;********************************************
 ;* BCD2STR                                  *
@@ -784,7 +763,7 @@
         ora #'0'                ; Convert to PETASCII digit
         sta \2 + 1              ; Store ones digit (second string byte)
         .endm
-        
+
 ;********************************************
 ;*                                          *
 ;* PUSHREG                                  *
@@ -863,7 +842,7 @@
         .macro SQUARE
         lda #$00            ; Clear A (immediate mode)
         sta \2              ; Clear square low byte
-        
+
         lda \1              ; Get number low byte
         ldx \1 + 1          ; Get number high byte
         bpl @NonNeg         ; If positive, don't negate
@@ -899,7 +878,7 @@
 
         pla                 ; Clean up abs(number) from stack
         .endm
-        
+
 
 ;********************************************
 ;* BEQ16                                    *
@@ -1090,7 +1069,7 @@
         bcs \3
 @exit:
         .endm
-        
+
 ;********************************************
 ;*                                          *
 ;* ADDFIX16                                 *
@@ -1180,7 +1159,7 @@
         sta \3 + 1
 
         .endm
-        
+
 ;********************************************
 ;*                                          *
 ;*  FMUL                                    *
@@ -1197,10 +1176,6 @@
             MULT16 \1, \2, \3
             SWAP16 \3, \3 + 2
             .endm
-
-
-        .print pop
- 
 
 ;********************************************
 ;* FIX16_ADD                                *
@@ -1247,7 +1222,7 @@
         adc #>\2
         sta \3 + 3
         .endm
-        
+
   ;********************************************
 ;* FIX16_SUB                                *
 ;* Subtract two 16.16 fixed-point variables *
@@ -1294,105 +1269,280 @@
         sbc #>\2
         sta \3 + 3
         .endm
-  
- ;********************************************
+
+
+
+;********************************************
 ;* FIX16_MUL                                *
-;* 16.16 Fixed-point multiplication         *
-;* \1 Multiplicand (16.16)                  *
-;* \2 Multiplier (16.16)                    *
-;* \3 Destination (16.16 result)            *
-;* Destroys A, X, Y                         *
+;* Unsigned 16.16 fixed-point multiplication *
+;* \1 = Multiplicand (4 bytes)               *
+;* \2 = Multiplier   (4 bytes)               *
+;* \3 = Destination  (4 bytes)               *
+;* Destroys A, X                             *
+;* Preserves original multiplier             *
 ;********************************************
         .macro FIX16_MUL
-        ; 32-bit x 32-bit unsigned multiplication 
-        ; yielding a 64-bit product, shifted right by 16 
-        ; to retain 16.16 precision.
-        
+
+        ; Save original multiplier
+        lda \2 + 3
+        pha
+        lda \2 + 2
+        pha
+        lda \2 + 1
+        pha
+        lda \2
+        pha
+
+        ; Clear upper 32 bits of working product
         lda #0
         sta \3
         sta \3 + 1
         sta \3 + 2
         sta \3 + 3
-        
-        ldx #32                     ; 32 bits in multiplier
+
+        ldx #32
+
 @MulLoop:
-        lsr \2 + 3                  ; Shift multiplier right (64-bit shift across 4 bytes)
+        ; Test the current least-significant multiplier bit
+        lda \2
+        lsr
+        bcc @NoAdd
+
+        ; Add multiplicand to upper 32 bits
+        clc
+        lda \3
+        adc \1
+        sta \3
+
+        lda \3 + 1
+        adc \1 + 1
+        sta \3 + 1
+
+        lda \3 + 2
+        adc \1 + 2
+        sta \3 + 2
+
+        lda \3 + 3
+        adc \1 + 3
+        sta \3 + 3
+
+@NoAdd:
+        ; Shift the complete 64-bit working product right
+        lsr \3 + 3
+        ror \3 + 2
+        ror \3 + 1
+        ror \3
+        ror \2 + 3
         ror \2 + 2
         ror \2 + 1
         ror \2
-        bcc @NoAdd
-        
-        clc                         ; Add multiplicand to upper half of product accumulator
-        lda \3 + 3
-        adc \1
-        ; (Full 32-bit addition propagation goes here...)
-@NoAdd:
-        ; Perform 64-bit right shift (or "stairstep" shift) for product alignment
+
         dex
         bne @MulLoop
+
+        ; Product is now distributed across \2 and \3.
+        ; Result = product >> 16.
+        ; Copy high bytes first to avoid overwriting sources.
+
+        lda \3 + 1
+        sta \3 + 3
+        lda \3
+        sta \3 + 2
+        lda \2 + 3
+        sta \3 + 1
+        lda \2 + 2
+        sta \3
+
+        ; Restore original multiplier
+        pla
+        sta \2
+        pla
+        sta \2 + 1
+        pla
+        sta \2 + 2
+        pla
+        sta \2 + 3
+
         .endm
 
+        
 ;********************************************
 ;* FIX16_DIV                                *
-;* 16.16 Fixed-point division (\1 / \2)     *
-;* \1 Numerator (16.16)                     *
-;* \2 Denominator (16.16)                   *
-;* \3 Destination (16.16 result)            *
-;* Destroys A, X, Y                         *
+;* Unsigned 16.16 division                  *
+;*                                          *
+;* Usage: FIX16_DIV dividend, divisor, dest *
+;*                                          *
+;* Calculates: dest = dividend / divisor    *
+;* Preserves both input operands             *
+;* Division by zero returns zero             *
+;*                                          *
+;* Destroys A, X, Y                          *
 ;********************************************
-        .macro FIX16_DIV
-        ; Initialize quotient/remainder workspace
+
+.macro FIX16_DIV
+
+        ; Allocate and initialize local workspace.
+        ; Execution jumps over this data at the end.
+        jmp @DivCode
+
+@DivNum:
+        .ds 4
+@Divisor:
+        .ds 4
+@DivRem:
+        .ds 5
+@DivQuot:
+        .ds 4
+@DivBit:
+        .ds 1
+
+@DivCode:
+        ; Copy dividend and divisor
+        lda \1
+        sta @DivNum
+        lda \1+1
+        sta @DivNum+1
+        lda \1+2
+        sta @DivNum+2
+        lda \1+3
+        sta @DivNum+3
+
+        lda \2
+        sta @Divisor
+        lda \2+1
+        sta @Divisor+1
+        lda \2+2
+        sta @Divisor+2
+        lda \2+3
+        sta @Divisor+3
+
+        ; Initialize remainder and quotient
         lda #0
-        sta \3
-        sta \3 + 1
-        sta \3 + 2
-        sta \3 + 3
+        sta @DivRem
+        sta @DivRem+1
+        sta @DivRem+2
+        sta @DivRem+3
+        sta @DivRem+4
+        sta @DivQuot
+        sta @DivQuot+1
+        sta @DivQuot+2
+        sta @DivQuot+3
 
-        ; We perform 32 iterations for the integer division,
-        ; with the numerator pre-shifted left by 16 bits.
-        ldx #32
+        ; Division by zero check
+        lda @Divisor
+        ora @Divisor+1
+        ora @Divisor+2
+        ora @Divisor+3
+        beq @DivZero
+
+        ; Process 48 bits:
+        ; 32 dividend bits followed by 16 zero bits.
+        ldx #48
+
 @DivLoop:
-        ; Shift dividend/remainder left (standard 64-bit shift across workspace)
-        asl \1                  ; (Using numerator storage as working dividend)
-        rol \1 + 1
-        rol \1 + 2
-        rol \1 + 3
-        rol \3                  ; Shift into partial remainder low bytes
-        rol \3 + 1
-        rol \3 + 2
-        rol \3 + 3
+        ; Shift next dividend bit into carry.
+        asl @DivNum
+        rol @DivNum+1
+        rol @DivNum+2
+        rol @DivNum+3
 
-        ; Trial subtraction: Remainder - Denominator
+        ; Save incoming bit.
+        lda #0
+        rol
+        sta @DivBit
+
+        ; Remainder = remainder * 2 + incoming bit
+        asl @DivRem
+        rol @DivRem+1
+        rol @DivRem+2
+        rol @DivRem+3
+        rol @DivRem+4
+
+        lda @DivRem
+        ora @DivBit
+        sta @DivRem
+
+        ; Shift quotient left.
+        asl @DivQuot
+        rol @DivQuot+1
+        rol @DivQuot+2
+        rol @DivQuot+3
+
+        ; If remainder's fifth byte is nonzero,
+        ; remainder is greater than divisor.
+        lda @DivRem+4
+        bne @DivSubtract
+
+        ; Compare remainder with divisor,
+        ; most significant byte first.
+        lda @DivRem+3
+        cmp @Divisor+3
+        bcc @DivNext
+        bne @DivSubtract
+
+        lda @DivRem+2
+        cmp @Divisor+2
+        bcc @DivNext
+        bne @DivSubtract
+
+        lda @DivRem+1
+        cmp @Divisor+1
+        bcc @DivNext
+        bne @DivSubtract
+
+        lda @DivRem
+        cmp @Divisor
+        bcc @DivNext
+
+@DivSubtract:
+        ; Remainder -= divisor
         sec
-        lda \3
-        sbc \2
-        tay                     ; Save low byte of subtraction
-        lda \3 + 1
-        sbc \2 + 1
-        pha                     ; Save high byte temporarily
-        lda \3 + 2
-        sbc \2 + 2
-        tax                     ; Save next byte in X
-        lda \3 + 3
-        sbc \2 + 3
-        bcc @NoFit              ; If borrow occurred, remainder < denominator
+        lda @DivRem
+        sbc @Divisor
+        sta @DivRem
+        lda @DivRem+1
+        sbc @Divisor+1
+        sta @DivRem+1
+        lda @DivRem+2
+        sbc @Divisor+2
+        sta @DivRem+2
+        lda @DivRem+3
+        sbc @Divisor+3
+        sta @DivRem+3
+        lda @DivRem+4
+        sbc #0
+        sta @DivRem+4
 
-        ; If trial subtraction succeeded, update remainder and set quotient bit
-        sta \3 + 3
-        stx \3 + 2
-        pla
-        sta \3 + 1
-        sty \3
-        inc \1                  ; Set low bit of quotient (shifted into numerator)
-        bne @NextBit
-@NoFit:
-        pla                     ; Clean up stack from failed subtraction
-@NextBit:
+        ; Quotient bit = 1
+        ; Set the least-significant quotient bit.
+        lda @DivQuot
+        ora #1
+        sta @DivQuot        
+
+@DivNext:
         dex
         bne @DivLoop
 
-        ; Copy final quotient from working numerator location to destination
-        MOVE32 \1, \3
-        .endm
+        ; Copy quotient to destination
+        lda @DivQuot
+        sta \3
+        lda @DivQuot+1
+        sta \3+1
+        lda @DivQuot+2
+        sta \3+2
+        lda @DivQuot+3
+        sta \3+3
 
-        .print pop
+        jmp @DivDone
+
+@DivZero:
+        lda #0
+        sta \3
+        sta \3+1
+        sta \3+2
+        sta \3+3
+
+@DivDone:
+.endm
+
+.print Pop
