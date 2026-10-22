@@ -1072,7 +1072,7 @@
 
 ;********************************************
 ;*                                          *
-;* ADDFIX16                                 *
+;* ADD_FIX16                                *
 ;*                                          *
 ;*  add 16 bit fixed point variables        *
 ;*                                          *
@@ -1083,7 +1083,7 @@
 ;*  destroys a                              *
 ;*                                          *
 ;********************************************
-        .macro ADDFIX16
+        .macro ADD_FIX16
         clc
         lda \1 + 2
         adc \2 + 2
@@ -1099,10 +1099,9 @@
         sta \3 + 1
         .endm
 
-
 ;********************************************
 ;*                                          *
-;* ADDFIX16I                                *
+;* ADD_FIX16I                               *
 ;*                                          *
 ;*  add 16 bit fixed point variables        *
 ;*                                          *
@@ -1113,25 +1112,23 @@
 ;*  destroys a                              *
 ;*                                          *
 ;********************************************
-        .macro ADDFIX16I
+        .macro ADD_FIX16I
         clc
-        lda #\2
+        lda <(\2 + 2)
         adc \1 + 2
         sta \3 + 2
-        lda #0
+        lda >(\2 + 3)
         adc \1 + 3
         sta \3 + 3
-        lda #0
-        adc \1
+        lda \1
         sta \3
-        lda #0
-        adc \1 + 1
+        lda \1 + 1
         sta \3 + 1
         .endm
 
 ;********************************************
 ;*                                          *
-;* SUBFIX16                                 *
+;* SUB_FIX16                                *
 ;*                                          *
 ;*  subtract 16 bit variables               *
 ;*                                          *
@@ -1142,7 +1139,7 @@
 ;*  destroys a                              *
 ;*                                          *
 ;********************************************
-        .macro SUBFIX16
+        .macro SUB_FIX16
         sec
         lda \1 + 2
         sbc \2 + 2
@@ -1157,49 +1154,9 @@
         lda \1 + 1
         sbc \2 + 1
         sta \3 + 1
-
         .endm
 
-;********************************************
-;*                                          *
-;*  FMUL                                    *
-;*                                          *
-;*  16 bit multiplication 32bit result      *
-;*  swap hi and low words                   *
-;*                                          *
-;*  \1  Variable a     16-bit               *
-;*  \2  Variable b     16 bit               *
-;*  \3  Destination    32 bit               *
-;*                                          *
-;********************************************
-            .macro FMUL
-            MULT16 \1, \2, \3
-            SWAP16 \3, \3 + 2
-            .endm
 
-;********************************************
-;* FIX16_ADD                                *
-;* Add two 16.16 fixed-point variables      *
-;* \1 Variable 1 (16.16)                    *
-;* \2 Variable 2 (16.16)                    *
-;* \3 Destination (16.16)                   *
-;* Destroys A                               *
-;********************************************
-        .macro FIX16_ADD
-        clc
-        lda \1
-        adc \2
-        sta \3
-        lda \1 + 1
-        adc \2 + 1
-        sta \3 + 1
-        lda \1 + 2
-        adc \2 + 2
-        sta \3 + 2
-        lda \1 + 3
-        adc \2 + 3
-        sta \3 + 3
-        .endm
 
 ;********************************************
 ;* FIX16_ADDI                               *
@@ -1223,7 +1180,7 @@
         sta \3 + 3
         .endm
 
-  ;********************************************
+;********************************************
 ;* FIX16_SUB                                *
 ;* Subtract two 16.16 fixed-point variables *
 ;* \1 Source variable 1 (16.16)             *
@@ -1270,10 +1227,8 @@
         sta \3 + 3
         .endm
 
-
-
 ;********************************************
-;* FIX16_MUL                                *
+;* MUL_FIX16                                 *
 ;* Unsigned 16.16 fixed-point multiplication *
 ;* \1 = Multiplicand (4 bytes)               *
 ;* \2 = Multiplier   (4 bytes)               *
@@ -1281,7 +1236,7 @@
 ;* Destroys A, X                             *
 ;* Preserves original multiplier             *
 ;********************************************
-        .macro FIX16_MUL
+        .macro MUL_FIX16
 
         ; Save original multiplier
         lda \2 + 3
@@ -1362,24 +1317,178 @@
         sta \2 + 2
         pla
         sta \2 + 3
-
         .endm
 
-        
+
 ;********************************************
-;* FIX16_DIV                                *
+;* DIV_FIX16                                *
+;* Unsigned 16.16 division (ZP Optimized)   *
+;*                                          *
+;* Usage: FIX16_DIV dividend, divisor,      *
+;*                  dest, zp_workspace      *
+;*                                          *
+;* zp_workspace requires 18 bytes of ZP RAM *
+;********************************************
+.macro DIV_FIX16
+
+    ; Copy dividend (\1) to ZP DivNum (4 bytes)
+    lda \1
+    sta \4
+    lda \1+1
+    sta \4+1
+    lda \1+2
+    sta \4+2
+    lda \1+3
+    sta \4+3
+
+    ; Copy divisor (\2) to ZP Divisor (4 bytes)
+    lda \2
+    sta \4+4
+    lda \2+1
+    sta \4+5
+    lda \2+2
+    sta \4+6
+    lda \2+3
+    sta \4+7
+
+    ; Initialize remainder (5 bytes) and quotient (4 bytes) to 0
+    lda #0
+    sta \4+8
+    sta \4+9
+    sta \4+10
+    sta \4+11
+    sta \4+12
+    sta \4+13
+    sta \4+14
+    sta \4+15
+    sta \4+16
+
+    ; Division by zero check using ZP divisor
+    lda \4+4
+    ora \4+5
+    ora \4+6
+    ora \4+7
+    beq @DivZero
+
+    ; Process 48 bits
+    ldx #48
+
+@DivLoop:
+    ; Shift next dividend bit into carry (using ZP addressing!)
+    asl \4
+    rol \4+1
+    rol \4+2
+    rol \4+3
+
+    ; Save incoming bit
+    lda #0
+    rol
+    sta \4+17  ; DivBit
+
+    ; Remainder = remainder * 2 + incoming bit
+    asl \4+8
+    rol \4+9
+    rol \4+10
+    rol \4+11
+    rol \4+12
+
+    lda \4+8
+    ora \4+17
+    sta \4+8
+
+    ; Shift quotient left
+    asl \4+13
+    rol \4+14
+    rol \4+15
+    rol \4+16
+
+    ; If remainder's fifth byte is nonzero, subtract
+    lda \4+12
+    bne @DivSubtract
+
+    ; Compare remainder with divisor
+    lda \4+11
+    cmp \4+7
+    bcc @DivNext
+    bne @DivSubtract
+
+    lda \4+10
+    cmp \4+6
+    bcc @DivNext
+    bne @DivSubtract
+
+    lda \4+9
+    cmp \4+5
+    bcc @DivNext
+    bne @DivSubtract
+
+    lda \4+8
+    cmp \4+4
+    bcc @DivNext
+
+@DivSubtract:
+    ; Remainder -= divisor
+    sec
+    lda \4+8
+    sbc \4+4
+    sta \4+8
+    lda \4+9
+    sbc \4+5
+    sta \4+9
+    lda \4+10
+    sbc \4+6
+    sta \4+10
+    lda \4+11
+    sbc \4+7
+    sta \4+11
+    lda \4+12
+    sbc #0
+    sta \4+12
+
+    ; Quotient bit = 1
+    lda \4+13
+    ora #1
+    sta \4+13        
+
+@DivNext:
+    dex
+    bne @DivLoop
+
+    ; Copy quotient to destination (\3)
+    lda \4+13
+    sta \3
+    lda \4+14
+    sta \3+1
+    lda \4+15
+    sta \3+2
+    lda \4+16
+    sta \3+3
+    jmp @DivDone
+
+@DivZero:
+    lda #0
+    sta \3
+    sta \3+1
+    sta \3+2
+    sta \3+3
+
+@DivDone:
+.endm
+
+
+;********************************************
+;* DIV_MY_FIX16                             *
 ;* Unsigned 16.16 division                  *
 ;*                                          *
 ;* Usage: FIX16_DIV dividend, divisor, dest *
 ;*                                          *
 ;* Calculates: dest = dividend / divisor    *
-;* Preserves both input operands             *
-;* Division by zero returns zero             *
+;* Preserves both input operands            *
+;* Division by zero returns zero            *
 ;*                                          *
-;* Destroys A, X, Y                          *
+;* Destroys A, X, Y                         *
 ;********************************************
-
-.macro FIX16_DIV
+.macro DIV_MY_FIX16
 
         ; Allocate and initialize local workspace.
         ; Execution jumps over this data at the end.

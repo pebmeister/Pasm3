@@ -13,6 +13,8 @@
         SCRATCH_INT     = $95   ; $95 (1 byte)
         FIXPTR          = $96   ; $96-$97 (2 bytes)
         FIX_BUFFER_FRAC = $98   ; $98 (1 byte)
+        
+        
         ROW             = $FB
         
         .basic_hdr
@@ -43,27 +45,43 @@
 @Wait
         jmp @Wait
                
+; ====================================================
+;
+; Calculate_Add
+;
+; ====================================================
+
 Calculate_Add
         MOVE16I VAR_A, 100
         MOVE16I VAR_A + 2, 100        
         MOVE16I VAR_B, 200
         MOVE16I VAR_B + 2, 200        
-        ADDFIX16 VAR_A, VAR_B, VAR_C
+        ADD_FIX16 VAR_A, VAR_B, VAR_C
         lda #'+'
         sta Op + 1
         rts
 
+; ====================================================
+;
+; Calculate_Sub
+;
+; ====================================================
 Calculate_Sub
         MOVE16I VAR_A, 300
         MOVE16I VAR_A + 2, 300        
         MOVE16I VAR_B, 200
         MOVE16I VAR_B + 2, 200        
-        SUBFIX16 VAR_A, VAR_B, VAR_C
+        SUB_FIX16 VAR_A, VAR_B, VAR_C
         lda #'-'
         sta Op + 1
         rts
 
-Calculate_Mul:
+; ====================================================
+;
+; Calculate_Mul
+;
+; ====================================================
+Calculate_1_Mul:
         ; VAR_A = 12.34567 approximately
         MOVE16I VAR_A, 22654
         MOVE16I VAR_A + 2, 12
@@ -72,12 +90,37 @@ Calculate_Mul:
         MOVE16I VAR_B, 29999
         MOVE16I VAR_B + 2, 23
 
-        FIX16_MUL VAR_A, VAR_B, VAR_C
+        MUL_FIX16 VAR_A, VAR_B, VAR_C
 
         lda #'*'
         sta Op + 1
         rts
 
+; ====================================================
+; Calculate_Mul (Signed Test: -2.5 * 4.0 = -10.0)
+; ====================================================
+Calculate_Mul:
+        ; VAR_A = -2.5
+        ; Integer part: -3 ($FFFD), Fractional part: 0.5 ($8000)
+        MOVE16I VAR_A, $8000
+        MOVE16I VAR_A + 2, $FFFD
+
+        ; VAR_B = 4.0 (Positive)
+        MOVE16I VAR_B, 0
+        MOVE16I VAR_B + 2, 4
+
+        ; Calculate: VAR_C = VAR_A * VAR_B (-10.00000)
+        MUL_FIX16 VAR_A, VAR_B, VAR_C
+
+        lda #'*'
+        sta Op + 1
+        rts
+        
+; ====================================================
+;
+; Calculate_Div
+;
+; ====================================================
 Calculate_Div:
         ; VAR_A = 1.0
         MOVE16I VAR_A, 0
@@ -87,12 +130,18 @@ Calculate_Div:
         MOVE16I VAR_B, 0
         MOVE16I VAR_B + 2, 3
 
-        FIX16_DIV VAR_A, VAR_B, VAR_C
+        ; DIV_MY_FIX16 VAR_A, VAR_B, VAR_C
+        DIV_FIX16 VAR_A, VAR_B, VAR_C, DIV_SCRATCH
 
         lda #'/'
         sta Op + 1
         rts
         
+; ====================================================
+;
+; DisplayResults
+;
+; ====================================================
 DisplayResults:
         ldx ROW
         ldy #0
@@ -104,10 +153,10 @@ DisplayResults:
         sta FIXPTR
         lda #>VAR_A
         sta FIXPTR + 1
-        jsr PRINT_FIX16         ; Populates FIX_STRING_BUF
+        jsr FORMAT_FIX16            ; Populates FIX_STRING_BUF
         lda #<FIX_STRING_BUF
         ldy #>FIX_STRING_BUF
-        jsr STROUT              ; Print VAR_A
+        jsr STROUT                  ; Print VAR_A
 
         ; --- Print " + " ---
         lda #<Op
@@ -119,10 +168,10 @@ DisplayResults:
         sta FIXPTR
         lda #>VAR_B
         sta FIXPTR + 1
-        jsr PRINT_FIX16         ; Populates FIX_STRING_BUF
+        jsr FORMAT_FIX16            ; Populates FIX_STRING_BUF
         lda #<FIX_STRING_BUF
         ldy #>FIX_STRING_BUF
-        jsr STROUT              ; Print VAR_B
+        jsr STROUT                  ; Print VAR_B
 
         ; --- Print " = " ---
         lda #<Equals
@@ -134,39 +183,121 @@ DisplayResults:
         sta FIXPTR
         lda #>VAR_C
         sta FIXPTR + 1
-        jsr PRINT_FIX16         ; Populates FIX_STRING_BUF
+        jsr FORMAT_FIX16            ; Populates FIX_STRING_BUF
         lda #<FIX_STRING_BUF
         ldy #>FIX_STRING_BUF
-        jsr STROUT              ; Print VAR_C
+        jsr STROUT                  ; Print VAR_C
         rts
 
-Cls    .byte 147, 5, 0
-Op     .byte "   ", 0
-Equals .byte " = ", 0
+; ====================================================
+; FORMAT_FIX16 (Signed Support Added)
+; ====================================================
 
+; Map local formatting workspace aliases to DIV_SCRATCH bytes
+FMT_VAL     = DIV_SCRATCH       ; 4 bytes: Working copy for conversion
+FMT_INTOFF  = DIV_SCRATCH+4     ; 1 byte: Integer string offset (0 or 1)
+FMT_FRACOFF = DIV_SCRATCH+5     ; 1 byte: Fractional string offset (5 or 6)
+FMT_DIG5IDX = DIV_SCRATCH+6     ; 1 byte: 5th digit string index (9 or 10)
+FMT_NULLIDX = DIV_SCRATCH+7     ; 1 byte: Null terminator index (10 or 11)
+FMT_SIGNFLG = DIV_SCRATCH+8     ; 1 byte: Sign flag (0 = positive, 1 = negative)
 
-PRINT_FIX16:
-        ; Convert integer word (bytes 2 and 3)
-        ldy #2
-        lda (FIXPTR),y
-        sta TEMP16
-        iny
-        lda (FIXPTR),y
-        sta TEMP16+1
-
-        ldx #0
-        jsr U16_TO_4_ASCII
-
-        ; Decimal point
-        lda #$2E
-        sta FIX_STRING_BUF+4
-
-        ; Read fractional word (bytes 0 and 1)
+FORMAT_FIX16:
+        ; Copy 4-byte fixed point value from (FIXPTR) to working buffer
         ldy #0
         lda (FIXPTR),y
-        sta SCRATCH_FRAC
+        sta FMT_VAL
         iny
         lda (FIXPTR),y
+        sta FMT_VAL+1
+        iny
+        lda (FIXPTR),y
+        sta FMT_VAL+2
+        iny
+        lda (FIXPTR),y
+        sta FMT_VAL+3
+
+        ; Check sign bit (bit 7 of highest byte)
+        lda FMT_VAL+3
+        bmi @NegativeNumber
+
+        ; --- POSITIVE NUMBER CONFIG ---
+        lda #0
+        sta FMT_INTOFF
+        lda #5
+        sta FMT_FRACOFF
+        lda #9
+        sta FMT_DIG5IDX
+        lda #10
+        sta FMT_NULLIDX
+        lda #0
+        sta FMT_SIGNFLG
+        jmp @FormatCore
+
+@NegativeNumber:
+        ; --- NEGATIVE NUMBER CONFIG ---
+        lda #1
+        sta FMT_INTOFF
+        lda #6
+        sta FMT_FRACOFF
+        lda #10
+        sta FMT_DIG5IDX
+        lda #11
+        sta FMT_NULLIDX
+        lda #1
+        sta FMT_SIGNFLG
+
+        ; Negate FMT_VAL (Two's complement: invert all bits and add 1)
+        lda FMT_VAL
+        eor #$FF
+        sta FMT_VAL
+        lda FMT_VAL+1
+        eor #$FF
+        sta FMT_VAL+1
+        lda FMT_VAL+2
+        eor #$FF
+        sta FMT_VAL+2
+        lda FMT_VAL+3
+        eor #$FF
+        sta FMT_VAL+3
+
+        inc FMT_VAL
+        bne @FormatCore
+        inc FMT_VAL+1
+        bne @FormatCore
+        inc FMT_VAL+2
+        bne @FormatCore
+        inc FMT_VAL+3
+
+@FormatCore:
+        ; If negative, put '-' at the very beginning of the string buffer
+        lda FMT_SIGNFLG
+        beq @SkipSign
+        lda #'-'
+        sta FIX_STRING_BUF
+@SkipSign:
+
+        ; Convert integer word (bytes 2 and 3 of FMT_VAL)
+        lda FMT_VAL+2
+        sta TEMP16
+        lda FMT_VAL+3
+        sta TEMP16+1
+
+        ldx FMT_INTOFF
+        jsr U16_TO_4_ASCII
+
+        ; Decimal point (always 4 positions after integer start)
+        ldx FMT_INTOFF
+        inx
+        inx
+        inx
+        inx
+        lda #$2E        ; ASCII '.'
+        sta FIX_STRING_BUF,x
+
+        ; Read fractional word (bytes 0 and 1 of FMT_VAL)
+        lda FMT_VAL
+        sta SCRATCH_FRAC
+        lda FMT_VAL+1
         sta SCRATCH_FRAC+1
 
         ; Multiply fraction by 10000
@@ -178,14 +309,10 @@ PRINT_FIX16:
         lda TEMP_PROD32+3
         sta TEMP16+1
 
-        ldx #5
+        ldx FMT_FRACOFF
         jsr U16_TO_4_ASCII
 
-        ; Fifth digit:
-        ; The low word is the remainder of
-        ; (fraction * 10000) / 65536.
-        ;
-        ; Multiply that remainder by 10.
+        ; Fifth digit: remainder * 10
         lda TEMP_PROD32
         sta SCRATCH_FRAC
         lda TEMP_PROD32+1
@@ -197,65 +324,15 @@ PRINT_FIX16:
         lda TEMP_PROD32+2
         clc
         adc #$30
-        sta FIX_STRING_BUF+9
+        ldx FMT_DIG5IDX
+        sta FIX_STRING_BUF,x
 
         ; Null terminator
         lda #0
-        sta FIX_STRING_BUF+10
+        ldx FMT_NULLIDX
+        sta FIX_STRING_BUF,x
         rts
-
-
-
-;********************************************
-;* PRINT_4_FIX16                              *
-;*                                          *
-;* Input:  FIXPTR -> unsigned 16.16 value   *
-;* Output: FIX_STRING_BUF = "nnnn.nnnn",0   *
-;*                                          *
-;* Destroys A, X, Y, TEMP16, SCRATCH_FRAC,  *
-;* TEMP_PROD32                              *
-;********************************************
-
-PRINT_1_FIX16:
-        ; Convert integer word (bytes 2 and 3)
-        ldy #2
-        lda (FIXPTR),y
-        sta TEMP16
-        iny
-        lda (FIXPTR),y
-        sta TEMP16+1
-
-        ldx #0
-        jsr U16_TO_4_ASCII
-
-        ; Decimal point
-        lda #$2E
-        sta FIX_STRING_BUF+4
-
-        ; Read fractional word (bytes 0 and 1)
-        ldy #0
-        lda (FIXPTR),y
-        sta SCRATCH_FRAC
-        iny
-        lda (FIXPTR),y
-        sta SCRATCH_FRAC+1
-
-        ; fraction * 10000
-        MULT16I 10000, SCRATCH_FRAC, TEMP_PROD32
-
-        ; Upper 16 bits = floor(fraction * 10000 / 65536)
-        lda TEMP_PROD32+2
-        sta TEMP16
-        lda TEMP_PROD32+3
-        sta TEMP16+1
-
-        ldx #5
-        jsr U16_TO_4_ASCII
-
-        ; Null terminator
-        lda #0
-        sta FIX_STRING_BUF+9
-        rts
+        
 
 
 ;********************************************
@@ -358,4 +435,10 @@ U16_TO_4_ASCII:
 ; String Buffer Declaration
 ; ========================================
 FIX_STRING_BUF:
-        .ds 20                  ; Reserves 20 bytes: nnnn . nnnn \0        
+        .ds 20          ; Reserves 20 bytes: nnnn . nnnn \0        
+DIV_SCRATCH  
+        .ds 18          ; (18 bytes)
+
+Cls    .byte 147, 5, 0
+Op     .byte "   ", 0
+Equals .byte " = ", 0
