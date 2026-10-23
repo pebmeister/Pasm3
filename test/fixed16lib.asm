@@ -6,15 +6,15 @@
 ; ====================================================
 ; Minimal Fixed-Point Print Baseline
 ; ====================================================
-
         .basic_hdr
        
         jsr ClearScreen
-        jsr DisplayResults
+        jsr RunMatrixTest       ; <--- Run the math first!
+        jsr DisplayResults      ; <--- Then print everything
        
 @wait
         jmp @wait
-
+        
 
 ; ====================================================
 ; Safe Zero-Page Pointers (Free from ROM/BASIC collision)
@@ -45,6 +45,7 @@ PTR_MAT_B       .ds 2
 PTR_MAT_C       .ds 2
 MAT_K           .ds 1
 MAT_M           .ds 1
+MAT_N           .ds 1
 DOT_LEN         .ds 1
 DOT_RESULT      .ds 4
 ROW             .byte 1
@@ -421,84 +422,129 @@ ResultVectorC:
         .ds 12              ; Space for 3 output 16.16 values
 
 ; ====================================================
-; DisplayResults
+; DisplayResults (Multi-Vector Loop Fixed)
 ; ====================================================
 DisplayResults:
+        lda #0
+        sta @CUR_VEC
 
-        lda #<message
-        ldy #>message
+        ; Start pointer at Matrix A
+        lda #<TestMatrixA
+        sta FIXPTR
+        lda #>TestMatrixA
+        sta FIXPTR + 1
+
+@Vec_Loop:
+        ldx ROW
+        ldy #0
+        clc
+        jsr PLOT
+
+        ; Dynamically set vector letter ('A', 'B', 'C') based on @CUR_VEC index
+        lda @CUR_VEC
+        clc
+        adc #'A'
+        sta @VEC_NUM
+
+        lda #<@MESSAGE
+        ldy #>@MESSAGE
         jsr STROUT
 
+        lda #0
+        sta @VEC_CUR_ROW
+    
+@Vec_Row_Loop:
         inc ROW
         ldx ROW
         ldy #0
         clc
         jsr PLOT
 
+        lda #0
+        sta @VEC_CUR_COL
         
-        lda #<TestMatrixA
-        sta FIXPTR
-        lda #>TestMatrixA
-        sta FIXPTR + 1
-
-
-         
-        .var VEC_COUNT = 0
-        .var VEC_ROW = 0
-        .var MAX_ROW = 0
-        .var MAX_COL = 0
+@Vec_Col_Loop:
+        ; Print Element
+        jsr FORMAT_FIX16
+        lda #<FIX_STRING_BUF
+        ldy #>FIX_STRING_BUF
+        jsr STROUT
         
-        .while VEC_COUNT < 3
-            inc vec_num
-            .if VEC_COUNT == 0
-                MAX_COL = 3
-                MAX_ROW = 3
-            .endif
-            .if VEC_COUNT == 1
-                MAX_COL = 1
-                MAX_ROW = 3
-            .endif
-            .if VEC_COUNT == 3
-                MAX_COL = 1
-                MAX_ROW = 3
-            .endif
-            
-            .while VEC_ROW < MAX_ROW
-                inc ROW
-                ldx ROW
-                ldy #0
-                clc
-                jsr PLOT
-                MAT_COL = 0
-                .while MAT_COL < MAX_COL
-                    jsr FORMAT_FIX16            ; Populates FIX_STRING_BUF
+        lda #<@SPC
+        ldy #>@SPC
+        jsr STROUT
 
-                    lda #<FIX_STRING_BUF
-                    ldy #>FIX_STRING_BUF
-                    jsr STROUT                  ; Print Vector    
-                
-                    lda #<spc
-                    ldy #>spc
-                    jsr STROUT
+        ; Advance pointer by 4 bytes for next element
+        ADD16I FIXPTR, 4, FIXPTR
+        
+        inc @VEC_CUR_COL
+        ldx @CUR_VEC
+        lda @VEC_CUR_COL
+        cmp @VEC_COLS,x
+        bne @Vec_Col_Loop
 
-                    ADD16I FIXPTR, 4, FIXPTR
-                    MAT_COL = MAT_COL + 1
-                .wend
-                VEC_ROW = VEC_ROW + 1
-            .wend
-            VEC_COUNT = VEC_COUNT + 1
-        .wend        
+        inc @VEC_CUR_ROW
+        ldx @CUR_VEC
+        lda @VEC_CUR_ROW
+        cmp @VEC_ROWS,x
+        bne @Vec_Row_Loop
+       
+        ADD8I ROW,2,ROW
+        inc @CUR_VEC
+        lda @CUR_VEC
+        cmp #3
+        bne @Vec_Loop
+        
         rts
 
-message
-        .byte 05, "VECTOR "
-vec_num .byte "A", 0
-spc     .byte " ",0
+@CUR_VEC
+        .byte 0        
+@VEC_CUR_ROW
+        .byte 0
+@VEC_CUR_COL
+        .byte 0
 
-ClearScreen:
+; Correct dimensions: Matrix A (3x3), Vector B (3x1), Result C (3x1)
+@VEC_ROWS    
+        .byte 3, 3, 3
+@VEC_COLS
+        .byte 3, 1, 1
+        
+@MESSAGE
+        .byte 05, "VECTOR "
+@VEC_NUM
+        .byte "A", 0
+@SPC    .byte " ", 0
+
+
+CLEARSCREEN:
         lda #<Cls
         ldy #>Cls
         jsr STROUT              ; Clear screen    
 
         rts
  
+RunMatrixTest:
+        lda #3
+        sta MAT_M       ; Rows of A = 3
+        sta MAT_K       ; Cols of A / Rows of B = 3
+        lda #1
+        sta MAT_N       ; Cols of B = 1
+
+        lda #<TestMatrixA
+        sta PTR_MAT_A
+        lda #>TestMatrixA
+        sta PTR_MAT_A+1
+
+        lda #<TestVectorB
+        sta PTR_MAT_B
+        lda #>TestVectorB
+        sta PTR_MAT_B+1
+
+        lda #<ResultVectorC
+        sta PTR_MAT_C
+        lda #>ResultVectorC
+        sta PTR_MAT_C+1
+
+        jsr MAT_MUL_FIX16
+        rts

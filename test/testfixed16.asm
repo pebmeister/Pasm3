@@ -12,9 +12,7 @@
         BCD_TEMP        = $94   ; $94 (1 byte)
         SCRATCH_INT     = $95   ; $95 (1 byte)
         FIXPTR          = $96   ; $96-$97 (2 bytes)
-        FIX_BUFFER_FRAC = $98   ; $98 (1 byte)
-        
-        
+        FIX_BUFFER_FRAC = $98   ; $98 (1 byte)                
         ROW             = $FB
         
         .basic_hdr
