@@ -94,29 +94,55 @@ NegateVarA:
         sta VAR_A+3
         rts
         
-        
-; ====================================================
-; BUILD_ROT_GENERAL - Build Combined Euler Matrix
+ ; ====================================================
+; BUILD_ROT_GENERAL - Build Combined Euler Rotation Matrix
 ; Inputs: AngleX, AngleY, AngleZ
 ; Output: RotMatrix (Combined 3x3 rotation matrix)
 ; ====================================================
 BUILD_ROT_GENERAL:
-        ; 1. Build X rotation matrix into RotMatrixX
+        ; 1. Generate individual axis matrices into isolated buffers
         lda AngleX
-        jsr BUILD_ROT_X
-        ; (Copy RotMatrix -> RotMatrixX)
+        jsr BUILD_ROT_X         ; -> RotMatrixX
 
-        ; 2. Build Y rotation matrix into RotMatrixY
         lda AngleY
-        jsr BUILD_ROT_Y
-        ; (Copy RotMatrix -> RotMatrixY)
+        jsr BUILD_ROT_Y         ; -> RotMatrixY
 
-        ; 3. Build Z rotation matrix into RotMatrixZ
         lda AngleZ
-        jsr BUILD_ROT_Z
-        ; (Copy RotMatrix -> RotMatrixZ)
+        jsr BUILD_ROT_Z         ; -> RotMatrixZ
 
-        ; 4. Concatenate: Result = Rz * Ry * Rx
-        ; Multiply Rz * Ry -> TempMatrix, then TempMatrix * Rx -> RotMatrix
+        ; 2. First Concatenation: TempMatrix = RotMatrixY * RotMatrixX
+        lda #<RotMatrixY
+        sta PTR_MAT_A
+        lda #>RotMatrixY
+        sta PTR_MAT_A+1
+
+        lda #<RotMatrixX
+        sta PTR_MAT_B
+        lda #>RotMatrixX
+        sta PTR_MAT_B+1
+
+        lda #<TempMatrix
+        sta PTR_MAT_C
+        lda #>TempMatrix
+        sta PTR_MAT_C+1
+
+        jsr MAT_MUL_3X3
+
+        ; 3. Final Concatenation: RotMatrix = RotMatrixZ * TempMatrix
+        lda #<RotMatrixZ
+        sta PTR_MAT_A
+        lda #>RotMatrixZ
+        sta PTR_MAT_A+1
+
+        lda #<TempMatrix
+        sta PTR_MAT_B
+        lda #>TempMatrix
+        sta PTR_MAT_B+1
+
+        lda #<RotMatrix
+        sta PTR_MAT_C
+        lda #>RotMatrix
+        sta PTR_MAT_C+1
+
+        jsr MAT_MUL_3X3
         rts
-     

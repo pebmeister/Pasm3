@@ -5,10 +5,14 @@
         .basic_hdr
        
         jsr ClearScreen
+        lda #0
+        sta ROW
+        
         ; jsr MatMulMatrixTest
         ; jsr RunYRotationTest
         ; jsr RunXRotationTest
-        jsr RunZRotationTest
+        ; jsr RunZRotationTest
+        jsr RunGeneralRotationTest
 @wait
         jmp @wait
         
@@ -318,3 +322,66 @@ RunZRotationTest:
         jsr DisplayResults
         rts
       
+; ====================================================
+; Test General Euler Rotation with TestVectorB
+; ====================================================
+RunGeneralRotationTest:
+        ; 1. Set sample Euler angles (e.g., X=64, Y=32, Z=16)
+        lda #64
+        sta AngleX
+        lda #32
+        sta AngleY
+        lda #16
+        sta AngleZ
+
+        ; 2. Build the combined rotation matrix into RotMatrix
+        jsr BUILD_ROT_GENERAL
+
+        ; 3. Set up Matrix Multiplication: RotMatrix * TestVectorB -> ResultVectorC
+        lda #<RotMatrix
+        sta PTR_MAT_A
+        lda #>RotMatrix
+        sta PTR_MAT_A+1
+
+        lda #<TestVectorB
+        sta PTR_MAT_B
+        lda #>TestVectorB
+        sta PTR_MAT_B+1
+
+        lda #<ResultVectorC
+        sta PTR_MAT_C
+        lda #>ResultVectorC
+        sta PTR_MAT_C+1
+
+        lda #3                  ; K = 3 (inner matrix dimension)
+        sta MAT_K
+        lda #3                  ; M = 3 (number of rows)
+        sta MAT_M
+
+        jsr MAT_MUL_FIX16       ; Perform combined matrix * vector multiplication
+
+        ; 4. Configure DisplayResults for the resulting 3x1 vector
+        lda #1                  ; 1 vector/matrix to display
+        sta NUM_VECS
+        
+        lda #3                  ; 3 rows in the result vector
+        ldx #0
+@set_res_rows_gen:
+        sta VEC_ROWS, x
+        inx
+        cpx #1                  ; For our 1 vector
+        bne @set_res_rows_gen
+
+        lda #1                  ; 1 column for the vector
+        sta VEC_COLS
+
+        ; Point FIXPTR at our output buffer
+        lda #<ResultVectorC
+        sta FIXPTR
+        lda #>ResultVectorC
+        sta FIXPTR+1
+
+        ; Print the transformed vector to the screen
+        jsr DisplayResults
+        rts
+        

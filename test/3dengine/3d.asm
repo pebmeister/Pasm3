@@ -10,5 +10,5 @@
         .inc "trig.asm"
         .inc "sin.asm"
         .inc "rot.asm"
-        
+        .inc "render.asm"
    

@@ -158,39 +158,182 @@ MAT_DOT_MUL_FIX16:
         rts
         
 ; ====================================================
-; MAT_MUL_3X3 - Multiply two 3x3 fixed-point matrices
-; Inputs: PTR_MAT_A, PTR_MAT_B
-; Output: PTR_MAT_C (can safely overlap with inputs if using TempMatrix)
+; MAT_MUL_3X3 - Multiply two 3x3 matrices: A * B -> C
+; Inputs: PTR_MAT_A, PTR_MAT_B, PTR_MAT_C
 ; ====================================================
 MAT_MUL_3X3:
-        ; For a 3x3 matrix C = A * B:
-        ; C[row, col] = Dot product of Row(A, row) and Col(B, col)
-        ; We can compute this cleanly by iterating 3 rows and 3 columns.
-        
-        lda #0
-        sta ROW_INDEX           ; Row loop counter (0 to 2)
+        lda PTR_MAT_B
+        sta SavedMatB
+        lda PTR_MAT_B+1
+        sta SavedMatB+1
 
-@RowLoop3x3:
-        lda #0
-        sta COL_INDEX           ; Col loop counter (0 to 2)
+        lda PTR_MAT_C
+        sta SavedMatC
+        lda PTR_MAT_C+1
+        sta SavedMatC+1
 
-@ColLoop3x3:
-        ; Compute dot product of Row (ROW_INDEX) of Mat A and Col (COL_INDEX) of Mat B.
-        ; We can set up pointers for the dot product function:
-        ; - PTR_A points to start of Row ROW_INDEX in Mat A (Mat A + row * 12)
-        ; - PTR_B points to start of Col COL_INDEX in Mat B (Mat B + col * 4, with stride 12)
-        
-        ; (Implementation uses our existing dot product engine by structuring pointers)
-        ; ...
-        
-        inc COL_INDEX
-        lda COL_INDEX
-        cmp #3
-        bne @ColLoop3x3
+        ; --- Column 0 (Y = 0) ---
+        ldy #0
+        jsr CopyColToTemp
+        jsr DoMatrixMulVector
+        lda SavedMatC
+        sta PTR_MAT_C
+        lda SavedMatC+1
+        sta PTR_MAT_C+1
+        ldy #0
+        jsr CopyTempToColC
 
-        inc ROW_INDEX
-        lda ROW_INDEX
-        cmp #3
-        bne @RowLoop3x3
+        ; --- Column 1 (Y = 4) ---
+        lda SavedMatB
+        sta PTR_MAT_B
+        lda SavedMatB+1
+        sta PTR_MAT_B+1
+        ldy #4
+        jsr CopyColToTemp
+        jsr DoMatrixMulVector
+        lda SavedMatC
+        sta PTR_MAT_C
+        lda SavedMatC+1
+        sta PTR_MAT_C+1
+        ldy #4
+        jsr CopyTempToColC
+
+        ; --- Column 2 (Y = 8) ---
+        lda SavedMatB
+        sta PTR_MAT_B
+        lda SavedMatB+1
+        sta PTR_MAT_B+1
+        ldy #8
+        jsr CopyColToTemp
+        jsr DoMatrixMulVector
+        lda SavedMatC
+        sta PTR_MAT_C
+        lda SavedMatC+1
+        sta PTR_MAT_C+1
+        ldy #8
+        jsr CopyTempToColC
         rts
+
+
+; --- Helper Routines for Column Extraction & Multiplication ---
+
+CopyColToTemp:
+        sty ColOffset
+        ldy ColOffset
+        lda (PTR_MAT_B),y
+        sta TempCol
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+1
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+2
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+3
+
+        ldy ColOffset
+        tya
+        clc
+        adc #12
+        tay
+        lda (PTR_MAT_B),y
+        sta TempCol+4
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+5
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+6
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+7
+
+        ldy ColOffset
+        tya
+        clc
+        adc #24
+        tay
+        lda (PTR_MAT_B),y
+        sta TempCol+8
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+9
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+10
+        iny
+        lda (PTR_MAT_B),y
+        sta TempCol+11
+        rts
+
+DoMatrixMulVector:
+        lda #<TempCol
+        sta PTR_MAT_B
+        lda #>TempCol
+        sta PTR_MAT_B+1
+
+        lda #<TempResult
+        sta PTR_MAT_C
+        lda #>TempResult
+        sta PTR_MAT_C+1
+
+        lda #3
+        sta MAT_K
+        lda #3
+        sta MAT_M
+
+        jsr MAT_MUL_FIX16
+        rts
+
+CopyTempToColC:
+        sty ColOffset
+        ldy ColOffset
+        lda TempResult
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+1
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+2
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+3
+        sta (PTR_MAT_C),y
+
+        ldy ColOffset
+        tya
+        clc
+        adc #12
+        tay
+        lda TempResult+4
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+5
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+6
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+7
+        sta (PTR_MAT_C),y
+
+        ldy ColOffset
+        tya
+        clc
+        adc #24
+        tay
+        lda TempResult+8
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+9
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+10
+        sta (PTR_MAT_C),y
+        iny
+        lda TempResult+11
+        sta (PTR_MAT_C),y
+        rts
+        
         
