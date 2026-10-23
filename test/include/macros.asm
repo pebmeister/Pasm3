@@ -143,7 +143,7 @@
 ;* \1 Source                                *
 ;* \2 Destination                           *
 ;* Destroys A                               *
-;********************************************
+;*******************************************
         .macro MOVE16
         lda \1
         sta \2
@@ -1228,7 +1228,160 @@
         .endm
 
 ;********************************************
-;* MUL_FIX16                                 *
+;* MUL_FIX16                                *
+;* Signed 16.16 fixed-point multiplication  *
+;* \1 = Multiplicand (4 bytes)              *
+;* \2 = Multiplier   (4 bytes)              *
+;* \3 = Destination  (4 bytes)              *
+;* Destroys A, X, Y                         *
+;********************************************
+        .macro MUL_FIX16
+        ; 1. Determine Result Sign & Make Inputs Absolute
+        ldx #0              ; Sign tracker (0 = +, 1 = -)
+
+        ; Check Multiplicand (\1) sign
+        lda \1 + 3
+        bpl @CheckArg2Neg
+        inx                 ; Flip sign bit
+        ; Negate \1 to make positive
+        lda #0
+        sec
+        sbc \1
+        sta \1
+        lda #0
+        sbc \1 + 1
+        sta \1 + 1
+        lda #0
+        sbc \1 + 2
+        sta \1 + 2
+        lda #0
+        sbc \1 + 3
+        sta \1 + 3
+
+@CheckArg2Neg:
+        ; Check Multiplier (\2) sign
+        lda \2 + 3
+        bpl @SaveState
+        inx                 ; Flip sign bit (X becomes 0 if both negative, 1 if one negative)
+        ; Negate \2 to make positive
+        lda #0
+        sec
+        sbc \2
+        sta \2
+        lda #0
+        sbc \2 + 1
+        sta \2 + 1
+        lda #0
+        sbc \2 + 2
+        sta \2 + 2
+        lda #0
+        sbc \2 + 3
+        sta \2 + 3
+
+@SaveState:
+        ; Save sign state (X) and original multiplier on stack
+        txa
+        pha                 ; Push sign flag
+        
+        lda \2 + 3
+        pha
+        lda \2 + 2
+        pha
+        lda \2 + 1
+        pha
+        lda \2
+        pha
+
+        ; Clear upper 32 bits of working product
+        lda #0
+        sta \3
+        sta \3 + 1
+        sta \3 + 2
+        sta \3 + 3
+
+        ldx #32
+
+@MulLoop:
+        lda \2
+        lsr
+        bcc @NoAdd
+
+        clc
+        lda \3
+        adc \1
+        sta \3
+        lda \3 + 1
+        adc \1 + 1
+        sta \3 + 1
+        lda \3 + 2
+        adc \1 + 2
+        sta \3 + 2
+        lda \3 + 3
+        adc \1 + 3
+        sta \3 + 3
+
+@NoAdd:
+        lsr \3 + 3
+        ror \3 + 2
+        ror \3 + 1
+        ror \3
+        ror \2 + 3
+        ror \2 + 2
+        ror \2 + 1
+        ror \2
+
+        dex
+        bne @MulLoop
+
+        ; Shift product result >> 16
+        lda \3 + 1
+        sta \3 + 3
+        lda \3
+        sta \3 + 2
+        lda \2 + 3
+        sta \3 + 1
+        lda \2 + 2
+        sta \3
+
+        ; Restore original multiplier
+        pla
+        sta \2
+        pla
+        sta \2 + 1
+        pla
+        sta \2 + 2
+        pla
+        sta \2 + 3
+
+        ; Restore sign flag from stack
+        pla
+        tay                 ; Y holds sign flag (0 = positive, odd/1 = negative)
+        
+        ; If original inputs had different signs, negate the destination (\3)
+        tya
+        lsr                 ; Check lowest bit of sign flag
+        bcc @DoneSigned     ; If carry clear, result is positive
+
+        ; Negate Destination (\3)
+        lda #0
+        sec
+        sbc \3
+        sta \3
+        lda #0
+        sbc \3 + 1
+        sta \3 + 1
+        lda #0
+        sbc \3 + 2
+        sta \3 + 2
+        lda #0
+        sbc \3 + 3
+        sta \3 + 3
+
+@DoneSigned:
+        .endm
+        
+;********************************************
+;* MUL_U_FIX16                               *
 ;* Unsigned 16.16 fixed-point multiplication *
 ;* \1 = Multiplicand (4 bytes)               *
 ;* \2 = Multiplier   (4 bytes)               *
@@ -1236,7 +1389,7 @@
 ;* Destroys A, X                             *
 ;* Preserves original multiplier             *
 ;********************************************
-        .macro MUL_FIX16
+        .macro MUL_U_FIX16
 
         ; Save original multiplier
         lda \2 + 3
