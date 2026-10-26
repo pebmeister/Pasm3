@@ -209,7 +209,8 @@ U16_TO_4_ASCII:
 DisplayResults:
         lda #0
         sta @CUR_VEC
-
+        sta @PRINT_COL
+        
 @Vec_Loop:
         ldx ROW
         ldy #0
@@ -240,6 +241,17 @@ DisplayResults:
         sta @VEC_CUR_COL
         
 @Vec_Col_Loop:
+        lda @VEC_CUR_COL
+        cmp #3 
+        bne @continue
+
+        inc ROW
+        ldx ROW        
+        ldy #0
+        clc
+        jsr PLOT
+
+@continue        
         ; Print Element
         jsr FORMAT_FIX16
         lda #<FIX_STRING_BUF
@@ -269,8 +281,9 @@ DisplayResults:
         inc @CUR_VEC
         lda @CUR_VEC
         cmp NUM_VECS
-        bne @Vec_Loop
-        
+        beq @exit
+        jmp @Vec_Loop
+@exit        
         rts
 
 @CUR_VEC
@@ -280,6 +293,7 @@ DisplayResults:
 @VEC_CUR_COL
         .byte 0
 
+@PRINT_COL .byte 0
 @MESSAGE
         .byte 05, "VECTOR "
 @VEC_NUM
