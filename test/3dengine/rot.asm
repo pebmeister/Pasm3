@@ -1,148 +1,271 @@
+;********************************************
+;* ROTATION_Z
+;*
+;* Build a 4x4 Z rotation matrix.
+;* ROT_Z_ANGLE = 64 means 90 degrees.
+;********************************************
+ROTATION_Z:
+        ; Look up sine and cosine
+        GET_SINE   ROT_Z_ANGLE, ROT_SINE
+        GET_COSINE ROT_Z_ANGLE, ROT_COSINE
 
-; ====================================================
-; BUILD_ROT_X - Build X-Axis Rotation Matrix into RotMatrixX
-; Input: A = 8-bit angle index (0-255)
-; ====================================================
-BUILD_ROT_X:
-        sta RotAngle
-        MOVE32      FIX_ONE,  RotMatrixX+0
-        MOVE32      FIX_ZERO, RotMatrixX+4
-        MOVE32      FIX_ZERO, RotMatrixX+8
-        MOVE32      FIX_ZERO, RotMatrixX+12
-        GET_COSINE  RotAngle, RotMatrixX+16
+        ; Calculate -sin using 32-bit two's complement
+        lda #0
+        sec
+        sbc ROT_SINE
+        sta ROT_NEG_SINE
+
+        lda #0
+        sbc ROT_SINE+1
+        sta ROT_NEG_SINE+1
+
+        lda #0
+        sbc ROT_SINE+2
+        sta ROT_NEG_SINE+2
+
+        lda #0
+        sbc ROT_SINE+3
+        sta ROT_NEG_SINE+3
+
+        ; MAT_B row 0:
+        ; cos, -sin, 0, 0
+        ldx #0
+@CopyCos0:
+        lda ROT_COSINE,x
+        sta MAT_B,x
+        inx
+        cpx #4
+        bne @CopyCos0
+
+        ldx #0
+@CopyNegSin:
+        lda ROT_NEG_SINE,x
+        sta MAT_B+4,x
+        inx
+        cpx #4
+        bne @CopyNegSin
+
+        ; MAT_B row 1:
+        ; sin, cos, 0, 0
+        ldx #0
+@CopySin:
+        lda ROT_SINE,x
+        sta MAT_B+16,x
+        inx
+        cpx #4
+        bne @CopySin
+
+        ldx #0
+@CopyCos1:
+        lda ROT_COSINE,x
+        sta MAT_B+20,x
+        inx
+        cpx #4
+        bne @CopyCos1
+
+        rts
         
-        GET_SINE    RotAngle, VAR_A
-        jsr NegateVarA                  ; Helper or inline negation
-        MOVE32      VAR_A,    RotMatrixX+20
         
-        MOVE32      FIX_ZERO, RotMatrixX+24
-        GET_SINE    RotAngle, RotMatrixX+28
-        GET_COSINE  RotAngle, RotMatrixX+32
+ ;********************************************
+;* ROTATION_Y
+;*
+;* Build a 4x4 Y rotation matrix in MAT_B.
+;* ROT_Y_ANGLE = 32 means 45 degrees.
+;********************************************
+ROTATION_Y:
+        GET_SINE   ROT_Y_ANGLE, ROT_SINE
+        GET_COSINE ROT_Y_ANGLE, ROT_COSINE
+
+        ; Calculate -sin (32-bit two's complement)
+        lda #0
+        sec
+        sbc ROT_SINE
+        sta ROT_NEG_SINE
+        lda #0
+        sbc ROT_SINE+1
+        sta ROT_NEG_SINE+1
+        lda #0
+        sbc ROT_SINE+2
+        sta ROT_NEG_SINE+2
+        lda #0
+        sbc ROT_SINE+3
+        sta ROT_NEG_SINE+3
+
+        ; Clear all 64 bytes
+        ldx #0
+@YClear:
+        lda #0
+        sta MAT_B,x
+        inx
+        cpx #64
+        bne @YClear
+
+        ; Row 0, column 0: cos
+        ldx #0
+@YCos0:
+        lda ROT_COSINE,x
+        sta MAT_B,x
+        inx
+        cpx #4
+        bne @YCos0
+
+        ; Row 0, column 2: sin
+        ldx #0
+@YSin0:
+        lda ROT_SINE,x
+        sta MAT_B+8,x
+        inx
+        cpx #4
+        bne @YSin0
+
+        ; Row 1, column 1: 1.0
+        lda #1
+        sta MAT_B+22
+
+        ; Row 2, column 0: -sin
+        ldx #0
+@YNegSin:
+        lda ROT_NEG_SINE,x
+        sta MAT_B+32,x
+        inx
+        cpx #4
+        bne @YNegSin
+
+        ; Row 2, column 2: cos
+        ldx #0
+@YCos2:
+        lda ROT_COSINE,x
+        sta MAT_B+40,x
+        inx
+        cpx #4
+        bne @YCos2
+
+        ; Row 3, column 3: 1.0
+        lda #1
+        sta MAT_B+62
+
+        rts
+        
+;********************************************
+;* ROTATION_X
+;*
+;* Build a 4x4 X rotation matrix in MAT_B.
+;* ROT_X_ANGLE = 32 means 45 degrees.
+;********************************************
+ROTATION_X:
+        GET_SINE   ROT_X_ANGLE, ROT_SINE
+        GET_COSINE ROT_X_ANGLE, ROT_COSINE
+
+        ; Calculate -sin (32-bit two's complement)
+        lda #0
+        sec
+        sbc ROT_SINE
+        sta ROT_NEG_SINE
+        lda #0
+        sbc ROT_SINE+1
+        sta ROT_NEG_SINE+1
+        lda #0
+        sbc ROT_SINE+2
+        sta ROT_NEG_SINE+2
+        lda #0
+        sbc ROT_SINE+3
+        sta ROT_NEG_SINE+3
+
+        ; Row 0: 1, 0, 0, 0
+        lda #0
+        sta MAT_B
+        sta MAT_B+1
+        lda #1
+        sta MAT_B+2
+        lda #0
+        sta MAT_B+3
+
+        lda #0
+        sta MAT_B+4
+        sta MAT_B+5
+        sta MAT_B+6
+        sta MAT_B+7
+        
+        ; Correct 1.0 at MAT_B[0,0]
+        lda #0
+        sta MAT_B
+        sta MAT_B+1
+        lda #1
+        sta MAT_B+2
+        lda #0
+        sta MAT_B+3
+
+        ; Row 1: 0, cos, -sin, 0
+        ldx #0
+@XCos:
+        lda ROT_COSINE,x
+        sta MAT_B+20,x
+        lda ROT_NEG_SINE,x
+        sta MAT_B+24,x
+        inx
+        cpx #4
+        bne @XCos
+
+        ; Row 2: 0, sin, cos, 0
+        ldx #0
+@XSinCos:
+        lda ROT_SINE,x
+        sta MAT_B+36,x
+        lda ROT_COSINE,x
+        sta MAT_B+40,x
+        inx
+        cpx #4
+        bne @XSinCos
+
+        ; Row 3: 0, 0, 0, 1
+        lda #0
+        sta MAT_B+60
+        sta MAT_B+61
+        lda #1
+        sta MAT_B+62
+        lda #0
+        sta MAT_B+63
+
         rts
 
 
-; ====================================================
-; BUILD_ROT_Y - Build Y-Axis Rotation Matrix into RotMatrixY
-; Input: A = 8-bit angle index (0-255)
-; ====================================================
-BUILD_ROT_Y:
-        sta RotAngle
-        GET_COSINE  RotAngle, RotMatrixY+0
-        MOVE32      FIX_ZERO, RotMatrixY+4
-        GET_SINE    RotAngle, RotMatrixY+8
-        
-        MOVE32      FIX_ZERO, RotMatrixY+12
-        MOVE32      FIX_ONE,  RotMatrixY+16
-        MOVE32      FIX_ZERO, RotMatrixY+20
-        
-        GET_SINE    RotAngle, VAR_A
-        jsr NegateVarA
-        MOVE32      VAR_A,    RotMatrixY+24
-        
-        MOVE32      FIX_ZERO, RotMatrixY+28
-        GET_COSINE  RotAngle, RotMatrixY+32
-        rts
+Test_Vector_Rotation:
 
+        ; Build a 45-degree Z rotation matrix in MAT_B.
+        lda #32
+        sta ROT_Z_ANGLE
+        jsr ROTATION_Z
 
-; ====================================================
-; BUILD_ROT_Z - Build Z-Axis Rotation Matrix into RotMatrixZ
-; Input: A = 8-bit angle index (0-255)
-; ====================================================
-BUILD_ROT_Z:
-        sta RotAngle
-        GET_COSINE  RotAngle, RotMatrixZ+0
-        
-        GET_SINE    RotAngle, VAR_A
-        jsr NegateVarA
-        MOVE32      VAR_A,    RotMatrixZ+4
-        
-        MOVE32      FIX_ZERO, RotMatrixZ+8
-        GET_SINE    RotAngle, RotMatrixZ+12
-        GET_COSINE  RotAngle, RotMatrixZ+16
-        MOVE32      FIX_ZERO, RotMatrixZ+20
-        MOVE32      FIX_ZERO, RotMatrixZ+24
-        MOVE32      FIX_ZERO, RotMatrixZ+28
-        MOVE32      FIX_ONE,  RotMatrixZ+32
-        rts
+        ; Copy rotation matrix from MAT_B to MAT_A.
+        ldx #0
+@CopyRotation:
+        lda MAT_B,x
+        sta MAT_A,x
+        inx
+        cpx #64
+        bne @CopyRotation
 
-; Small reusable negation helper to keep code DRY
-NegateVarA:
-        lda VAR_A
-        eor #$FF
-        sta VAR_A
-        lda VAR_A+1
-        eor #$FF
-        sta VAR_A+1
-        lda VAR_A+2
-        eor #$FF
-        sta VAR_A+2
-        lda VAR_A+3
-        eor #$FF
-        sta VAR_A+3
-        clc
-        lda VAR_A
-        adc #1
-        sta VAR_A
-        lda VAR_A+1
-        adc #0
-        sta VAR_A+1
-        lda VAR_A+2
-        adc #0
-        sta VAR_A+2
-        lda VAR_A+3
-        adc #0
-        sta VAR_A+3
-        rts
-        
- ; ====================================================
-; BUILD_ROT_GENERAL - Build Combined Euler Rotation Matrix
-; Inputs: AngleX, AngleY, AngleZ
-; Output: RotMatrix (Combined 3x3 rotation matrix)
-; ====================================================
-BUILD_ROT_GENERAL:
-        ; 1. Generate individual axis matrices into isolated buffers
-        lda AngleX
-        jsr BUILD_ROT_X         ; -> RotMatrixX
+        ; Clear MAT_B to use it as a vector container.
+        ldx #0
+        lda #0
+@ClearVector:
+        sta MAT_B,x
+        inx
+        cpx #64
+        bne @ClearVector
 
-        lda AngleY
-        jsr BUILD_ROT_Y         ; -> RotMatrixY
+        ; Set vector P = (1, 0, 0, 1).
+        ; Each matrix element occupies 4 bytes.
+        ; The integer word begins at offset +2.
 
-        lda AngleZ
-        jsr BUILD_ROT_Z         ; -> RotMatrixZ
+        lda #1
+        sta MAT_B+2       ; X = 1.0
+        sta MAT_B+50      ; W = 1.0 (row 3, column 0)
 
-        ; 2. First Concatenation: TempMatrix = RotMatrixY * RotMatrixX
-        lda #<RotMatrixY
-        sta PTR_MAT_A
-        lda #>RotMatrixY
-        sta PTR_MAT_A+1
+        ; Multiply rotation matrix by vector container.
+        MAT4_MUL MAT_A, MAT_B, MAT_C
 
-        lda #<RotMatrixX
-        sta PTR_MAT_B
-        lda #>RotMatrixX
-        sta PTR_MAT_B+1
+        ; Display the result.
+        PRINT_MAT MAT_C, 3
 
-        lda #<TempMatrix
-        sta PTR_MAT_C
-        lda #>TempMatrix
-        sta PTR_MAT_C+1
-
-        jsr MAT_MUL_3X3
-
-        ; 3. Final Concatenation: RotMatrix = RotMatrixZ * TempMatrix
-        lda #<RotMatrixZ
-        sta PTR_MAT_A
-        lda #>RotMatrixZ
-        sta PTR_MAT_A+1
-
-        lda #<TempMatrix
-        sta PTR_MAT_B
-        lda #>TempMatrix
-        sta PTR_MAT_B+1
-
-        lda #<RotMatrix
-        sta PTR_MAT_C
-        lda #>RotMatrix
-        sta PTR_MAT_C+1
-
-        jsr MAT_MUL_3X3
         rts

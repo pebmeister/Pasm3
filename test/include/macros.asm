@@ -1070,113 +1070,34 @@
 @exit:
         .endm
 
+ ;********************************************
+;* ADD_FIX16
+;*
+;* /1 = Variable 1
+;* /2 = Variable 2
+;* /3 = Destination
+;*
+;* Adds signed 16.16 values using two's
+;* complement representation.
+;* Destroys A.
 ;********************************************
-;*                                          *
-;* ADD_FIX16                                *
-;*                                          *
-;*  add 16 bit fixed point variables        *
-;*                                          *
-;*  /1  Variable 1                          *
-;*  /2  Variable 2                          *
-;*  /3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
-;********************************************
+
         .macro ADD_FIX16
         clc
-        lda \1 + 2
-        adc \2 + 2
-        sta \3 + 2
-        lda \1 + 3
-        adc \2 + 3
-        sta \3 + 3
         lda \1
         adc \2
         sta \3
+
         lda \1 + 1
         adc \2 + 1
         sta \3 + 1
-        .endm
 
-;********************************************
-;*                                          *
-;* ADD_FIX16I                               *
-;*                                          *
-;*  add 16 bit fixed point variables        *
-;*                                          *
-;*  /1  Variable 1                          *
-;*  /2  number                              *
-;*  /3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
-;********************************************
-        .macro ADD_FIX16I
-        clc
-        lda <(\2 + 2)
-        adc \1 + 2
-        sta \3 + 2
-        lda >(\2 + 3)
-        adc \1 + 3
-        sta \3 + 3
-        lda \1
-        sta \3
-        lda \1 + 1
-        sta \3 + 1
-        .endm
-
-;********************************************
-;*                                          *
-;* SUB_FIX16                                *
-;*                                          *
-;*  subtract 16 bit variables               *
-;*                                          *
-;*  \1  Variable                            *
-;*  \2  Variable to subtract                *
-;*  \3  Destination                         *
-;*                                          *
-;*  destroys a                              *
-;*                                          *
-;********************************************
-        .macro SUB_FIX16
-        sec
         lda \1 + 2
-        sbc \2 + 2
+        adc \2 + 2
         sta \3 + 2
+
         lda \1 + 3
-        sbc \2 + 3
-        sta \3 + 3
-
-        lda \1
-        sbc \2
-        sta \3
-        lda \1 + 1
-        sbc \2 + 1
-        sta \3 + 1
-        .endm
-
-
-
-;********************************************
-;* FIX16_ADDI                               *
-;* Add 16-bit integer immediate to 16.16    *
-;* \1 Source variable (16.16)               *
-;* \2 Immediate integer value (16-bit)      *
-;* \3 Destination (16.16)                   *
-;* Destroys A                               *
-;********************************************
-        .macro FIX16_ADDI
-        lda \1                      ; Copy fraction low byte as-is
-        sta \3
-        lda \1 + 1                  ; Copy fraction high byte as-is
-        sta \3 + 1
-        clc
-        lda \1 + 2                  ; Add immediate to integer low byte
-        adc #<\2
-        sta \3 + 2
-        lda \1 + 3                  ; Add immediate to integer high byte
-        adc #>\2
+        adc \2 + 3
         sta \3 + 3
         .endm
 
@@ -1204,181 +1125,8 @@
         sta \3 + 3
         .endm
 
-;********************************************
-;* FIX16_SUBI                               *
-;* Subtract 16-bit integer immediate from   *
-;* 16.16 fixed-point variable               *
-;* \1 Source variable (16.16)               *
-;* \2 Immediate integer value to subtract   *
-;* \3 Destination (16.16)                   *
-;* Destroys A                               *
-;********************************************
-        .macro FIX16_SUBI
-        lda \1                      ; Copy fraction low byte as-is
-        sta \3
-        lda \1 + 1                  ; Copy fraction high byte as-is
-        sta \3 + 1
-        sec
-        lda \1 + 2                  ; Subtract immediate from integer low byte
-        sbc #<\2
-        sta \3 + 2
-        lda \1 + 3                  ; Subtract immediate from integer high byte
-        sbc #>\2
-        sta \3 + 3
-        .endm
 
-;********************************************
-;* MUL_FIX16                                *
-;* Signed 16.16 fixed-point multiplication  *
-;* \1 = Multiplicand (4 bytes)              *
-;* \2 = Multiplier   (4 bytes)              *
-;* \3 = Destination  (4 bytes)              *
-;* Destroys A, X, Y                         *
-;********************************************
-        .macro MUL_FIX16
-        ; 1. Determine Result Sign & Make Inputs Absolute
-        ldx #0              ; Sign tracker (0 = +, 1 = -)
 
-        ; Check Multiplicand (\1) sign
-        lda \1 + 3
-        bpl @CheckArg2Neg
-        inx                 ; Flip sign bit
-        ; Negate \1 to make positive
-        lda #0
-        sec
-        sbc \1
-        sta \1
-        lda #0
-        sbc \1 + 1
-        sta \1 + 1
-        lda #0
-        sbc \1 + 2
-        sta \1 + 2
-        lda #0
-        sbc \1 + 3
-        sta \1 + 3
-
-@CheckArg2Neg:
-        ; Check Multiplier (\2) sign
-        lda \2 + 3
-        bpl @SaveState
-        inx                 ; Flip sign bit (X becomes 0 if both negative, 1 if one negative)
-        ; Negate \2 to make positive
-        lda #0
-        sec
-        sbc \2
-        sta \2
-        lda #0
-        sbc \2 + 1
-        sta \2 + 1
-        lda #0
-        sbc \2 + 2
-        sta \2 + 2
-        lda #0
-        sbc \2 + 3
-        sta \2 + 3
-
-@SaveState:
-        ; Save sign state (X) and original multiplier on stack
-        txa
-        pha                 ; Push sign flag
-        
-        lda \2 + 3
-        pha
-        lda \2 + 2
-        pha
-        lda \2 + 1
-        pha
-        lda \2
-        pha
-
-        ; Clear upper 32 bits of working product
-        lda #0
-        sta \3
-        sta \3 + 1
-        sta \3 + 2
-        sta \3 + 3
-
-        ldx #32
-
-@MulLoop:
-        lda \2
-        lsr
-        bcc @NoAdd
-
-        clc
-        lda \3
-        adc \1
-        sta \3
-        lda \3 + 1
-        adc \1 + 1
-        sta \3 + 1
-        lda \3 + 2
-        adc \1 + 2
-        sta \3 + 2
-        lda \3 + 3
-        adc \1 + 3
-        sta \3 + 3
-
-@NoAdd:
-        lsr \3 + 3
-        ror \3 + 2
-        ror \3 + 1
-        ror \3
-        ror \2 + 3
-        ror \2 + 2
-        ror \2 + 1
-        ror \2
-
-        dex
-        bne @MulLoop
-
-        ; Shift product result >> 16
-        lda \3 + 1
-        sta \3 + 3
-        lda \3
-        sta \3 + 2
-        lda \2 + 3
-        sta \3 + 1
-        lda \2 + 2
-        sta \3
-
-        ; Restore original multiplier
-        pla
-        sta \2
-        pla
-        sta \2 + 1
-        pla
-        sta \2 + 2
-        pla
-        sta \2 + 3
-
-        ; Restore sign flag from stack
-        pla
-        tay                 ; Y holds sign flag (0 = positive, odd/1 = negative)
-        
-        ; If original inputs had different signs, negate the destination (\3)
-        tya
-        lsr                 ; Check lowest bit of sign flag
-        bcc @DoneSigned     ; If carry clear, result is positive
-
-        ; Negate Destination (\3)
-        lda #0
-        sec
-        sbc \3
-        sta \3
-        lda #0
-        sbc \3 + 1
-        sta \3 + 1
-        lda #0
-        sbc \3 + 2
-        sta \3 + 2
-        lda #0
-        sbc \3 + 3
-        sta \3 + 3
-
-@DoneSigned:
-        .endm
         
 ;********************************************
 ;* MUL_U_FIX16                               *
@@ -1807,4 +1555,211 @@
 @DivDone:
 .endm
 
+;********************************************
+;* MAT4_COPY
+;* Copy a 4x4 matrix (64 bytes)
+;*
+;* Parameters:
+;*   \1 = address of source matrix
+;*   \2   = address of destination matrix
+;*
+;* Uses:
+;*   MOVE32 \1, dest
+;********************************************
+
+        .macro MAT4_COPY
+
+        MOVE32 \1,      \2
+        MOVE32 \1+4,    \2+4
+        MOVE32 \1+8,    \2+8
+        MOVE32 \1+12,   \2+12
+
+        MOVE32 \1+16,   \2+16
+        MOVE32 \1+20,   \2+20
+        MOVE32 \1+24,   \2+24
+        MOVE32 \1+28,   \2+28
+
+        MOVE32 \1+32,   \2+32
+        MOVE32 \1+36,   \2+36
+        MOVE32 \1+40,   \2+40
+        MOVE32 \1+44,   \2+44
+
+        MOVE32 \1+48,   \2+48
+        MOVE32 \1+52,   \2+52
+        MOVE32 \1+56,   \2+56
+        MOVE32 \1+60,   \2+60
+
+       .endm
+
+
+        .macro PRINT_MAT
+        lda #1                  ; 1 vector/matrix to display
+        sta NUM_VECS
+        
+        lda #\2                 ; 3 rows in the result vector
+        ldx #0
+@set_res_rows_gen:
+        sta VEC_ROWS, x
+        inx
+        cpx #1                  ; For our 1 vector
+        bne @set_res_rows_gen
+
+        lda #4                  ; 1 column for the vector
+        sta VEC_COLS
+
+
+        lda #<\1
+        sta FIXPTR
+        lda #>\1
+        sta FIXPTR+1
+
+        jsr DisplayResults
+
+        .endm
+
+
+        .macro PRINT_VECTOR
+        PRINT_MAT \1, 1
+        .endm
+
+
+;********************************************
+;* GET_SINE                                 *
+;* Lookup 16.16 Sine value from table       *
+;* \1 Angle (8-bit index 0-255)             *
+;* \2 Destination (32-bit variable)         *
+;* Destroys A, Y, FIXPTR, TEMP16            *
+;********************************************
+        .macro GET_SINE
+        lda \1
+        jsr LookupSineTable
+        ldy #0
+        lda (FIXPTR),y
+        sta \2
+        iny
+        lda (FIXPTR),y
+        sta \2+1
+        iny
+        lda (FIXPTR),y
+        sta \2+2
+        iny
+        lda (FIXPTR),y
+        sta \2+3
+        .endm
+
+
+;********************************************
+;* GET_COSINE                               *
+;* Lookup 16.16 Cosine value from table     *
+;* (\+64 phase shift for 90° cosine offset) *
+;* \1 Angle (8-bit index 0-255)             *
+;* \2 Destination (32-bit variable)         *
+;* Destroys A, Y, FIXPTR, TEMP16            *
+;********************************************
+        .macro GET_COSINE
+        lda \1
+        clc
+        adc #64
+        jsr LookupSineTable
+        ldy #0
+        lda (FIXPTR),y
+        sta \2
+        iny
+        lda (FIXPTR),y
+        sta \2+1
+        iny
+        lda (FIXPTR),y
+        sta \2+2
+        iny
+        lda (FIXPTR),y
+        sta \2+3
+        .endm
+
+;********************************************
+;* CALL_MAT4_MUL
+;*
+;* /1 = Matrix A
+;* /2 = Matrix B
+;* /3 = Matrix C
+;*
+;* Sets pointers and calls MAT4_MUL.
+;********************************************
+
+        .macro CALL_MAT4_MUL
+
+        lda #<\1
+        sta MAT4_A_PTR
+        lda #>\1
+        sta MAT4_A_PTR+1
+
+        lda #<\2
+        sta MAT4_B_PTR
+        lda #>\2
+        sta MAT4_B_PTR+1
+
+        lda #<\3
+        sta MAT4_C_PTR
+        lda #>\3
+        sta MAT4_C_PTR+1
+
+        jsr MAT4_MUL
+
+        .endm
+ 
+ ; CALL_FIX16_MUL operand_A, operand_B, destination
+
+        .MACRO CALL_FIX16_MUL
+
+        lda #<\1
+        sta FIX16_A_PTR
+        lda #>\1
+        sta FIX16_A_PTR+1
+
+        lda #<\2
+        sta FIX16_B_PTR
+        lda #>\2
+        sta FIX16_B_PTR+1
+
+        lda #<\3
+        sta FIX16_RESULT_PTR
+        lda #>\3
+        sta FIX16_RESULT_PTR+1
+
+        jsr FIX16_MUL
+
+        .ENDM
+        
+        
+
+;********************************************
+;* CALL_MAT4_VECTOR_MUL
+;*
+;* /1 = Matrix address
+;* /2 = Input vector address
+;* /3 = Output vector address
+;********************************************
+
+        .MACRO CALL_MAT4_VECTOR_MUL
+
+        lda #<\1
+        sta MAT4_MATRIX_PTR
+        lda #>\1
+        sta MAT4_MATRIX_PTR+1
+
+        lda #<\2
+        sta MAT4_VIN_PTR
+        lda #>\2
+        sta MAT4_VIN_PTR+1
+
+        lda #<\3
+        sta MAT4_VOUT_PTR
+        lda #>\3
+        sta MAT4_VOUT_PTR+1
+
+        jsr MAT4_VECTOR_MUL
+
+        .ENDM
+        
 .print Pop
+
+        

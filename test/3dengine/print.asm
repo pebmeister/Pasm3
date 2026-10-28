@@ -220,7 +220,7 @@ DisplayResults:
         ; Dynamically set vector letter ('A', 'B', 'C') based on @CUR_VEC index
         lda @CUR_VEC
         clc
-        adc #'A'
+        adc #'C'
         sta @VEC_NUM
 
         lda #<@MESSAGE
@@ -241,26 +241,33 @@ DisplayResults:
         sta @VEC_CUR_COL
         
 @Vec_Col_Loop:
-        lda @VEC_CUR_COL
-        cmp #3 
-        bne @continue
 
-        inc ROW
-        ldx ROW        
-        ldy #0
-        clc
-        jsr PLOT
-
-@continue        
         ; Print Element
         jsr FORMAT_FIX16
         lda #<FIX_STRING_BUF
         ldy #>FIX_STRING_BUF
         jsr STROUT
+   
+        ldy @PRINT_COL
+        beq @continue
+
+        inc ROW
+        ldx ROW
+        clc
+        jsr PLOT
         
+        ldy #0
+        jmp @incPtr
+
+ @continue           
         lda #<@SPC
         ldy #>@SPC
-        jsr STROUT
+        jsr STROUT      
+        ldy @PRINT_COL
+        iny
+
+@incPtr        
+        sty @PRINT_COL
 
         ; Advance pointer by 4 bytes for next element
         ADD16I FIXPTR, 4, FIXPTR

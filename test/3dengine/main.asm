@@ -1,371 +1,349 @@
 
+;********************************************
+;* GET_SINE                                 *
+;* Lookup 16.16 Sine value from table       *
+;* \1 Angle (8-bit index 0-255)             *
+;* \2 Destination (32-bit variable)         *
+;* Destroys A, Y, FIXPTR, TEMP16            *
+;********************************************
+        .macro GET_SINE
+        lda \1
+        jsr LookupSineTable
+        ldy #0
+        lda (FIXPTR),y
+        sta \2
+        iny
+        lda (FIXPTR),y
+        sta \2+1
+        iny
+        lda (FIXPTR),y
+        sta \2+2
+        iny
+        lda (FIXPTR),y
+        sta \2+3
+        .endm
+
+
+;********************************************
+;* GET_COSINE                               *
+;* Lookup 16.16 Cosine value from table     *
+;* (\+64 phase shift for 90° cosine offset) *
+;* \1 Angle (8-bit index 0-255)             *
+;* \2 Destination (32-bit variable)         *
+;* Destroys A, Y, FIXPTR, TEMP16            *
+;********************************************
+        .macro GET_COSINE
+        lda \1
+        clc
+        adc #64
+        jsr LookupSineTable
+        ldy #0
+        lda (FIXPTR),y
+        sta \2
+        iny
+        lda (FIXPTR),y
+        sta \2+1
+        iny
+        lda (FIXPTR),y
+        sta \2+2
+        iny
+        lda (FIXPTR),y
+        sta \2+3
+        .endm
+
+;********************************************
+;* CALL_MAT4_MUL
+;*
+;* /1 = Matrix A
+;* /2 = Matrix B
+;* /3 = Matrix C
+;*
+;* Sets pointers and calls MAT4_MUL.
+;********************************************
+
+        .macro CALL_MAT4_MUL
+
+        lda #<\1
+        sta MAT4_A_PTR
+        lda #>\1
+        sta MAT4_A_PTR+1
+
+        lda #<\2
+        sta MAT4_B_PTR
+        lda #>\2
+        sta MAT4_B_PTR+1
+
+        lda #<\3
+        sta MAT4_C_PTR
+        lda #>\3
+        sta MAT4_C_PTR+1
+
+        jsr MAT4_MUL
+
+        .endm
+ 
+ ; CALL_FIX16_MUL operand_A, operand_B, destination
+
+        .macro CALL_FIX16_MUL
+
+        lda #<\1
+        sta FIX16_A_PTR
+        lda #>\1
+        sta FIX16_A_PTR+1
+
+        lda #<\2
+        sta FIX16_B_PTR
+        lda #>\2
+        sta FIX16_B_PTR+1
+
+        lda #<\3
+        sta FIX16_RESULT_PTR
+        lda #>\3
+        sta FIX16_RESULT_PTR+1
+
+        jsr FIX16_MUL
+
+        .endm
+        
+       
+;********************************************
+;* CALL_MAT4_VECTOR_MUL
+;*
+;* /1 = Matrix address
+;* /2 = Input vector address
+;* /3 = Output vector address
+;********************************************
+
+        .macro CALL_MAT4_VECTOR_MUL
+
+        lda #<\1
+        sta MAT4_MATRIX_PTR
+        lda #>\1
+        sta MAT4_MATRIX_PTR+1
+
+        lda #<\2
+        sta MAT4_VIN_PTR
+        lda #>\2
+        sta MAT4_VIN_PTR+1
+
+        lda #<\3
+        sta MAT4_VOUT_PTR
+        lda #>\3
+        sta MAT4_VOUT_PTR+1
+
+        jsr MAT4_VECTOR_MUL
+
+        .endm
+        
+        
 ; ====================================================
 ; Minimal Fixed-Point Print Baseline
 ; ====================================================
         .basic_hdr
        
-        ; jsr ClearScreen
-        ; lda #0
-        ; sta ROW        
-        ; jsr MatMulMatrixTest
-        ; jsr RunYRotationTest
-        ; jsr RunXRotationTest
-        ; jsr RunZRotationTest
-        ; jsr RunGeneralRotationTest
+        jsr CLEARSCREEN
         
-        jsr Test_SingleProjection
+        lda #0
+        sta ROW
+        
+        jsr new_test
+ 
 @wait
         jmp @wait
+
         
+new_test
+        ;lda #32 
+        ;sta ROT_X_ANGLE
+        ;jsr ROTATION_X
+        ;lda #32 
+        ;sta ROT_Y_ANGLE
+        ;jsr ROTATION_Y
+        ;lda #32 
+        ;sta ROT_Z_ANGLE
+        ;jsr ROTATION_Z
 
-MatMulMatrixTest:
-        lda #3
-        sta MAT_M       ; Rows of A = 3
-        sta MAT_K       ; Cols of A / Rows of B = 3
-        lda #1
-        sta MAT_N       ; Cols of B = 1
-
-        lda #<TestMatrixA
-        sta PTR_MAT_A
-        lda #>TestMatrixA
-        sta PTR_MAT_A+1
-
-        lda #<TestVectorB
-        sta PTR_MAT_B
-        lda #>TestVectorB
-        sta PTR_MAT_B+1
-
-        lda #<ResultVectorC
-        sta PTR_MAT_C
-        lda #>ResultVectorC
-        sta PTR_MAT_C+1
-
-        jsr MAT_MUL_FIX16
-        
-; set up to print the vectors
-        lda #3
-        sta NUM_VECS
-        
-        lda #3
-        ldx #0
-@set_rows_loop:
-        sta VEC_ROWS, x
-        inx
-        cpx #3
-        bne @set_rows_loop
-
-        lda #3
-        sta VEC_COLS
-        lda #1
-        sta VEC_COLS + 1
-        sta VEC_COLS + 2
-        
-        ; Start pointer at Matrix A
-        lda #<TestMatrixA
-        sta FIXPTR
-        lda #>TestMatrixA
-        sta FIXPTR + 1
-
-        jsr DisplayResults
+        jsr Test_Combined_Rotation
 
         rts
-        
-; ====================================================
-; Test Y-Axis Rotation with TestVectorB
-; ====================================================
-RunYRotationTest:
-        ; 1. Generate Y rotation matrix for angle 64 (90 degrees) into RotMatrixY
-        lda #64
-        jsr BUILD_ROT_Y
-
-        ; 2. Set up Matrix Multiplication: RotMatrixY * TestVectorB -> ResultVectorC
-        lda #<RotMatrixY
-        sta PTR_MAT_A
-        lda #>RotMatrixY
-        sta PTR_MAT_A+1
-
-        lda #<TestVectorB
-        sta PTR_MAT_B
-        lda #>TestVectorB
-        sta PTR_MAT_B+1
-
-        lda #<ResultVectorC
-        sta PTR_MAT_C
-        lda #>ResultVectorC
-        sta PTR_MAT_C+1
-
-        lda #3                  ; K = 3 (inner matrix dimension)
-        sta MAT_K
-        lda #3                  ; M = 3 (number of rows)
-        sta MAT_M
-
-        jsr MAT_MUL_FIX16       ; Perform 3x3 * 3x1 multiplication
-
-        ; 3. Configure DisplayResults for the resulting 3x1 vector
-        lda #1                  ; 1 vector/matrix to display
-        sta NUM_VECS
-        
-        lda #3                  ; 3 rows in the result vector
-        ldx #0
-@set_res_rows:
-        sta VEC_ROWS, x
-        inx
-        cpx #1                  ; For our 1 vector
-        bne @set_res_rows
-
-        lda #1                  ; 1 column for the vector
-        sta VEC_COLS
-
-        ; Point FIXPTR at our output buffer
-        lda #<ResultVectorC
-        sta FIXPTR
-        lda #>ResultVectorC
-        sta FIXPTR+1
-
-        ; Print the rotated vector to the screen
-        jsr DisplayResults
-        rts
-        
-; ====================================================
-; Test X-Axis Rotation with TestVectorB
-; ====================================================
-RunXRotationTest:
-        ; 1. Generate X rotation matrix for angle 64 (90 degrees)
-        lda #64
-        jsr BUILD_ROT_X
-
-        ; 2. Set up Matrix Multiplication: RotMatrix * TestVectorB -> RotMatrixX
-        lda #<RotMatrixX
-        sta PTR_MAT_A
-        lda #>RotMatrixX
-        sta PTR_MAT_A+1
 
 
-        lda #<TestVectorB
-        sta PTR_MAT_B
-        lda #>TestVectorB
-        sta PTR_MAT_B+1
+Test_Vector_Multiply:
 
-        lda #<ResultVectorC
-        sta PTR_MAT_C
-        lda #>ResultVectorC
-        sta PTR_MAT_C+1
-
-        lda #3                  ; K = 3
-        sta MAT_K
-        lda #3                  ; M = 3
-        sta MAT_M
-
-        jsr MAT_MUL_FIX16
-
-        ; 3. Configure DisplayResults
-        lda #1
-        sta NUM_VECS
-        
-        lda #3
-        ldx #0
-@set_res_rows_x:
-        sta VEC_ROWS, x
-        inx
-        cpx #1
-        bne @set_res_rows_x
-
-        lda #1
-        sta VEC_COLS
-
-        lda #<ResultVectorC
-        sta FIXPTR
-        lda #>ResultVectorC
-        sta FIXPTR+1
-
-        jsr DisplayResults
-        rts
-        
- ; ====================================================
-; Test Z-Axis Rotation with TestVectorB
-; ====================================================
-RunZRotationTest:
-        ; 1. Generate Z rotation matrix for angle 64 (90 degrees)
-        lda #64
-        jsr BUILD_ROT_Z
-
-        ; 2. Set up Matrix Multiplication: RotMatrix * TestVectorB -> RotMatrixZ
-        lda #<RotMatrixZ
-        sta PTR_MAT_A
-        lda #>RotMatrixZ
-        sta PTR_MAT_A+1
-
-        lda #<TestVectorB
-        sta PTR_MAT_B
-        lda #>TestVectorB
-        sta PTR_MAT_B+1
-
-        lda #<ResultVectorC
-        sta PTR_MAT_C
-        lda #>ResultVectorC
-        sta PTR_MAT_C+1
-
-        lda #3                  ; K = 3
-        sta MAT_K
-        lda #3                  ; M = 3
-        sta MAT_M
-
-        jsr MAT_MUL_FIX16
-
-        ; 3. Configure DisplayResults
-        lda #1
-        sta NUM_VECS
-        
-        lda #3
-        ldx #0
-@set_res_rows_z:
-        sta VEC_ROWS, x
-        inx
-        cpx #1
-        bne @set_res_rows_z
-
-        lda #1
-        sta VEC_COLS
-
-        lda #<ResultVectorC
-        sta FIXPTR
-        lda #>ResultVectorC
-        sta FIXPTR+1
-
-        jsr DisplayResults
-        rts
-      
-; ====================================================
-; Test General Euler Rotation with TestVectorB
-; ====================================================
-RunGeneralRotationTest:
-        ; 1. Set sample Euler angles (e.g., X=64, Y=32, Z=16)
-        lda #64
-        sta AngleX
         lda #32
-        sta AngleY
-        lda #16
-        sta AngleZ
+        sta ROT_Z_ANGLE
+        jsr ROTATION_Z
 
-        ; 2. Build the combined rotation matrix into RotMatrix
-        jsr BUILD_ROT_GENERAL
-
-        ; 3. Set up Matrix Multiplication: RotMatrix * TestVectorB -> ResultVectorC
-        lda #<RotMatrix
-        sta PTR_MAT_A
-        lda #>RotMatrix
-        sta PTR_MAT_A+1
-
-        lda #<TestVectorB
-        sta PTR_MAT_B
-        lda #>TestVectorB
-        sta PTR_MAT_B+1
-
-        lda #<ResultVectorC
-        sta PTR_MAT_C
-        lda #>ResultVectorC
-        sta PTR_MAT_C+1
-
-        lda #3                  ; K = 3 (inner matrix dimension)
-        sta MAT_K
-        lda #3                  ; M = 3 (number of rows)
-        sta MAT_M
-
-        jsr MAT_MUL_FIX16       ; Perform combined matrix * vector multiplication
-
-        ; 4. Configure DisplayResults for the resulting 3x1 vector
-        lda #1                  ; 1 vector/matrix to display
-        sta NUM_VECS
-        
-        lda #3                  ; 3 rows in the result vector
+        ; Copy rotation matrix from MAT_B to MAT_A.
         ldx #0
-@set_res_rows_gen:
-        sta VEC_ROWS, x
+@CopyRotation:
+        lda MAT_B,x
+        sta MAT_A,x
         inx
-        cpx #1                  ; For our 1 vector
-        bne @set_res_rows_gen
+        cpx #64
+        bne @CopyRotation
 
-        lda #1                  ; 1 column for the vector
-        sta VEC_COLS
+        CALL_MAT4_VECTOR_MUL MAT_A, VEC_IN, VEC_OUT
 
-        ; Point FIXPTR at our output buffer
-        lda #<ResultVectorC
-        sta FIXPTR
-        lda #>ResultVectorC
-        sta FIXPTR+1
+        ; Display VEC_OUT using your existing
+        ; vector-printing routine.
 
-        ; Print the transformed vector to the screen
-        jsr DisplayResults
+        PRINT_VECTOR VEC_OUT
         rts
-
-Start3D:
-
-        jsr HGROn
-
-@MainFrameLoop:
-        lda #1                  ; White foreground
-        jsr _HGRFColor
-        lda #0                  ; Black background
-        jsr _HGRBColor
-        jsr HGRCls
-
-        inc AngleX
-        jsr BUILD_ROT_GENERAL
-        jsr TransformAndProjectVertices
-
-        ; --- DIAGNOSTIC: Plot 8 vertex dots instead of edges ---
-        jsr PlotVertexDots
-
-        jmp @MainFrameLoop
         
  
+Test_Vector_Rotations:
 
- 
- ; ====================================================
-; ISOLATED PROJECTION TEST (Run Once)
-; ====================================================
-Test_SingleProjection:
-        jsr HGROn
-
-        lda #1                  ; White foreground
-        jsr _HGRFColor
-        lda #0                  ; Black background
-        jsr _HGRBColor
-
-        jsr HGRCls
-
-
-; 1. Build the rotation matrices
+        ; ====================================
+        ; Test 1: Rotate around X by 45 degrees
+        ; ====================================
         lda #32
-        sta AngleX
-        lda #0
-        sta AngleY
-        sta AngleZ
-        jsr BUILD_ROT_GENERAL
+        sta ROT_X_ANGLE
+        jsr ROTATION_X
 
-        ; 2. CRITICAL: Explicitly point PTR_MAT_A to the final master RotMatrix
-        lda #<RotMatrix
-        sta PTR_MAT_A
-        lda #>RotMatrix
-        sta PTR_MAT_A+1
+        jsr Copy_MAT_B_To_MAT_A
 
-        ; 3. Point PTR_MAT_B to Vertex 1 (CubeVertices + 6)
-        lda #<(CubeVertices + 6)
-        sta PTR_MAT_B
-        lda #>(CubeVertices + 6)
-        sta PTR_MAT_B+1
+        CALL_MAT4_VECTOR_MUL MAT_A, VEC_IN, VEC_OUT
 
-        ; 4. Rotate Vertex 1
-        jsr RotateVertex
+        ; Display X-axis result
+        ; Expected: 1, 0, 0, 1
+        PRINT_VECTOR VEC_OUT
 
-        ; 5. Project the rotated coordinates
-        jsr ProjectToScreen
 
-        ; 6. Plot using the verified contract
-        ldx YCOL
+        ; ====================================
+        ; Test 2: Rotate around Y by 45 degrees
+        ; ====================================
+        lda #32
+        sta ROT_Y_ANGLE
+        jsr ROTATION_Y
+
+        jsr Copy_MAT_B_To_MAT_A
+
+        MAT4_VECTOR_MUL MAT_A, VEC_IN, VEC_OUT
+
+        ; Display Y-axis result
+        ; Expected: 0.70710, 0, -0.70710, 1
+        PRINT_VECTOR VEC_OUT
+
+
+        ; ====================================
+        ; Test 3: Rotate around Z by 45 degrees
+        ; ====================================
+        lda #32
+        sta ROT_Z_ANGLE
+        jsr ROTATION_Z
+
+        jsr Copy_MAT_B_To_MAT_A
+
+        MAT4_VECTOR_MUL MAT_A, VEC_IN, VEC_OUT
+
+        ; Display Z-axis result
+        ; Expected: 0.70710, 0.70710, 0, 1
+        PRINT_VECTOR VEC_OUT
+
+        rts
+
+
+; ============================================
+; Copy 64-byte MAT_B to MAT_A
+; ============================================
+Copy_MAT_B_To_MAT_A:
+        ldx #0
+@CopyLoop:
+        lda MAT_B,x
+        sta MAT_A,x
+        inx
+        cpx #64
+        bne @CopyLoop
+        rts
+
+
+
+
+; ============================================
+; Test_Combined_Rotation:
+; ============================================
+Test_Combined_Rotation___
+
+        ; Build X rotation
+        lda #32
+        sta ROT_X_ANGLE
+        jsr ROTATION_X
+
+        ; Save Rx
+        MAT4_COPY MAT_B, MAT_A
+
+        ; Build Y rotation
+        lda #32
+        sta ROT_Y_ANGLE
+        jsr ROTATION_Y
+
+        ; Calculate Ry * Rx
+        CALL_MAT4_MUL MAT_B, MAT_A, MAT_C
+
+        ; Save intermediate result
+        MAT4_COPY MAT_C, MAT_ROT_XY
+
+        ; Build Z rotation
+        lda #32
+        sta ROT_Z_ANGLE
+        jsr ROTATION_Z
+
+        ; Save Rz
+        MAT4_COPY MAT_B, MAT_A
+
+        ; Restore Ry * Rx
+        MAT4_COPY MAT_ROT_XY, MAT_B
+
+        ; Calculate Rz * (Ry * Rx)
+        CALL_MAT4_MUL MAT_A, MAT_B, MAT_C
+
+        ; Display final matrix
+        PRINT_MAT MAT_C, 4
+
+        rts
         
-        jsr _Plot
+      ;********************************************
+;* Test_Combined_Rotation
+;* Diagnose final multiplication inputs
+;********************************************
 
-@Halt:
-        jmp @Halt
-        
+Test_Combined_Rotation:
+
+        ; Build X rotation
+        lda #32
+        sta ROT_X_ANGLE
+        jsr ROTATION_X
+
+        ; Save Rx
+        MAT4_COPY MAT_B, MAT_A
+
+        ; Build Y rotation
+        lda #32
+        sta ROT_Y_ANGLE
+        jsr ROTATION_Y
+
+        ; Calculate Ry * Rx
+        MAT4_MUL MAT_B, MAT_A, MAT_C
+
+        ; Save intermediate matrix
+        MAT4_COPY MAT_C, MAT_ROT_XY
+
+        ; Build Z rotation
+        lda #32
+        sta ROT_Z_ANGLE
+        jsr ROTATION_Z
+
+        ; Save Rz
+        MAT4_COPY MAT_B, MAT_A
+
+        ; Restore intermediate matrix
+        MAT4_COPY MAT_ROT_XY, MAT_B
+
+        ; Calculate Rz * (Ry * Rx)
+        MAT4_MUL MAT_A, MAT_B, MAT_C
+
+        ; Print only the final matrix
+        PRINT_MAT MAT_C, 4
+
+        rts
