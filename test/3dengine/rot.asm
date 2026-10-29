@@ -27,8 +27,19 @@ ROTATION_Z:
         sbc ROT_SINE+3
         sta ROT_NEG_SINE+3
 
-        ; MAT_B row 0:
-        ; cos, -sin, 0, 0
+        ; Clear entire 64-byte MAT_B buffer to 0
+        ldx #0
+@ClearMat:
+        lda #0
+        sta MAT_B,x
+        sta MAT_B+16,x
+        sta MAT_B+32,x
+        sta MAT_B+48,x
+        inx
+        cpx #16
+        bne @ClearMat
+
+        ; MAT_B row 0: [cos, -sin, 0, 0]
         ldx #0
 @CopyCos0:
         lda ROT_COSINE,x
@@ -45,8 +56,7 @@ ROTATION_Z:
         cpx #4
         bne @CopyNegSin
 
-        ; MAT_B row 1:
-        ; sin, cos, 0, 0
+        ; MAT_B row 1: [sin, cos, 0, 0]
         ldx #0
 @CopySin:
         lda ROT_SINE,x
@@ -63,8 +73,25 @@ ROTATION_Z:
         cpx #4
         bne @CopyCos1
 
+        ; MAT_B row 2: [0, 0, 1.0, 0] -> 1.0 at offset 40 (Row 2, Col 2)
+        ldx #0
+@CopyOne2:
+        lda MAT_I+40,x
+        sta MAT_B+40,x
+        inx
+        cpx #4
+        bne @CopyOne2
+
+        ; MAT_B row 3: [0, 0, 0, 1.0] -> 1.0 at offset 60 (Row 3, Col 3)
+        ldx #0
+@CopyOne3:
+        lda MAT_I+60,x
+        sta MAT_B+60,x
+        inx
+        cpx #4
+        bne @CopyOne3
+
         rts
-        
         
  ;********************************************
 ;* ROTATION_Y
@@ -263,7 +290,7 @@ Test_Vector_Rotation:
         sta MAT_B+50      ; W = 1.0 (row 3, column 0)
 
         ; Multiply rotation matrix by vector container.
-        MAT4_MUL MAT_A, MAT_B, MAT_C
+        CALL_MAT4_MUL MAT_A, MAT_B, MAT_C
 
         ; Display the result.
         PRINT_MAT MAT_C, 3

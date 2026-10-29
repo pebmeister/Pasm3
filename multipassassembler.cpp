@@ -141,6 +141,9 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                         .statement_id = stmt_key
                     });
                     anon_idmap[stmt_key] = anonymous_labels.size() - 1;
+                    
+//                    std::cout << std::format("SYM {:10} changed\n", name);
+                    
                     changed = true;
                 } else {
                     size_t index = it->second;
@@ -164,8 +167,12 @@ void MultiPassAssembler::ProcessStatement(std::vector<std::unique_ptr<Statement>
                         std::format("Symbol '{}' is already defined as a variable at ${:04X} File: {} Line: {}", 
                             name, pc, src_mgr.GetFileName(label_stmt->file), label_stmt->line));
                 }
-
-                changed |= symbols_.Define(name, pc, { label_stmt->file, label_stmt->line });
+                                
+                auto waschanged = symbols_.Define(name, pc, { label_stmt->file, label_stmt->line });
+//                if (waschanged) {
+//                    std::cout << std::format("SYM {:10} changed\n", name);
+//                }
+                changed |= waschanged;
                 new_statements.push_back(std::move(stmt));
             }
             break;

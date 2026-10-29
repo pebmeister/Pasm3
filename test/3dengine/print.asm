@@ -1,4 +1,21 @@
-
+; ====================================================
+; SAFE_STROUT (KERNAL-Backed Drop-in Replacement)
+; Overrides ROM $AB1E so all existing jsr STROUT calls 
+; safely print null-terminated strings via KERNAL $FFEE.
+; ====================================================
+SAFE_STROUT:
+        sta STR_PTR
+        sty STR_PTR+1
+        ldy #0
+@PrintLoop:
+        lda (STR_PTR),y
+        beq @Done
+        jsr CHROUT       ; KERNAL CHROUT prints character/control code
+        iny
+        bne @PrintLoop
+@Done:
+        rts
+        
 ; ====================================================
 ; FORMAT_FIX16 Routine (Space-padded for alignment)
 ; ====================================================
@@ -204,112 +221,117 @@ U16_TO_4_ASCII:
         rts
         
 ; ====================================================
-; DisplayResults (Multi-Vector Loop Fixed)
+; DisplayResults (C64 40-Column Wrapped Grid Printer)
+; All internal state and strings scoped as local labels
+; ====================================================
+; ====================================================
+; DisplayResults (C64 40-Column Wrapped Grid Printer)
+; Uses a local pointer copy so FIXPTR is never mutated
 ; ====================================================
 DisplayResults:
-        lda #0
-        sta @CUR_VEC
-        sta @PRINT_COL
-        
-@Vec_Loop:
-        ldx ROW
-        ldy #0
-        clc
-        jsr PLOT
-
-        ; Dynamically set vector letter ('A', 'B', 'C') based on @CUR_VEC index
-        lda @CUR_VEC
-        clc
-        adc #'C'
-        sta @VEC_NUM
-
-        lda #<@MESSAGE
-        ldy #>@MESSAGE
-        jsr STROUT
+        ; Copy master FIXPTR to local working pointers (@CurrPtr)
+        lda FIXPTR
+        sta @CurrPtr
+        lda FIXPTR+1
+        sta @CurrPtr+1
 
         lda #0
-        sta @VEC_CUR_ROW
-    
-@Vec_Row_Loop:
-        inc ROW
-        ldx ROW
-        ldy #0
+        sta @RowCnt
+
+@MatrixRowLoop:
+        lda @RowCnt
+        asl
+        clc
+        adc #3
+        sta @ScrRow
+
+        ; --- PART A: Print Columns 0 & 1 on Screen Line N ---
+        ldx @ScrRow
+        ldy #2
         clc
         jsr PLOT
 
         lda #0
-        sta @VEC_CUR_COL
-        
-@Vec_Col_Loop:
+        sta @ColCnt
+@SubColLoop1:
+        ; Temporarily point FIXPTR to our walking @CurrPtr for FORMAT_FIX16
+        lda @CurrPtr
+        sta FIXPTR
+        lda @CurrPtr+1
+        sta FIXPTR+1
 
-        ; Print Element
         jsr FORMAT_FIX16
+
         lda #<FIX_STRING_BUF
         ldy #>FIX_STRING_BUF
-        jsr STROUT
-   
-        ldy @PRINT_COL
-        beq @continue
+        jsr SAFE_STROUT
 
-        inc ROW
-        ldx ROW
-        clc
-        jsr PLOT
-        
-        ldy #0
-        jmp @incPtr
-
- @continue           
         lda #<@SPC
         ldy #>@SPC
-        jsr STROUT      
-        ldy @PRINT_COL
-        iny
+        jsr SAFE_STROUT
 
-@incPtr        
-        sty @PRINT_COL
+        ; Advance local working pointer by 4 bytes (leaves master FIXPTR safe)
+        ADD16I @CurrPtr, 4, @CurrPtr
 
-        ; Advance pointer by 4 bytes for next element
-        ADD16I FIXPTR, 4, FIXPTR
-        
-        inc @VEC_CUR_COL
-        ldx @CUR_VEC
-        lda @VEC_CUR_COL
-        cmp VEC_COLS,x
-        bne @Vec_Col_Loop
+        inc @ColCnt
+        lda @ColCnt
+        cmp #2
+        bne @SubColLoop1
 
-        inc @VEC_CUR_ROW
-        ldx @CUR_VEC
-        lda @VEC_CUR_ROW
-        cmp VEC_ROWS,x
-        bne @Vec_Row_Loop
-       
-        ADD8I ROW,2,ROW
-        inc @CUR_VEC
-        lda @CUR_VEC
-        cmp NUM_VECS
-        beq @exit
-        jmp @Vec_Loop
-@exit        
+        ; --- PART B: Print Columns 2 & 3 on Screen Line N + 1 ---
+        lda @ScrRow
+        clc
+        adc #1
+        tax
+        ldy #2
+        clc
+        jsr PLOT
+
+        lda #2
+        sta @ColCnt
+@SubColLoop2:
+        lda @CurrPtr
+        sta FIXPTR
+        lda @CurrPtr+1
+        sta FIXPTR+1
+
+        jsr FORMAT_FIX16
+
+        lda #<FIX_STRING_BUF
+        ldy #>FIX_STRING_BUF
+        jsr SAFE_STROUT
+
+        lda #<@SPC
+        ldy #>@SPC
+        jsr SAFE_STROUT
+
+        ADD16I @CurrPtr, 4, @CurrPtr
+
+        inc @ColCnt
+        lda @ColCnt
+        cmp #4
+        bne @SubColLoop2
+
+        inc @RowCnt
+        lda @RowCnt
+        cmp #4
+        bne @MatrixRowLoop
         rts
 
-@CUR_VEC
-        .byte 0       
-@VEC_CUR_ROW
-        .byte 0
-@VEC_CUR_COL
-        .byte 0
+; Local state variables
+@RowCnt   .byte 0
+@ColCnt   .byte 0
+@ScrRow   .byte 0
+@CurrPtr  .ds 2       ; Local pointer copy protecting master FIXPTR
+@SPC      .byte "  ", 0
 
-@PRINT_COL .byte 0
-@MESSAGE
-        .byte 05, "VECTOR "
-@VEC_NUM
-        .byte "A", 0
-@SPC    .byte " ", 0
-
+; ====================================================
+; CLEARSCREEN
+; ====================================================
 CLEARSCREEN:
-        lda #<CLS
-        ldy #>CLS
-        jsr STROUT              ; Clear screen    
+        lda #<@CLS
+        ldy #>@CLS
+        jsr SAFE_STROUT
         rts
-        
+
+@CLS      .byte 147, 5, 0

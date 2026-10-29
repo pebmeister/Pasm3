@@ -3,32 +3,34 @@
 ;*
 ;* Calculates C = A * B
 ;*
-;* Before calling:
-;*   MAT4_A_PTR = address of Matrix A
-;*   MAT4_B_PTR = address of Matrix B
-;*   MAT4_C_PTR = address of Matrix C
+;* Matrix layout: 4x4 row-major
+;* Each element: signed 16.16, 4 bytes
+;* Each matrix: 64 bytes
 ;*
-;* Usage:
-;*   JSR MAT4_MUL
+;* Inputs:
+;*   MAT4_A_PTR -> Matrix A
+;*   MAT4_B_PTR -> Matrix B
+;*   MAT4_C_PTR -> Matrix C
 ;*
-;* MAT4_C_PTR must not overlap A or B.
+;* Uses FIX16_MUL and ADD_FIX16.
+;* Matrix C must not overlap A or B.
 ;********************************************
 
 MAT4_MUL:
 
-        ; Initialize row pointer to A
+        ; Initialize row pointer
         lda MAT4_A_PTR
         sta MAT_AROW
         lda MAT4_A_PTR+1
         sta MAT_AROW+1
 
-        ; Initialize column pointer to B
+        ; Initialize B column pointer
         lda MAT4_B_PTR
         sta MAT_BCOL
         lda MAT4_B_PTR+1
         sta MAT_BCOL+1
 
-        ; Initialize output pointer to C
+        ; Initialize output pointer
         lda MAT4_C_PTR
         sta MAT_CPTR
         lda MAT4_C_PTR+1
@@ -44,19 +46,19 @@ M4M_RowLoop:
 
 M4M_ColLoop:
 
-        ; A pointer starts at the current row
+        ; A pointer starts at current row
         lda MAT_AROW
         sta MAT_APTR
         lda MAT_AROW+1
         sta MAT_APTR+1
 
-        ; B pointer starts at the current column
+        ; B pointer starts at current column
         lda MAT_BCOL
         sta MAT_BPTR
         lda MAT_BCOL+1
         sta MAT_BPTR+1
 
-        ; Clear accumulator
+        ; Clear 32-bit accumulator
         lda #0
         sta MAT_ACCUM
         sta MAT_ACCUM+1
@@ -68,37 +70,29 @@ M4M_ColLoop:
 
 M4M_InnerLoop:
 
-        ; Copy A[row][k]
-        ldy #0
-        lda (MAT_APTR),y
-        sta MAT_MUL_A
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+1
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+2
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+3
+        ; Set FIX16 operand A pointer
+        lda MAT_APTR
+        sta FIX16_A_PTR
+        lda MAT_APTR+1
+        sta FIX16_A_PTR+1
 
-        ; Copy B[k][col]
-        ldy #0
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+1
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+2
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+3
+        ; Set FIX16 operand B pointer
+        lda MAT_BPTR
+        sta FIX16_B_PTR
+        lda MAT_BPTR+1
+        sta FIX16_B_PTR+1
 
-        ; Multiply and accumulate
-        MUL_FIX16 MAT_MUL_A, MAT_MUL_B, MAT_PRODUCT
-        ADD_FIX16 MAT_PRODUCT, MAT_ACCUM, MAT_ACCUM
+        ; Store product in MAT_PRODUCT
+        lda #<MAT_PRODUCT
+        sta FIX16_RESULT_PTR
+        lda #>MAT_PRODUCT
+        sta FIX16_RESULT_PTR+1
+
+        ; Product = A[row][k] * B[k][col]
+        jsr FIX16_MUL
+
+        ; Accumulate product
+        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
 
         ; A advances by 4 bytes
         clc
@@ -107,6 +101,7 @@ M4M_InnerLoop:
         sta MAT_APTR
         bcc M4M_APtrReady
         inc MAT_APTR+1
+
 M4M_APtrReady:
 
         ; B advances by 16 bytes
@@ -116,6 +111,7 @@ M4M_APtrReady:
         sta MAT_BPTR
         bcc M4M_BPtrReady
         inc MAT_BPTR+1
+
 M4M_BPtrReady:
 
         inc MAT_K
@@ -123,7 +119,7 @@ M4M_BPtrReady:
         cmp #4
         bne M4M_InnerLoop
 
-        ; Store result in C[row][col]
+        ; Store C[row][col]
         ldy #0
         lda MAT_ACCUM
         sta (MAT_CPTR),y
@@ -144,6 +140,7 @@ M4M_BPtrReady:
         sta MAT_CPTR
         bcc M4M_CPtrReady
         inc MAT_CPTR+1
+
 M4M_CPtrReady:
 
         ; B column advances by 4 bytes
@@ -153,6 +150,7 @@ M4M_CPtrReady:
         sta MAT_BCOL
         bcc M4M_BColReady
         inc MAT_BCOL+1
+
 M4M_BColReady:
 
         inc MAT_COL
@@ -160,16 +158,17 @@ M4M_BColReady:
         cmp #4
         bne M4M_ColLoop
 
-        ; A advances to the next row
+        ; A advances to next row
         clc
         lda MAT_AROW
         adc #16
         sta MAT_AROW
         bcc M4M_ARowReady
         inc MAT_AROW+1
+
 M4M_ARowReady:
 
-        ; Reset B column to the start of B
+        ; Reset B column to beginning of B
         lda MAT4_B_PTR
         sta MAT_BCOL
         lda MAT4_B_PTR+1
@@ -182,7 +181,8 @@ M4M_ARowReady:
 
         rts
         
- ;********************************************
+        
+;********************************************
 ;* FIX16_MUL
 ;*
 ;* Signed 16.16 fixed-point multiplication
@@ -371,7 +371,7 @@ F16M_StoreResult:
         rts
         
         
-  ;********************************************
+ ;********************************************
 ;* MAT4_VECTOR_MUL
 ;*
 ;* Calculates VOUT = Matrix * VIN
