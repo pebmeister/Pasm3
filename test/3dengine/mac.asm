@@ -364,3 +364,190 @@
         pla
         plp
         .endm
+
+
+;********************************************
+;*                                          *
+;* SET_SCALE X, Y, Z                        *
+;*                                          *
+;*                                          *
+;*  destroys a,x,y                          *
+;*                                          *
+;********************************************
+        .macro SET_SCALE
+
+        ; Copy X
+        lda \1
+        sta SCALE_X
+        lda \1 + 1
+        sta SCALE_X + 1
+        lda \1 + 2
+        sta SCALE_X + 2
+        lda \1 + 3
+        sta SCALE_X + 3
+
+        ; Copy Y
+        lda \2
+        sta SCALE_Y
+        lda \2 + 1
+        sta SCALE_Y + 1
+        lda \2 + 2
+        sta SCALE_Y + 2
+        lda \2 + 3
+        sta SCALE_Y + 3
+
+        ; Copy Z
+        lda \3
+        sta SCALE_Z
+        lda \3 + 1
+        sta SCALE_Z + 1
+        lda \3 + 2
+        sta SCALE_Z + 2
+        lda \3 + 3
+        sta SCALE_Z + 3
+
+        jsr BUILD_SCALING_MATRIX
+
+        .endm
+        
+        ; SET_SCALE_I X, Y, Z
+
+;********************************************
+;*                                          *
+;* SET_SCALE_I X, Y, Z                        *
+;*                                          *
+;*                                          *
+;*  destroys a,x,y                          *
+;*                                          *
+;********************************************
+        .macro SET_SCALE_I
+
+        ; X
+        lda #0
+        sta SCALE_X
+        sta SCALE_X + 1
+        lda #<\1
+        sta SCALE_X + 2
+        lda #>\1
+        sta SCALE_X + 3
+
+        ; Y
+        lda #0
+        sta SCALE_Y
+        sta SCALE_Y + 1
+        lda #<\2
+        sta SCALE_Y + 2
+        lda #>\2
+        sta SCALE_Y + 3
+
+        ; Z
+        lda #0
+        sta SCALE_Z
+        sta SCALE_Z + 1
+        lda #<\3
+        sta SCALE_Z + 2
+        lda #>\3
+        sta SCALE_Z + 3
+
+        jsr BUILD_SCALING_MATRIX
+
+        .endm
+        
+        
+;********************************************
+;*                                          *
+;* SET_TRANSLATION X, Y, Z                  *
+;*                                          *
+;********************************************
+        .macro SET_TRANSLATION
+
+        ; Copy X
+        lda \1
+        sta TRANS_X
+        lda \1 + 1
+        sta TRANS_X + 1
+        lda \1 + 2
+        sta TRANS_X + 2
+        lda \1 + 3
+        sta TRANS_X + 3
+
+        ; Copy Y
+        lda \2
+        sta TRANS_Y
+        lda \2 + 1
+        sta TRANS_Y + 1
+        lda \2 + 2
+        sta TRANS_Y + 2
+        lda \2 + 3
+        sta TRANS_Y + 3
+
+        ; Copy Z
+        lda \3
+        sta TRANS_Z
+        lda \3 + 1
+        sta TRANS_Z + 1
+        lda \3 + 2
+        sta TRANS_Z + 2
+        lda \3 + 3
+        sta TRANS_Z + 3
+
+        jsr BUILD_TRANSLATION_MATRIX
+
+        .endm
+        
+        
+;********************************************
+;*                                          *
+;* SET_TRANSLATION_I X, Y, Z                *
+;*                                          *
+;********************************************
+
+        .macro SET_TRANSLATION_I
+
+        ; X
+        lda #0
+        sta TRANS_X
+        sta TRANS_X + 1
+        lda #<\1
+        sta TRANS_X + 2
+        lda #>\1
+        sta TRANS_X + 3
+
+        ; Y
+        lda #0
+        sta TRANS_Y
+        sta TRANS_Y + 1
+        lda #<\2
+        sta TRANS_Y + 2
+        lda #>\2
+        sta TRANS_Y + 3
+
+        ; Z
+        lda #0
+        sta TRANS_Z
+        sta TRANS_Z + 1
+        lda #<\3
+        sta TRANS_Z + 2
+        lda #>\3
+        sta TRANS_Z + 3
+
+        jsr BUILD_TRANSLATION_MATRIX
+
+        .endm
+        
+         ; SET_ROTATION X, Y, Z
+
+        .macro SET_ROTATION
+
+        lda #\1
+        sta ROT_X_ANGLE
+
+        lda #\2
+        sta ROT_Y_ANGLE
+
+        lda #\3
+        sta ROT_Z_ANGLE
+
+        jsr BUILD_ROTATION_MATRIX
+
+        .endm

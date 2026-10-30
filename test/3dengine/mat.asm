@@ -547,3 +547,145 @@ MAT4_VECTOR_MUL:
 
 @M4V_Done:
         rts
+
+;********************************************
+;*
+;* BUILD_SCALING_MATRIX
+;*
+;********************************************
+BUILD_SCALING_MATRIX:
+
+        ; Clear all 64 bytes
+        ldx #0
+        lda #0
+
+@ClearLoop:
+        sta SCALING_MATRIX,x
+        inx
+        cpx #64
+        bne @ClearLoop
+
+        ; Set X scale (row 0, column 0)
+        lda SCALE_X
+        sta SCALING_MATRIX
+        lda SCALE_X + 1
+        sta SCALING_MATRIX + 1
+        lda SCALE_X + 2
+        sta SCALING_MATRIX + 2
+        lda SCALE_X + 3
+        sta SCALING_MATRIX + 3
+
+        ; Set Y scale (row 1, column 1)
+        lda SCALE_Y
+        sta SCALING_MATRIX + 20
+        lda SCALE_Y + 1
+        sta SCALING_MATRIX + 21
+        lda SCALE_Y + 2
+        sta SCALING_MATRIX + 22
+        lda SCALE_Y + 3
+        sta SCALING_MATRIX + 23
+
+        ; Set Z scale (row 2, column 2)
+        lda SCALE_Z
+        sta SCALING_MATRIX + 40
+        lda SCALE_Z + 1
+        sta SCALING_MATRIX + 41
+        lda SCALE_Z + 2
+        sta SCALING_MATRIX + 42
+        lda SCALE_Z + 3
+        sta SCALING_MATRIX + 43
+
+        ; Set W = 1.0 (row 3, column 3)
+        lda #0
+        sta SCALING_MATRIX + 60
+        sta SCALING_MATRIX + 61
+        lda #1
+        sta SCALING_MATRIX + 62
+        lda #0
+        sta SCALING_MATRIX + 63
+
+        rts
+        
+;********************************************
+;*
+;* BUILD_TRANSLATION_MATRIX
+;*
+;********************************************
+ BUILD_TRANSLATION_MATRIX:
+
+        ; Clear all 64 bytes
+        ldx #0
+        lda #0
+
+@ClearLoop:
+        sta TRANSLATION_MATRIX,x
+        inx
+        cpx #64
+        bne @ClearLoop
+
+        ; Row 0, column 0 = 1.0
+        lda #1
+        sta TRANSLATION_MATRIX + 2
+
+        ; Row 1, column 1 = 1.0
+        sta TRANSLATION_MATRIX + 22
+
+        ; Row 2, column 2 = 1.0
+        sta TRANSLATION_MATRIX + 42
+
+        ; Row 3, column 3 = 1.0
+        sta TRANSLATION_MATRIX + 62
+
+        ; Translation X (row 0, column 3)
+        lda TRANS_X
+        sta TRANSLATION_MATRIX + 12
+        lda TRANS_X + 1
+        sta TRANSLATION_MATRIX + 13
+        lda TRANS_X + 2
+        sta TRANSLATION_MATRIX + 14
+        lda TRANS_X + 3
+        sta TRANSLATION_MATRIX + 15
+
+        ; Translation Y (row 1, column 3)
+        lda TRANS_Y
+        sta TRANSLATION_MATRIX + 28
+        lda TRANS_Y + 1
+        sta TRANSLATION_MATRIX + 29
+        lda TRANS_Y + 2
+        sta TRANSLATION_MATRIX + 30
+        lda TRANS_Y + 3
+        sta TRANSLATION_MATRIX + 31
+
+        ; Translation Z (row 2, column 3)
+        lda TRANS_Z
+        sta TRANSLATION_MATRIX + 44
+        lda TRANS_Z + 1
+        sta TRANSLATION_MATRIX + 45
+        lda TRANS_Z + 2
+        sta TRANSLATION_MATRIX + 46
+        lda TRANS_Z + 3
+        sta TRANSLATION_MATRIX + 47
+
+        rts
+        
+BUILD_ROTATION_MATRIX:
+
+        ; Build X rotation
+        jsr ROTATION_X
+        MAT4_COPY MAT_B, ROT_X_MATRIX
+
+        ; Build Y rotation
+        jsr ROTATION_Y
+        MAT4_COPY MAT_B, ROT_Y_MATRIX
+
+        ; Build Z rotation
+        jsr ROTATION_Z
+        MAT4_COPY MAT_B, ROT_Z_MATRIX
+
+        ; Calculate RZ * RY
+        CALL_MAT4_MUL ROT_Z_MATRIX, ROT_Y_MATRIX, ROT_TEMP_MATRIX
+
+        ; Calculate (RZ * RY) * RX
+        CALL_MAT4_MUL ROT_TEMP_MATRIX, ROT_X_MATRIX, ROTATION_MATRIX
+
+        rts

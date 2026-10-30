@@ -6,34 +6,6 @@ PLOT    = $E50A
 CHROUT  = $FFD2
 
 ;********************************************
-;* MAT_Z - Zero matrix
-;********************************************
-MAT_Z:
-        ; Row 0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-
-        ; Row 1
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-
-        ; Row 2
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-
-        ; Row 3
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-        .word $0000, $0000    ; 0.0
-
-;********************************************
 ;* MAT_I - Identity matrix
 ;********************************************
 MAT_I:
@@ -60,7 +32,7 @@ MAT_I:
         .word $0000, $0000    ; 0.0
         .word $0000, $0000    ; 0.0
         .word $0000, $0001    ; 1.0
-
+        
 ;********************************************
 ;* MAT_A - Identity matrix
 ;********************************************
@@ -145,36 +117,20 @@ MAT_C:
         
 
 
-;********************************************
-;* SCALING MATRIX
-;********************************************
+SCALING_MATRIX      .ds 64 
+TRANSLATION_MATRIX  .ds 64
+ROT_X_MATRIX        .ds 64
+ROT_Y_MATRIX        .ds 64
+ROT_Z_MATRIX        .ds 64
+ROTATION_MATRIX     .ds 64
 
-SCALING_MATRIX:
-        .word $0000,$0002      ; X = 2.0
-        .word $0000,$0000
-        .word $0000,$0000
-        .word $0000,$0000
-
-        .word $0000,$0000
-        .word $0000,$0003      ; Y = 3.0
-        .word $0000,$0000
-        .word $0000,$0000
-
-        .word $0000,$0000
-        .word $0000,$0000
-        .word $0000,$0001      ; Z = 1.0
-        .word $0000,$0000
-
-        .word $0000,$0000
-        .word $0000,$0000
-        .word $0000,$0000
-        .word $0000,$0001      ; W = 1.0
+ROT_TEMP_MATRIX:
+        .ds 64
         
 ; Four-byte fixed-point values.
 MAT_MUL_A:
         .word $0000, $0000
-        .ds 8
-        
+        .ds 8        
 MAT_MUL_B:
         .word $0000, $0000
         .ds 8
@@ -184,7 +140,20 @@ MAT_PRODUCT:
 MAT_ACCUM:
         .word $0000, $0000    
         .ds 8
-    
+        
+SCALE_X:
+        .ds 4
+SCALE_Y:
+        .ds 4
+SCALE_Z:
+        .ds 4
+TRANS_X:
+        .ds 4
+TRANS_Y:
+        .ds 4
+TRANS_Z:
+        .ds 4
+        
 ; Formatter Workspace Variables
 FMT_VAL         .ds 4
 FMT_INTOFF      .ds 1
@@ -279,3 +248,14 @@ FIX16_SCRATCH    .ds 8       ; Dedicated extra room for 32-bit shifting
 DISPLAY_ROWS:       .byte 4
 DISPLAY_COLS:       .byte 1
 DISPLAY_VECTORS:    .byte 1
+
+;********************************************
+;* INTERMEDIATE MATRICES
+;********************************************
+
+ROT_SCALE_MATRIX:
+        .ds 64
+
+MODEL_MATRIX:
+        .ds 64
+        

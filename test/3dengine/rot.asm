@@ -3,6 +3,7 @@
 ;*
 ;* Build a 4x4 Z rotation matrix.
 ;* ROT_Z_ANGLE = 64 means 90 degrees.
+;* MAT_B = output matrix
 ;********************************************
 ROTATION_Z:
         ; Look up sine and cosine

@@ -99,6 +99,7 @@ void MultiPassAssembler::Assemble(std::vector<std::unique_ptr<Statement>>& state
     }
     
     if (changed) {
+        symbols_.print_unresolved();
         throw std::runtime_error("Symbol resolution failed to converge after " + std::to_string(max_passes) +" passes.");
     }
 

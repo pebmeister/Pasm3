@@ -36,7 +36,7 @@ private:
         uint16_t value;
         std::pair<int, int> defined;
         std::vector<std::pair<int, int>> usage;
-
+        bool resolved = false;
         SymbolEntry(uint16_t v, std::pair<int, int> loc) : value(v), defined(loc) {}
     };
 
@@ -264,8 +264,10 @@ public:
         auto& entry = it->second;
         if (entry.value != val) {
             entry.value = val;
+            entry.resolved = false;
             return true;
         }
+        entry.resolved = true;
         return false;
     }
 
@@ -299,4 +301,22 @@ public:
         }
         if (count != 0) std::cout << "\n";
     }
+    
+
+    void print_unresolved() const {
+        int count = 0;
+        for (const auto& [sym, entry] : symbols_) {
+            
+            if (entry.resolved) continue;
+            
+            std::cout << std::setfill(' ') << std::setw(30) << sym
+                      << " $" << std::setfill('0') << std::setw(4) << std::hex << std::uppercase << entry.value
+                      << std::dec << std::nouppercase;
+            if (++count == 3) {
+                count = 0;
+                std::cout << "\n";
+            }
+        }
+        if (count != 0) std::cout << "\n";
+    }    
 };
