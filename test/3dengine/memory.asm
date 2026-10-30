@@ -143,6 +143,33 @@ MAT_C:
         .word $0000, $0000
         .word $0000, $0000
         
+
+
+;********************************************
+;* SCALING MATRIX
+;********************************************
+
+SCALING_MATRIX:
+        .word $0000,$0002      ; X = 2.0
+        .word $0000,$0000
+        .word $0000,$0000
+        .word $0000,$0000
+
+        .word $0000,$0000
+        .word $0000,$0003      ; Y = 3.0
+        .word $0000,$0000
+        .word $0000,$0000
+
+        .word $0000,$0000
+        .word $0000,$0000
+        .word $0000,$0001      ; Z = 1.0
+        .word $0000,$0000
+
+        .word $0000,$0000
+        .word $0000,$0000
+        .word $0000,$0000
+        .word $0000,$0001      ; W = 1.0
+        
 ; Four-byte fixed-point values.
 MAT_MUL_A:
         .word $0000, $0000
@@ -167,14 +194,6 @@ FMT_NULLIDX     .ds 1
 FMT_SIGNFLG     .ds 1
 SCRATCH_FRAC    .ds 2
 TEMP_PROD32     .ds 4
-
-ROW             .ds 1
-
-; params for DisplayResults
-; set FIXPTR to point at first vector
-NUM_VECS        .ds 1
-VEC_ROWS        .ds 10
-VEC_COLS        .ds 10
 
 ; Engine Buffers & Constants
 FIX_STRING_BUF  .ds 50     
@@ -230,10 +249,6 @@ FIX16_WORK_B     .ds 4
 FIX16_WORK_RESULT .ds 4
 FIX16_SCRATCH    .ds 8       ; Dedicated extra room for 32-bit shifting
 
-; --- Other Pointers (Safely isolated above workspace) ---
-MAT4_MATRIX_PTR  .ds 2
-MAT4_VIN_PTR     .ds 2
-MAT4_VOUT_PTR     .ds 2
 
 ; ============================================
 ; Dedicated Matrix Zero-Page Workspace
@@ -251,6 +266,16 @@ MAT4_VOUT_PTR     .ds 2
             MAT_ROW         .ds 1       ; Row counter (0-3)
             MAT_COL         .ds 1       ; Column counter (0-3)
             MAT_K           .ds 1       ; Inner loop counter (0-3)
+            VEC_ROW         .ds 1
+            VEC_K           .ds 1
+            VEC_MPTR        .ds 2
+            VEC_VPTR        .ds 2
+            MAT4_VIN_PTR    .ds 2
+            MAT4_VOUT_PTR   .ds 2
+            MAT4_MATRIX_PTR  .ds 2
 
             * = PC_SAVE
-            
+            ; Display configuration
+DISPLAY_ROWS:       .byte 4
+DISPLAY_COLS:       .byte 1
+DISPLAY_VECTORS:    .byte 1

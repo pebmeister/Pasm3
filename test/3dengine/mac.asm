@@ -82,7 +82,7 @@
         .endm
         
  
- ; CALL_FIX16_MUL operand_A, operand_B, destination
+; CALL_FIX16_MUL operand_A, operand_B, destination
 
         .macro CALL_FIX16_MUL
 
@@ -105,7 +105,6 @@
 
         .endm
         
-       
 ;********************************************
 ;* CALL_MAT4_VECTOR_MUL
 ;*
@@ -188,20 +187,15 @@
 
 ;********************************************
         .macro PRINT_MAT
-        lda #1                  ; 1 vector/matrix to display
-        sta NUM_VECS
+        
+        lda #1
+        sta DISPLAY_VECTORS
         
         lda #\2                 ; 3 rows in the result vector
-        ldx #0
-@set_res_rows_gen:
-        sta VEC_ROWS, x
-        inx
-        cpx #1                  ; For our 1 vector
-        bne @set_res_rows_gen
+        sta DISPLAY_ROWS
 
-        lda #4                  ; 1 column for the vector
-        sta VEC_COLS
-
+        lda #\3                  ; 1 column for the vector
+        sta DISPLAY_COLS
 
         lda #<\1
         sta FIXPTR
@@ -214,23 +208,13 @@
 
 ;********************************************
         .macro PRINT_VECTOR
-        PRINT_MAT \1, 1
+        PRINT_MAT \1, \2, 1
         .endm
         
 ;********************************************
 
         .macro PRINT_ONE
-        lda #1                  ; 1 vector/matrix to display
-        sta NUM_VECS        
-        sta VEC_ROWS
-        sta VEC_COLS
-
-        lda #(<\1) & $FF
-        sta FIXPTR
-        lda #(>\1) & $FF
-        sta FIXPTR+1
-
-        jsr DisplayResults
+        PRINT_MAT \1, 1, 1
         .endm
         
         

@@ -219,33 +219,46 @@ U16_TO_4_ASCII:
         adc #$30
         sta FIX_STRING_BUF,x
         rts
-        
+
 ; ====================================================
-; DisplayResults (C64 40-Column Wrapped Grid Printer)
-; All internal state and strings scoped as local labels
+; DisplayResults
+;
+; Displays one or more FIX16 arrays as rows/columns.
+;
+; Input:
+;   FIXPTR          = address of first FIX16 value
+;   DISPLAY_ROWS    = number of rows
+;   DISPLAY_COLS    = number of columns
+;   DISPLAY_VECTORS = number of arrays to display
+;
+; Each array contains ROWS * COLS FIX16 values.
+; Each FIX16 value occupies 4 bytes.
+;
+; FIXPTR is preserved.
 ; ====================================================
-; ====================================================
-; DisplayResults (C64 40-Column Wrapped Grid Printer)
-; Uses a local pointer copy so FIXPTR is never mutated
-; ====================================================
+
 DisplayResults:
-        ; Copy master FIXPTR to local working pointers (@CurrPtr)
+
+        ; Preserve master pointer
         lda FIXPTR
         sta @CurrPtr
         lda FIXPTR+1
         sta @CurrPtr+1
 
         lda #0
+        sta @VectorCnt
         sta @RowCnt
-
-@MatrixRowLoop:
-        lda @RowCnt
-        asl
-        clc
-        adc #3
+        sta @ColCnt
         sta @ScrRow
 
-        ; --- PART A: Print Columns 0 & 1 on Screen Line N ---
+@VectorLoop:
+
+        lda #0
+        sta @RowCnt
+
+@RowLoop:
+
+        ; Position cursor
         ldx @ScrRow
         ldy #2
         clc
@@ -253,77 +266,75 @@ DisplayResults:
 
         lda #0
         sta @ColCnt
-@SubColLoop1:
-        ; Temporarily point FIXPTR to our walking @CurrPtr for FORMAT_FIX16
+
+@ColLoop:
+
+        ; Point FIXPTR at current value
         lda @CurrPtr
         sta FIXPTR
         lda @CurrPtr+1
         sta FIXPTR+1
 
+        ; Format and print FIX16
         jsr FORMAT_FIX16
 
         lda #<FIX_STRING_BUF
         ldy #>FIX_STRING_BUF
         jsr SAFE_STROUT
 
+        ; Advance to next FIX16 value
+        ADD16I @CurrPtr, 4, @CurrPtr
+
+        ; Advance column
+        inc @ColCnt
+        lda @ColCnt
+        cmp DISPLAY_COLS
+        beq @RowDone
+
+        ; Print separator
         lda #<@SPC
         ldy #>@SPC
         jsr SAFE_STROUT
 
-        ; Advance local working pointer by 4 bytes (leaves master FIXPTR safe)
-        ADD16I @CurrPtr, 4, @CurrPtr
+        jmp @ColLoop
 
-        inc @ColCnt
-        lda @ColCnt
-        cmp #2
-        bne @SubColLoop1
+@RowDone:
 
-        ; --- PART B: Print Columns 2 & 3 on Screen Line N + 1 ---
-        lda @ScrRow
-        clc
-        adc #1
-        tax
-        ldy #2
-        clc
-        jsr PLOT
+        ; Advance screen row
+        inc @ScrRow
 
-        lda #2
-        sta @ColCnt
-@SubColLoop2:
-        lda @CurrPtr
-        sta FIXPTR
-        lda @CurrPtr+1
-        sta FIXPTR+1
-
-        jsr FORMAT_FIX16
-
-        lda #<FIX_STRING_BUF
-        ldy #>FIX_STRING_BUF
-        jsr SAFE_STROUT
-
-        lda #<@SPC
-        ldy #>@SPC
-        jsr SAFE_STROUT
-
-        ADD16I @CurrPtr, 4, @CurrPtr
-
-        inc @ColCnt
-        lda @ColCnt
-        cmp #4
-        bne @SubColLoop2
-
+        ; Next row?
         inc @RowCnt
         lda @RowCnt
-        cmp #4
-        bne @MatrixRowLoop
+        cmp DISPLAY_ROWS
+        beq @VectorDone
+
+        jmp @RowLoop
+
+@VectorDone:
+
+        ; Next vector?
+        inc @VectorCnt
+        lda @VectorCnt
+        cmp DISPLAY_VECTORS
+        beq @Done
+
+        ; Blank line between vectors
+        inc @ScrRow
+
+        jmp @VectorLoop
+
+@Done:
         rts
 
-; Local state variables
-@RowCnt   .byte 0
-@ColCnt   .byte 0
-@ScrRow   .byte 0
-@CurrPtr  .ds 2       ; Local pointer copy protecting master FIXPTR
-@SPC      .byte "  ", 0
+; Local variables
+@CurrPtr:    .ds 2
+@VectorCnt:  .byte 0
+@RowCnt:     .byte 0
+@ColCnt:     .byte 0
+@ScrRow:     .byte 0
+@SPC:        .byte " ", 0
+
 
 ; ====================================================
 ; CLEARSCREEN

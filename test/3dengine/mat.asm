@@ -1,3 +1,4 @@
+
 ;********************************************
 ;* MAT4_MUL
 ;*
@@ -39,12 +40,12 @@ MAT4_MUL:
         lda #0
         sta MAT_ROW
 
-M4M_RowLoop:
+@RowLoop:
 
         lda #0
         sta MAT_COL
 
-M4M_ColLoop:
+@ColLoop:
 
         ; A pointer starts at current row
         lda MAT_AROW
@@ -68,7 +69,7 @@ M4M_ColLoop:
         lda #0
         sta MAT_K
 
-M4M_InnerLoop:
+@InnerLoop:
 
         ; Set FIX16 operand A pointer
         lda MAT_APTR
@@ -89,6 +90,8 @@ M4M_InnerLoop:
         sta FIX16_RESULT_PTR+1
 
         ; Product = A[row][k] * B[k][col]
+        ; DO NOT USE CALL_FIX16_MUL here because
+        ; we are using hi and lo byte of MAT_PRODUCT
         jsr FIX16_MUL
 
         ; Accumulate product
@@ -99,25 +102,28 @@ M4M_InnerLoop:
         lda MAT_APTR
         adc #4
         sta MAT_APTR
-        bcc M4M_APtrReady
+        bcc @APtrReady
         inc MAT_APTR+1
 
-M4M_APtrReady:
+@APtrReady:
 
         ; B advances by 16 bytes
         clc
         lda MAT_BPTR
         adc #16
         sta MAT_BPTR
-        bcc M4M_BPtrReady
+        bcc @BPtrReady
         inc MAT_BPTR+1
 
-M4M_BPtrReady:
+@BPtrReady:
 
         inc MAT_K
         lda MAT_K
         cmp #4
-        bne M4M_InnerLoop
+        beq @InnerDone
+        jmp @InnerLoop
+
+@InnerDone:
 
         ; Store C[row][col]
         ldy #0
@@ -138,35 +144,38 @@ M4M_BPtrReady:
         lda MAT_CPTR
         adc #4
         sta MAT_CPTR
-        bcc M4M_CPtrReady
+        bcc @CPtrReady
         inc MAT_CPTR+1
 
-M4M_CPtrReady:
+@CPtrReady:
 
         ; B column advances by 4 bytes
         clc
         lda MAT_BCOL
         adc #4
         sta MAT_BCOL
-        bcc M4M_BColReady
+        bcc @BColReady
         inc MAT_BCOL+1
 
-M4M_BColReady:
+@BColReady:
 
         inc MAT_COL
         lda MAT_COL
         cmp #4
-        bne M4M_ColLoop
+        beq @ColDone
+        jmp @ColLoop
+
+@ColDone:
 
         ; A advances to next row
         clc
         lda MAT_AROW
         adc #16
         sta MAT_AROW
-        bcc M4M_ARowReady
+        bcc @ARowReady
         inc MAT_AROW+1
 
-M4M_ARowReady:
+@ARowReady:
 
         ; Reset B column to beginning of B
         lda MAT4_B_PTR
@@ -177,11 +186,13 @@ M4M_ARowReady:
         inc MAT_ROW
         lda MAT_ROW
         cmp #4
-        bne M4M_RowLoop
+        beq @Exit
+        jmp @RowLoop
 
+@Exit:
         rts
-        
-        
+
+
 ;********************************************
 ;* FIX16_MUL
 ;*
@@ -234,7 +245,7 @@ FIX16_MUL:
 
         ; If A is negative, negate working A
         lda FIX16_WORK_A+3
-        bpl F16M_CheckB
+        bpl @F16M_CheckB
 
         inc FIX16_SIGN
 
@@ -252,11 +263,11 @@ FIX16_MUL:
         sbc FIX16_WORK_A+3
         sta FIX16_WORK_A+3
 
-F16M_CheckB:
+@F16M_CheckB:
 
         ; If B is negative, negate working B
         lda FIX16_WORK_B+3
-        bpl F16M_Start
+        bpl @F16M_Start
 
         lda FIX16_SIGN
         eor #1
@@ -276,7 +287,7 @@ F16M_CheckB:
         sbc FIX16_WORK_B+3
         sta FIX16_WORK_B+3
 
-F16M_Start:
+@F16M_Start:
 
         ; Clear product accumulator
         lda #0
@@ -287,13 +298,13 @@ F16M_Start:
 
         ldx #32
 
-F16M_MulLoop:
+@F16M_MulLoop:
 
         ; Shift multiplier right.
         ; Carry indicates whether to add A.
         lda FIX16_WORK_B
         lsr
-        bcc F16M_NoAdd
+        bcc @F16M_NoAdd
 
         clc
         lda FIX16_WORK_RESULT
@@ -309,7 +320,7 @@ F16M_MulLoop:
         adc FIX16_WORK_A+3
         sta FIX16_WORK_RESULT+3
 
-F16M_NoAdd:
+@F16M_NoAdd:
 
         ; Shift combined 64-bit product/multiplier
         lsr FIX16_WORK_RESULT+3
@@ -322,7 +333,7 @@ F16M_NoAdd:
         ror FIX16_WORK_B
 
         dex
-        bne F16M_MulLoop
+        bne @F16M_MulLoop
 
         ; Extract the 16.16 result
         lda FIX16_WORK_RESULT+1
@@ -336,7 +347,7 @@ F16M_NoAdd:
 
         ; Negate result if signs differed
         lda FIX16_SIGN
-        beq F16M_StoreResult
+        beq @F16M_StoreResult
 
         lda #0
         sec
@@ -352,7 +363,7 @@ F16M_NoAdd:
         sbc FIX16_WORK_RESULT+3
         sta FIX16_WORK_RESULT+3
 
-F16M_StoreResult:
+@F16M_StoreResult:
 
         ; Copy result to caller's destination
         ldy #0
@@ -370,8 +381,9 @@ F16M_StoreResult:
 
         rts
         
-        
- ;********************************************
+  
+  
+;********************************************
 ;* MAT4_VECTOR_MUL
 ;*
 ;* Calculates VOUT = Matrix * VIN
@@ -405,7 +417,7 @@ MAT4_VECTOR_MUL:
         lda #0
         sta MAT_ROW
 
-M4V_RowLoop:
+@M4V_RowLoop:
 
         ; Matrix pointer = start of current row
         lda MAT_AROW
@@ -429,9 +441,9 @@ M4V_RowLoop:
         lda #0
         sta MAT_K
 
-M4V_InnerLoop:
+@M4V_InnerLoop:
 
-        ; Copy matrix element to multiplication operand A
+        ; Copy matrix element into operand A
         ldy #0
         lda (MAT_APTR),y
         sta MAT_MUL_A
@@ -445,7 +457,7 @@ M4V_InnerLoop:
         lda (MAT_APTR),y
         sta MAT_MUL_A+3
 
-        ; Copy vector component to multiplication operand B
+        ; Copy vector element into operand B
         ldy #0
         lda (MAT_BPTR),y
         sta MAT_MUL_B
@@ -459,34 +471,39 @@ M4V_InnerLoop:
         lda (MAT_BPTR),y
         sta MAT_MUL_B+3
 
-        ; Product = A * B
+        ; Multiply copied operands
         CALL_FIX16_MUL MAT_MUL_A, MAT_MUL_B, MAT_PRODUCT
 
-        ; Accumulator += product
-        ADD_FIX16 MAT_PRODUCT, MAT_ACCUM, MAT_ACCUM
+        ; Accumulate product
+        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
 
         ; Advance matrix pointer by 4 bytes
         clc
         lda MAT_APTR
         adc #4
         sta MAT_APTR
-        bcc M4V_APtrReady
+        bcc @M4V_APtrReady
         inc MAT_APTR+1
-M4V_APtrReady:
+
+@M4V_APtrReady:
 
         ; Advance vector pointer by 4 bytes
         clc
         lda MAT_BPTR
         adc #4
         sta MAT_BPTR
-        bcc M4V_BPtrReady
+        bcc @M4V_BPtrReady
         inc MAT_BPTR+1
-M4V_BPtrReady:
+
+@M4V_BPtrReady:
 
         inc MAT_K
         lda MAT_K
         cmp #4
-        bne M4V_InnerLoop
+        beq @M4V_InnerDone
+        jmp @M4V_InnerLoop
+
+@M4V_InnerDone:
 
         ; Store accumulated result in output vector
         ldy #0
@@ -507,22 +524,26 @@ M4V_BPtrReady:
         lda MAT_CPTR
         adc #4
         sta MAT_CPTR
-        bcc M4V_CPtrReady
+        bcc @M4V_CPtrReady
         inc MAT_CPTR+1
-M4V_CPtrReady:
+
+@M4V_CPtrReady:
 
         ; Advance matrix row by 16 bytes
         clc
         lda MAT_AROW
         adc #16
         sta MAT_AROW
-        bcc M4V_ARowReady
+        bcc @M4V_ARowReady
         inc MAT_AROW+1
-M4V_ARowReady:
+
+@M4V_ARowReady:
 
         inc MAT_ROW
         lda MAT_ROW
         cmp #4
-        bne M4V_RowLoop
+        beq @M4V_Done
+        jmp @M4V_RowLoop
 
+@M4V_Done:
         rts

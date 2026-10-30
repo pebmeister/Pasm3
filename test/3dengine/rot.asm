@@ -293,6 +293,6 @@ Test_Vector_Rotation:
         CALL_MAT4_MUL MAT_A, MAT_B, MAT_C
 
         ; Display the result.
-        PRINT_MAT MAT_C, 3
+        PRINT_MAT MAT_C, 3, 3
 
         rts
