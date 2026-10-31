@@ -15,102 +15,38 @@
 ;********************************************
 
 Test:
-        SET_ROTATION 32, 32, 32
+; 1. Generate component matrices
+        SET_SCALE               MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z  ; result in SCALING_MATRIX
+        SET_ROTATION            MY_ROT_X, MY_ROT_Y, MY_ROT_Z        ; result ROTATION_MATRIX
+        SET_TRANSLATION         MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z  ; result TRANSLATION_MATRIX
+
+        ; 2. Concatenate: Temp = Rotation * Scale
+        
+        CALL_MAT4_MUL ROTATION_MATRIX, SCALING_MATRIX, MAT_TEMP
+        CALL_MAT4_MUL TRANSLATION_MATRIX, MAT_TEMP, WORLD_MATRIX
+        jsr MAT4_MUL
         
         jsr CLEARSCREEN
-        PRINT_MAT ROTATION_MATRIX, 8, 2
+        PRINT_MAT WORLD_MATRIX, 4, 2
         rts
         
-        jsr BUILD_MODEL_MATRIX
+MY_SCALE_X
+        .word $0000, $00001
+MY_SCALE_Y
+        .word $0000, $00001
+MY_SCALE_Z
+        .word $0000, $00001
+        
 
-        ;------------------------------------
-        ; Transform test vector
-        ;------------------------------------
+MY_TRANS_X
+        .word $0000, $00001
+MY_TRANS_Y
+        .word $0000, $00001
+MY_TRANS_Z
+        .word $0000, $00001
 
-        lda #<MODEL_MATRIX
-        sta MAT4_MATRIX_PTR
-        lda #>MODEL_MATRIX
-        sta MAT4_MATRIX_PTR+1
-
-        lda #<TEST_VECTOR
-        sta MAT4_VIN_PTR
-        lda #>TEST_VECTOR
-        sta MAT4_VIN_PTR+1
-
-        lda #<WORLD_VECTOR
-        sta MAT4_VOUT_PTR
-        lda #>WORLD_VECTOR
-        sta MAT4_VOUT_PTR+1
-
-        jsr MAT4_VECTOR_MUL
-
-        jsr CLEARSCREEN
-        PRINT_VECTOR WORLD_VECTOR, 4
-
-        rts
+MY_ROT_X .byte 32
+MY_ROT_Y .byte 32
+MY_ROT_Z .byte 32
 
 
-;********************************************
-;* BUILD_MODEL_MATRIX
-;*
-;* Builds:
-;* MODEL_MATRIX = T * Rz * S
-;*
-;* Inputs:
-;* ROT_Z_ANGLE
-;* TRANSLATION_MATRIX
-;* SCALING_MATRIX
-;*
-;* Output:
-;* MODEL_MATRIX
-;*
-;* Uses:
-;* MAT_B
-;* ROT_SCALE_MATRIX
-;********************************************
-
-BUILD_MODEL_MATRIX:
-
-        ;------------------------------------
-        ; Generate Z rotation matrix
-        ; Result is placed in MAT_B
-        ;------------------------------------
-
-        lda #32
-        sta ROT_Z_ANGLE
-        jsr ROTATION_Z
-
-        ;------------------------------------
-        ; Calculate:
-        ; ROT_SCALE_MATRIX = MAT_B * SCALING_MATRIX
-        ;------------------------------------
-
-        CALL_MAT4_MUL MAT_B, SCALING_MATRIX, ROT_SCALE_MATRIX
-
-        ;------------------------------------
-        ; Calculate:
-        ; MODEL_MATRIX = TRANSLATION_MATRIX * ROT_SCALE_MATRIX
-        ;------------------------------------
-
-        CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX
-        rts
-
-
-;********************************************
-;* TEST DATA
-;********************************************
-
-TEST_VECTOR:
-
-        .word $0000,$0001      ; X = 1
-        .word $0000,$0001      ; Y = 1
-        .word $0000,$0001      ; Z = 1
-        .word $0000,$0001      ; W = 1
-
-
-RESULT_VECTOR:
-        .ds 16
-
-
-WORLD_VECTOR:
-        .ds 16

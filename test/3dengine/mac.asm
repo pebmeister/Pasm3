@@ -539,6 +539,21 @@
 
         .macro SET_ROTATION
 
+        lda \1
+        sta ROT_X_ANGLE
+
+        lda \2
+        sta ROT_Y_ANGLE
+
+        lda \3
+        sta ROT_Z_ANGLE
+
+        jsr BUILD_ROTATION_MATRIX
+
+        .endm
+        
+         .macro SET_ROTATION_I
+
         lda #\1
         sta ROT_X_ANGLE
 
@@ -551,3 +566,223 @@
         jsr BUILD_ROTATION_MATRIX
 
         .endm
+        
+ ;********************************************
+;* MOVE16                                   *
+;* Move a 16-bit variable                   *
+;* \1 Source                                *
+;* \2 Destination                           *
+;* Destroys A                               *
+;*******************************************
+        .macro MOVE16
+        lda \1
+        sta \2
+        lda \1 + 1
+        sta \2 + 1
+        .endm
+
+;********************************************
+;* RSHIFT16                                 *
+;* 16-bit right shift                       *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
+;********************************************
+        .macro RSHIFT16
+        ldx #\2
+        beq @RSH16Exit
+@RSH16Loop:
+        lsr \1 + 1
+        ror \1
+        dex
+        bne @RSH16Loop
+@RSH16Exit:
+        .endm
+
+;********************************************
+;* ADD16                                    *
+;* Add 16-bit variables                     *
+;* \1 Variable 1                            *
+;* \2 Variable 2                            *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro ADD16
+        clc
+        lda \1
+        adc \2
+        sta \3
+        lda \1 + 1
+        adc \2 + 1
+        sta \3 + 1
+        .endm
+
+;********************************************
+;* MOVE8I                                   *
+;* Move an 8-bit value to a variable        *
+;* \1 Variable                              *
+;* \2 Value                                 *
+;* Destroys A                               *
+;********************************************
+        .macro MOVE8I
+        lda #\2
+        sta \1
+        .endm
+
+;********************************************
+;* SUB8                                     *
+;* Subtract 8-bit variables                 *
+;* \1 Variable                              *
+;* \2 Variable to subtract                  *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro SUB8
+        sec
+        lda \1
+        sbc \2
+        sta \3
+        .endm
+
+;********************************************
+;* BLE16                                    *
+;* 16-bit branch if less than or equal      *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label (if a <= b)         *
+;* Destroys A                               *
+;********************************************
+        .macro BLE16
+        lda \1 + 1
+        cmp \2 + 1
+        bcc \3
+        bne @exit
+        lda \1
+        cmp \2
+        bcc \3
+        beq \3
+@exit:
+        .endm
+
+;********************************************
+;*                                          *
+;*  SWAP16                                  *
+;*                                          *
+;*  Swap 2 16 bit values                    *
+;*                                          *
+;*  \1  Variable a     16-bit               *
+;*  \2  Variable b     16 bit               *
+;*                                          *
+;********************************************
+            .macro SWAP16
+            ldx \1
+            ldy \1 + 1
+            lda \2
+            sta \1
+            lda \2 + 1
+            sta \1 + 1
+            stx \2
+            sty \2 + 1
+            .endm
+
+;********************************************
+;* SUB16                                    *
+;* Subtract 16-bit variables                *
+;* \1 Variable                              *
+;* \2 Variable to subtract                  *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro SUB16
+        sec
+        lda \1
+        sbc \2
+        sta \3
+        lda \1 + 1
+        sbc \2 + 1
+        sta \3 + 1
+        .endm
+;********************************************
+;* MOVE8                                    *
+;* Move an 8-bit variable                   *
+;* \1 Source                                *
+;* \2 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro MOVE8
+        lda \1
+        sta \2
+        .endm
+
+;********************************************
+;* BLT16                                    *
+;* 16-bit branch if less than (a < b)       *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label                     *
+;* Destroys A                               *
+;********************************************
+        .macro BLT16
+        lda \1 + 1
+        cmp \2 + 1
+        bcc \3
+        bne @exit
+        lda \1
+        cmp \2
+        bcc \3
+@exit:
+        .endm
+
+;********************************************
+;* LSHIFT16                                 *
+;* 16-bit left shift                        *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
+;********************************************
+        .macro LSHIFT16
+        ldx #\2
+        beq @LSH16Exit
+@LS16Loop:
+        asl \1
+        rol \1 + 1
+        dex
+        bne @LS16Loop
+@LSH16Exit:
+        .endm
+
+;********************************************
+;* SUB168                                   *
+;* Subtract 8-bit variable from 16-bit      *
+;* \1 Variable (16-bit)                     *
+;* \2 Variable to subtract (8-bit)          *
+;* \3 Destination (16-bit)                  *
+;* Destroys A                               *
+;********************************************
+        .macro SUB168
+        sec
+        lda \1
+        sbc \2
+        sta \3
+        lda \1 + 1
+        sbc #0
+        sta \3 + 1
+        .endm
+;********************************************
+;* SUB16I                                   *
+;* Subtract 16-bit immediate from variable  *
+;* \1 Variable                              *
+;* \2 Value to subtract                     *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro SUB16I
+        sec
+        lda \1
+        sbc #<\2
+        sta \3
+        lda \1 + 1
+        sbc #>\2
+        sta \3 + 1
+        .endm
+

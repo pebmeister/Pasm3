@@ -6,3 +6,5 @@
         .inc "mat.asm"
         .inc "print.asm"
         .inc "memory.asm"
+        .inc "gr.asm"
+        .inc "render.asm"
