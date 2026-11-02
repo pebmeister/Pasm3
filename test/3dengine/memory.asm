@@ -218,10 +218,34 @@ CURRENT_VERTEX_PTR .ds 2
 ;* Place pointers in zero page.
 ;********************************************
 PC_SAVE        = *
-            ; ============================================
-            ; Dedicated Matrix Zero-Page Workspace
-            ; Shared with ABSOLUTELY NOTHING else.
-            ; ============================================
+            * = 10
+            XCOORD      .ds 2
+            LOC         .ds 2
+            DX          .ds 2
+            DY          .ds 2
+            XS          .ds 2
+            YS          .ds 2
+            K1          .ds 2
+            K2          .ds 2
+            _D          .ds 2
+            _Y          .ds 1
+            TMP         .ds 2
+            YCOL        .ds 2
+            COLORPTR    .ds 2
+            X0          .ds 2
+            X1          .ds 2
+            Y0          .ds 1
+            Y1          .ds 1
+            XDIST       .ds 2
+            YDIST       .ds 2
+            StartX      .ds 2
+            COLOR       .ds 1
+
+            _X          = XCOORD
+            COUNTER     = LOC
+            CURLOC      = DX
+            XD          = YCOL
+            
             * = $40
             MAT_APTR        .ds 2       ; Current A element pointer
             MAT_BPTR        .ds 2       ; Current B element pointer
@@ -240,7 +264,7 @@ PC_SAVE        = *
             VEC_VPTR        .ds 2
             MAT4_VIN_PTR    .ds 2
             MAT4_VOUT_PTR   .ds 2
-            MAT4_MATRIX_PTR  .ds 2
+            MAT4_MATRIX_PTR .ds 2
 
             *= $60
             FIXPTR           .ds 4
@@ -258,31 +282,6 @@ PC_SAVE        = *
             FIX16_WORK_RESULT .ds 4
             FIX16_SCRATCH    .ds 8       ; Dedicated extra room for 32-bit shifting
 
-    
-            X0              .ds 2
-            X1              .ds 2
-            Y0              .ds 1
-            Y1              .ds 1
-            TMP             .ds 1
-            COLOR           .ds 1
-            LOC             .ds 2
-            YCOL            .ds 2
-            COLORPTR        .ds 2
-            XCOORD          .ds 2
-            XDIST           .ds 2
-            CURLOC          .ds 2
-            DY              .ds 2
-            DX              .ds 2
-            XS              .ds 1
-            YS              .ds 1
-            K1              .ds 2
-            K2              .ds 2
-            _D              .ds 2
-            _Y              .ds 1
-            _X              .ds 2
-            StartX          .ds 2
-            XD              .ds 2
-            COUNTER         .ds 2
             
 ; ============================================
 ; RENDER_OBJECT Variables & Buffers
@@ -390,3 +389,5 @@ EDGE_START_LIST:
 EDGE_END_LIST:
         .byte 1, 2, 3, 4       ; Apex connections target vertices
         .byte 2, 3, 4, 1       ; Base perimeter target vertices
+        
+        

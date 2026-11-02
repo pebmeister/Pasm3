@@ -87,26 +87,6 @@
  
 ; CALL_FIX16_MUL operand_A, operand_B, destination
 
-        .macro CALL_FIX16_MUL
-
-        lda #<\1
-        sta FIX16_A_PTR
-        lda #>\1
-        sta FIX16_A_PTR+1
-
-        lda #<\2
-        sta FIX16_B_PTR
-        lda #>\2
-        sta FIX16_B_PTR+1
-
-        lda #<\3
-        sta FIX16_RESULT_PTR
-        lda #>\3
-        sta FIX16_RESULT_PTR+1
-
-        jsr FIX16_MUL
-
-        .endm
         
 ;********************************************
 ;* CALL_MAT4_VECTOR_MUL

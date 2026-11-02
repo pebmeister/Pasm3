@@ -1755,8 +1755,8 @@ HGRBez
 
         ; fix16_t x_fixed = fix16_add(a, b);
         ; x_fixed = fix16_add(x_fixed, c);
-        ADDFIX16 @A, @B, @FIXX
-        ADDFIX16 @FIXX, @C, @FIXX
+        ADD_FIX16 @A, @B, @FIXX
+        ADD_FIX16 @FIXX, @C, @FIXX
 
 ;-----------------------------------------
 ;        Calculate FixedY
@@ -1784,8 +1784,8 @@ HGRBez
 
         ; fix16_t y_fixed = fix16_add(a, b);
         ; y_fixed = fix16_add(x_fixed, c);
-        ADDFIX16 @A, @B, @FIXY
-        ADDFIX16 @FIXY, @C, @FIXY
+        ADD_FIX16 @A, @B, @FIXY
+        ADD_FIX16 @FIXY, @C, @FIXY
 
 ;----------------------------------------
 
@@ -2284,21 +2284,21 @@ FIX16_MUL
         ;   int32_t AC = A*C;
         ;   int32_t AD_CB = A*D + C*B;
         ;   uint32_t BD = B*D;
-        FMUL @A, @C, @AC
-        FMUL @A, @D, @AD
-        FMUL @C, @B, @CB
-        FMUL @B, @D, @BD
+        ;FMUL @A, @C, @AC
+        ;FMUL @A, @D, @AD
+        ;FMUL @C, @B, @CB
+        ;FMUL @B, @D, @BD
 
-        ADDFIX16 @AD, @CB, @AD_CB
+        ADD_FIX16 @AD, @CB, @AD_CB
 
         ;   int32_t product_hi = AC + (AD_CB >> 16);
         MOVE16I @TMP, 0
         MOVE16 @AD_CB, @TMP + 2
-        ADDFIX16 @AC, @TMP, @P_HI
+        ADD_FIX16 @AC, @TMP, @P_HI
 
         MOVE16I @TMP + 2, 0
         MOVE16 @AD_CB + 2, @TMP
-        ADDFIX16 @BD, @TMP, @P_LO
+        ADD_FIX16 @BD, @TMP, @P_LO
 
         ; return (product_hi << 16) | (product_lo >> 16);
         MOVE16 @P_HI + 2, FixedC

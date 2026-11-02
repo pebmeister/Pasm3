@@ -1,8 +1,36 @@
+; ============================================
+; C64 VIC-II COLOR EQUATES
+; ============================================
+COLOR_BLACK       = 0
+COLOR_WHITE       = 1
+COLOR_RED         = 2
+COLOR_CYAN        = 3
+COLOR_PURPLE      = 4
+COLOR_GREEN       = 5
+COLOR_BLUE        = 6
+COLOR_YELLOW      = 7
+COLOR_ORANGE      = 8
+COLOR_BROWN       = 9
+COLOR_LIGHT_RED   = 10
+COLOR_DARK_GREY   = 11    ; Also known as Grey 1
+COLOR_MEDIUM_GREY = 12    ; Also known as Grey 2
+COLOR_LIGHT_GREEN = 13
+COLOR_LIGHT_BLUE  = 14
+COLOR_LIGHT_GREY  = 15    ; Also known as Grey 3
+
+
 ; ====================================================
 ; BANK 1 GRAPHICS CONFIGURATION
 ; ====================================================
 BITMAPBASE  = $4000
 COLORBASE   = $6000
+
+         
+         ; written by Paul Baxter
+
+;********************************************
+        ; Some zero page has multiple uses
+
 
 ;********************************************
 ;*                                          *
@@ -52,6 +80,7 @@ HGROff
         ora #%00000011
         sta $DD00
         rts
+        
         
 ;********************************************
 ;*                                          *
@@ -112,18 +141,16 @@ HGRCls
 
 ;********************************************
 ;*                                          *
-;*  _HGRBColor                              *
+;*  HGRBColor                               *
 ;*     Set HGR Background COLOR             *
 ;*                                          *
-;*       A     IN  color for background     *
 ;* ---------------------------------------- *
 ;*        PAGE ZERO USAGE                   *
 ;* ---------------------------------------- *
-;*  TMP     = 1 byte                        *
-;*  COLOR   = 1 byte                        *
+;*  TMP     = UNUSED2 + 2       1 byte      *
+;*  COLOR   = CMP0              1 byte      *
 ;* ---------------------------------------- *
 ;********************************************
-
 _HGRBColor
         and #$0F
         sta TMP
@@ -135,19 +162,16 @@ _HGRBColor
 
 ;********************************************
 ;*                                          *
-;*  HGRFColor                               *
+;*  _HGRFColor                              *
 ;*     Set HGR Forground COLOR              *
 ;*                                          *
-;*       A     IN  color for foreground     *
 ;* ---------------------------------------- *
 ;*        PAGE ZERO USAGE                   *
 ;* ---------------------------------------- *
-;*  TMP     1 byte                          *
+;*  TMP     = 1 byte                        *
+;*  COLOR   = 1 byte                        *
 ;* ---------------------------------------- *
-;*        VAR USAGE                         *
-;* ---------------------------------------- *
-;*  COLOR   1 byte                          *
-;* ---------------------------------------- *
+;********************************************
 _HGRFColor
         and #$0F
         asl
@@ -168,9 +192,9 @@ _HGRFColor
 ;*     clear Color memory                   *
 ;*                                          *
 ;* ---------------------------------------- *
-;*        VAR USAGE                         *
+;*        PAGE ZERO USAGE                   *
 ;* ---------------------------------------- *
-;*  COLOR   1 byte                          *
+;*  COLOR   =              1 byte           *
 ;* ---------------------------------------- *
 ;********************************************
 ClearColor
@@ -200,11 +224,11 @@ ClearColor
 ;* ---------------------------------------- *
 ;*        PAGE ZERO USAGE                   *
 ;* ---------------------------------------- *
-;*  LOC         = UNUSED2                   *
-;*  COLOR       = CMP0                      *
-;*  YCOL        = PTR1                      *
-;*  COLORPTR    = TMPDATA                   *
-;*  XCOORD      = LINNUM                    *
+;*  LOC                                     *
+;*  COLOR                                   *
+;*  YCOL                                    *
+;*  COLORPTR                                *
+;*  XCOORD                                  *
 ;* ---------------------------------------- *
 ;*        CALLS                             *
 ;* ---------------------------------------- *
@@ -240,8 +264,8 @@ _Plot
 ;* ---------------------------------------- *
 ;*        PAGE ZERO USAGE                   *
 ;* ---------------------------------------- *
-;*  YCOL        2 bytes                     *
-;*  COLORPTR    2 bytes                     *
+;*  YCOL        = PTR1          2 bytes     *
+;*  COLORPTR    = TMPDATA       2 bytes     *
 ;* ---------------------------------------- *
 ;********************************************
 CalcColorByte
@@ -272,9 +296,9 @@ CalcColorByte
 ;* ---------------------------------------- *
 ;*        PAGE ZERO USAGE                   *
 ;* ---------------------------------------- *
-;*  LOC         2 byte                      *
-;*  XCOORD      2 bytes                     *
-;*  TMP         2 bytes                     *
+;*  LOC         = UNUSED2       2 byte      *
+;*  XCOORD      = LINNUM        2 bytes     *
+;*  TMP         = UNUSED2 + 2   2 bytes     *
 ;********************************************
 CalcPlot
 ; 320*int(y/8)=32*[8*int(y/8)] + 8*[8*int(y/8)]
@@ -342,6 +366,82 @@ CalcPlot
         ldx TMP
         rts
 
+; ============================================
+; CLAMP_LINE_COORDS
+; Clamps X0, X1 to screen range 0-319 ($013F)
+; Clamps Y0, Y1 to screen range 0-199 ($C7)
+; ============================================
+CLAMP_LINE_COORDS
+        ; --- Clamp X0 ---
+        lda X0 + 1
+        bmi @clamp_x0_zero
+        beq @clamp_y0
+        cmp #1
+        bne @clamp_x0_max
+        lda X0
+        cmp #$40
+        bcc @clamp_y0
+@clamp_x0_max
+        lda #<319
+        sta X0
+        lda #>319
+        sta X0 + 1
+        jmp @clamp_y0
+@clamp_x0_zero
+        lda #0
+        sta X0
+        sta X0 + 1
+
+@clamp_y0
+        ; --- Clamp Y0 ---
+        lda Y0
+        bmi @clamp_y0_zero
+        cmp #200
+        bcc @clamp_x1
+        lda #199
+        sta Y0
+        jmp @clamp_x1
+@clamp_y0_zero
+        lda #0
+        sta Y0
+
+@clamp_x1
+        ; --- Clamp X1 ---
+        lda X1 + 1
+        bmi @clamp_x1_zero
+        beq @clamp_y1
+        cmp #1
+        bne @clamp_x1_max
+        lda X1
+        cmp #$40
+        bcc @clamp_y1
+@clamp_x1_max
+        lda #<319
+        sta X1
+        lda #>319
+        sta X1 + 1
+        jmp @clamp_y1
+@clamp_x1_zero
+        lda #0
+        sta X1
+        sta X1 + 1
+
+@clamp_y1
+        ; --- Clamp Y1 ---
+        lda Y1
+        bmi @clamp_y1_zero
+        cmp #200
+        bcc @clamp_done
+        lda #199
+        sta Y1
+        jmp @clamp_done
+@clamp_y1_zero
+        lda #0
+        sta Y1
+
+@clamp_done
+        rts
+
 ;********************************************
 ;*                                          *
 ;* _Line                                    *
@@ -356,15 +456,17 @@ CalcPlot
 ;* ---------------------------------------- *
 ;*        PAGE ZERO USAGE                   *
 ;* ---------------------------------------- *
-;*  X0           = FORPNT     2 bytes       *
-;*  Y0           = PRTY       1 byte        *
-;*  X1           = OPPTR      2 bytes       *
-;*  Y1           = MSGFLG     1 byte        *
-;*  XDIST        = INDEX      2 bytes       *
+;*  X0                          2 bytes     *
+;*  Y0                          1 byte      *
+;*  X1                          2 bytes     *
+;*  Y1                          1 byte      *
+;*  XDIST                       2 bytes     *
 ;* ---------------------------------------- *
 ;********************************************
         ; asm entry point
-        _Line = *
+ _Line
+        jsr CLAMP_LINE_COORDS
+       
         lda Y0
         cmp Y1
         bne NotHorizontal
@@ -390,7 +492,6 @@ CalcPlot
         SUB16 X1, X0, XDIST
 
 ;---------------------------------------
-CalcPlotHLine
         MOVE16 XCOORD, COLORPTR
         MOVE8 Y0, YCOL
         ldx Y0
@@ -819,26 +920,6 @@ HGRHorizontalLine
         sta (CURLOC),y
 @HLoop1EXIT
         rts
-
-
-RangeCheckXY
-        cpx # 200
-        bcs RangeError
-
-        lda XCOORD + 1
-        beq @Exit
-        cmp #2
-        bcs RangeError
-
-
-        lda XCOORD
-        cmp # 320 - 256
-        bcs RangeError
-@Exit
-        rts
-RangeError
-        ldx # ILLEGALQUANITY
-        jmp ERROR
 
 ;----------------------------------------------
 

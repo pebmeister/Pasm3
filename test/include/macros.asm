@@ -1065,7 +1065,7 @@
         bcs \3
         bcc @exit
 @bg1:
-        lda \1ADD_FIX16
+        lda \1
         cmp #<\2
         bcs \3
 @exit:
@@ -1284,7 +1284,28 @@
 @DivDone:
 .endm
 
+    .macro CALL_FIX16_MUL
 
+    lda #<\1
+    sta FIX16_A_PTR
+    lda #>\1
+    sta FIX16_A_PTR+1
+
+    lda #<\2
+    sta FIX16_B_PTR
+    lda #>\2
+    sta FIX16_B_PTR+1
+
+    lda #<\3
+    sta FIX16_RESULT_PTR
+    lda #>\3
+    sta FIX16_RESULT_PTR+1
+
+    jsr FIX16_MUL
+
+    .endm
+
+        
 .print Pop
 
         
