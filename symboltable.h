@@ -242,6 +242,13 @@ public:
         return out;
     }
 
+    void print_trace(SymbolEntry& entry, const std::string& name) {
+        auto [def_file_id, def_line] = entry.defined;
+        std::string def_fname = std::filesystem::path(src_mgr.GetFileName(def_file_id)).filename().string();
+        std::string def_str = std::format("{}:{}", def_fname, def_line);           
+        std::cout << std::format("[{}  TRACE] {} -> ${:04X}  ({})\n" , tablename, name, entry.value, def_str);
+    }
+
     /**
      * @brief Defines or updates a symbol value in the table.
      * @param name The symbol identifier name.
@@ -250,14 +257,15 @@ public:
      * @return true if a new symbol was inserted or value mutated; false if unchanged.
      */
     bool Define(const std::string& name, uint16_t val, const std::pair<int, int>& location) {
-        if (trace_syms_.contains(name)) {
-            std::cout << "[" << tablename << " TRACE] " << name << " -> $"
-                      << std::hex << std::uppercase << val << std::dec << std::nouppercase << "\n";
-        }
 
         auto it = symbols_.find(name);
         if (it == symbols_.end()) {
-            symbols_.emplace(name, SymbolEntry(val, location));
+            auto entry  = SymbolEntry(val, location);
+            symbols_.emplace(name, entry);
+
+            if (trace_syms_.contains(name)) {
+                print_trace(entry, name);
+            }
             return true;
         }
 
@@ -265,7 +273,15 @@ public:
         if (entry.value != val) {
             entry.value = val;
             entry.resolved = false;
+
+            if (trace_syms_.contains(name)) {
+                print_trace(entry, name);
+            }
+
             return true;
+        }
+        if (trace_syms_.contains(name)) {
+            print_trace(entry, name);
         }
         entry.resolved = true;
         return false;

@@ -1,3 +1,5 @@
+        .inc "basic.asm"
+        .inc "macros.asm"
         .inc "mac.asm"
         .inc "main.asm"
         .inc "sin.asm"

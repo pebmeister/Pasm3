@@ -719,7 +719,8 @@
         sta \3 + 3
         POP16 \2
         .endm
-
+        
+        
 ;********************************************
 ;*                                          *
 ;*  SWAP16                                  *
@@ -1064,13 +1065,45 @@
         bcs \3
         bcc @exit
 @bg1:
-        lda \1
+        lda \1ADD_FIX16
         cmp #<\2
         bcs \3
 @exit:
         .endm
 
 
+;********************************************
+;* ADD_FIX16
+;*
+;* /1 = Variable 1
+;* /2 = Variable 2
+;* /3 = Destination
+;*
+;* Adds signed 16.16 values using two's
+;* complement representation.
+;* Destroys A.
+;********************************************
+
+        .macro ADD_FIX16
+        clc
+        lda \1
+        adc \2
+        sta \3
+
+        lda \1 + 1
+        adc \2 + 1
+        sta \3 + 1
+
+        lda \1 + 2
+        adc \2 + 2
+        sta \3 + 2
+
+        lda \1 + 3
+        adc \2 + 3
+        sta \3 + 3
+        .endm
+        
+        
 ;********************************************
 ;* FIX16_SUB                                *
 ;* Subtract two 16.16 fixed-point variables *
@@ -1095,98 +1128,6 @@
         sta \3 + 3
         .endm
         
-;********************************************
-;* MUL_U_FIX16                               *
-;* Unsigned 16.16 fixed-point multiplication *
-;* \1 = Multiplicand (4 bytes)               *
-;* \2 = Multiplier   (4 bytes)               *
-;* \3 = Destination  (4 bytes)               *
-;* Destroys A, X                             *
-;* Preserves original multiplier             *
-;********************************************
-        .macro MUL_U_FIX16
-
-        ; Save original multiplier
-        lda \2 + 3
-        pha
-        lda \2 + 2
-        pha
-        lda \2 + 1
-        pha
-        lda \2
-        pha
-
-        ; Clear upper 32 bits of working product
-        lda #0
-        sta \3
-        sta \3 + 1
-        sta \3 + 2
-        sta \3 + 3
-
-        ldx #32
-
-@MulLoop:
-        ; Test the current least-significant multiplier bit
-        lda \2
-        lsr
-        bcc @NoAdd
-
-        ; Add multiplicand to upper 32 bits
-        clc
-        lda \3
-        adc \1
-        sta \3
-
-        lda \3 + 1
-        adc \1 + 1
-        sta \3 + 1
-
-        lda \3 + 2
-        adc \1 + 2
-        sta \3 + 2
-
-        lda \3 + 3
-        adc \1 + 3
-        sta \3 + 3
-
-@NoAdd:
-        ; Shift the complete 64-bit working product right
-        lsr \3 + 3
-        ror \3 + 2
-        ror \3 + 1
-        ror \3
-        ror \2 + 3
-        ror \2 + 2
-        ror \2 + 1
-        ror \2
-
-        dex
-        bne @MulLoop
-
-        ; Product is now distributed across \2 and \3.
-        ; Result = product >> 16.
-        ; Copy high bytes first to avoid overwriting sources.
-
-        lda \3 + 1
-        sta \3 + 3
-        lda \3
-        sta \3 + 2
-        lda \2 + 3
-        sta \3 + 1
-        lda \2 + 2
-        sta \3
-
-        ; Restore original multiplier
-        pla
-        sta \2
-        pla
-        sta \2 + 1
-        pla
-        sta \2 + 2
-        pla
-        sta \2 + 3
-        .endm
-
 
 ;********************************************
 ;* DIV_FIX16                                *
@@ -1343,184 +1284,6 @@
 @DivDone:
 .endm
 
-
-;********************************************
-;* DIV_MY_FIX16                             *
-;* Unsigned 16.16 division                  *
-;*                                          *
-;* Usage: FIX16_DIV dividend, divisor, dest *
-;*                                          *
-;* Calculates: dest = dividend / divisor    *
-;* Preserves both input operands            *
-;* Division by zero returns zero            *
-;*                                          *
-;* Destroys A, X, Y                         *
-;********************************************
-.macro DIV_MY_FIX16
-
-        ; Allocate and initialize local workspace.
-        ; Execution jumps over this data at the end.
-        jmp @DivCode
-
-@DivNum:
-        .ds 4
-@Divisor:
-        .ds 4
-@DivRem:
-        .ds 5
-@DivQuot:
-        .ds 4
-@DivBit:
-        .ds 1
-
-@DivCode:
-        ; Copy dividend and divisor
-        lda \1
-        sta @DivNum
-        lda \1+1
-        sta @DivNum+1
-        lda \1+2
-        sta @DivNum+2
-        lda \1+3
-        sta @DivNum+3
-
-        lda \2
-        sta @Divisor
-        lda \2+1
-        sta @Divisor+1
-        lda \2+2
-        sta @Divisor+2
-        lda \2+3
-        sta @Divisor+3
-
-        ; Initialize remainder and quotient
-        lda #0
-        sta @DivRem
-        sta @DivRem+1
-        sta @DivRem+2
-        sta @DivRem+3
-        sta @DivRem+4
-        sta @DivQuot
-        sta @DivQuot+1
-        sta @DivQuot+2
-        sta @DivQuot+3
-
-        ; Division by zero check
-        lda @Divisor
-        ora @Divisor+1
-        ora @Divisor+2
-        ora @Divisor+3
-        beq @DivZero
-
-        ; Process 48 bits:
-        ; 32 dividend bits followed by 16 zero bits.
-        ldx #48
-
-@DivLoop:
-        ; Shift next dividend bit into carry.
-        asl @DivNum
-        rol @DivNum+1
-        rol @DivNum+2
-        rol @DivNum+3
-
-        ; Save incoming bit.
-        lda #0
-        rol
-        sta @DivBit
-
-        ; Remainder = remainder * 2 + incoming bit
-        asl @DivRem
-        rol @DivRem+1
-        rol @DivRem+2
-        rol @DivRem+3
-        rol @DivRem+4
-
-        lda @DivRem
-        ora @DivBit
-        sta @DivRem
-
-        ; Shift quotient left.
-        asl @DivQuot
-        rol @DivQuot+1
-        rol @DivQuot+2
-        rol @DivQuot+3
-
-        ; If remainder's fifth byte is nonzero,
-        ; remainder is greater than divisor.
-        lda @DivRem+4
-        bne @DivSubtract
-
-        ; Compare remainder with divisor,
-        ; most significant byte first.
-        lda @DivRem+3
-        cmp @Divisor+3
-        bcc @DivNext
-        bne @DivSubtract
-
-        lda @DivRem+2
-        cmp @Divisor+2
-        bcc @DivNext
-        bne @DivSubtract
-
-        lda @DivRem+1
-        cmp @Divisor+1
-        bcc @DivNext
-        bne @DivSubtract
-
-        lda @DivRem
-        cmp @Divisor
-        bcc @DivNext
-
-@DivSubtract:
-        ; Remainder -= divisor
-        sec
-        lda @DivRem
-        sbc @Divisor
-        sta @DivRem
-        lda @DivRem+1
-        sbc @Divisor+1
-        sta @DivRem+1
-        lda @DivRem+2
-        sbc @Divisor+2
-        sta @DivRem+2
-        lda @DivRem+3
-        sbc @Divisor+3
-        sta @DivRem+3
-        lda @DivRem+4
-        sbc #0
-        sta @DivRem+4
-
-        ; Quotient bit = 1
-        ; Set the least-significant quotient bit.
-        lda @DivQuot
-        ora #1
-        sta @DivQuot        
-
-@DivNext:
-        dex
-        bne @DivLoop
-
-        ; Copy quotient to destination
-        lda @DivQuot
-        sta \3
-        lda @DivQuot+1
-        sta \3+1
-        lda @DivQuot+2
-        sta \3+2
-        lda @DivQuot+3
-        sta \3+3
-
-        jmp @DivDone
-
-@DivZero:
-        lda #0
-        sta \3
-        sta \3+1
-        sta \3+2
-        sta \3+3
-
-@DivDone:
-.endm
 
 .print Pop
 
