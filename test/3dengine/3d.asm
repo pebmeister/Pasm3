@@ -9,4 +9,5 @@
         .inc "print.asm"
         .inc "memory.asm"
         .inc "gr.asm"
-        .inc "render.asm"
+        .inc "cube.asm"
+        .inc "transform.asm"
