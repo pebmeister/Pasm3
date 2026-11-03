@@ -230,11 +230,20 @@ PC_SAVE        = *
             StartX      .ds 2
             COLOR       .ds 1
 
+
             _X          = XCOORD
             COUNTER     = LOC
             CURLOC      = DX
             XD          = YCOL
-            
+
+        SCREEN_SRC_PTR          .ds 2
+        SCREEN_DST_PTR          .ds 2        
+        SCREEN_VERTICES_LEFT    .ds 1
+        SCREEN_TEMP_A           .ds 4
+        SCREEN_TEMP_B           .ds 4
+        SCREEN_TEMP_RESULT      .ds 4
+
+        
             * = $40
             MAT_APTR        .ds 2       ; Current A element pointer
             MAT_BPTR        .ds 2       ; Current B element pointer
@@ -255,6 +264,9 @@ PC_SAVE        = *
             MAT4_VOUT_PTR   .ds 2
             MAT4_MATRIX_PTR .ds 2
 
+
+
+
             *= $60
             FIXPTR           .ds 4
             TEMP16           .ds 2
@@ -270,7 +282,15 @@ PC_SAVE        = *
             FIX16_WORK_B     .ds 4
             FIX16_WORK_RESULT .ds 4
             FIX16_SCRATCH    .ds 8       ; Dedicated extra room for 32-bit shifting           
+            
+            PROJ_SRC_PTR        .ds 2
+            PROJ_DST_PTR        .ds 2
+            PROJ_VERTICES_LEFT  .ds 1
+            
             * = PC_SAVE
+
+            DIV_WORKSPACE    .ds 18
+            DIV_SIGN         .byte 0
 
             ; Display configuration
 DISPLAY_ROWS:       .byte 4
@@ -296,3 +316,13 @@ WORLD_VERTICES:
 ; --- Data Buffers & Lookups (Standard RAM) ---
 TRANSFORMED_VERTEX    .ds 16  ; Temporary working buffer holding [x, y, z, w] in 16.16 fixed-point (4 bytes each)
 
+SCREEN_VERTICES     .ds 24
+
+
+SCREEN_ONE          .word $0000, $0001
+SCREEN_SCALE_X      .word $0000, $00A0    ; 160.0
+SCREEN_SCALE_Y      .word $0000, $0064    ; 100.0
+
+DRAW_EDGE_INDEX     .ds 2
+DRAW_EDGE_LEFT      .DS 2
+DRAW_VERTEX_INDEX   .DS 2

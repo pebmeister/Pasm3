@@ -82,11 +82,7 @@
 
         jsr MAT4_MUL
 
-        .endm
-        
- 
-; CALL_FIX16_MUL operand_A, operand_B, destination
-
+        .endm        
         
 ;********************************************
 ;* CALL_MAT4_VECTOR_MUL
@@ -161,38 +157,7 @@
 
         .endm
 
-;********************************************
-        .macro PRINT_VECTOR
-        PRINT_MAT \1, \2, 1
-        .endm
-        
-;********************************************
 
-        .macro PRINT_ONE
-        PRINT_MAT \1, 1, 1
-        .endm
-        
-        
-
-
-;********************************************
-;* ADD16I                                   *
-;* Add 16-bit immediate to 16-bit variable  *
-;* \1 Variable                              *
-;* \2 Value                                 *
-;* \3 Destination                           *
-;* Destroys A                               *
-;********************************************
-        .macro ADD16I
-        clc
-        lda \1
-        adc #<\2
-        sta \3
-        lda \1 + 1
-        adc #>\2
-        sta \3 + 1
-        .endm
-        
 ;********************************************
 ;*                                          *
 ;* SET_SCALE X, Y, Z                        *
@@ -241,7 +206,7 @@
 
 ;********************************************
 ;*                                          *
-;* SET_SCALE_I X, Y, Z                        *
+;* SET_SCALE_I X, Y, Z                      *
 ;*                                          *
 ;*                                          *
 ;*  destroys a,x,y                          *
@@ -279,7 +244,6 @@
         jsr BUILD_SCALING_MATRIX
 
         .endm
-        
         
 ;********************************************
 ;*                                          *
@@ -328,7 +292,6 @@
 ;* SET_TRANSLATION_I X, Y, Z                *
 ;*                                          *
 ;********************************************
-
         .macro SET_TRANSLATION_I
 
         ; X
@@ -362,16 +325,17 @@
 
         .endm
         
-         ; SET_ROTATION X, Y, Z
-
+;********************************************
+;*                                          *
+;* SET_ROTATION X, Y, Z                     *
+;*                                          *
+;********************************************
         .macro SET_ROTATION
 
         lda \1
         sta ROT_X_ANGLE
-
         lda \2
         sta ROT_Y_ANGLE
-
         lda \3
         sta ROT_Z_ANGLE
 
@@ -379,14 +343,17 @@
 
         .endm
         
+;********************************************
+;*                                          *
+;* SET_ROTATION_I X, Y, Z                   *
+;*                                          *
+;********************************************
          .macro SET_ROTATION_I
 
         lda #\1
         sta ROT_X_ANGLE
-
         lda #\2
         sta ROT_Y_ANGLE
-
         lda #\3
         sta ROT_Z_ANGLE
 

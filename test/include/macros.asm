@@ -1071,6 +1071,24 @@
 @exit:
         .endm
 
+;********************************************
+;* ADD16I                                   *
+;* Add 16-bit immediate to 16-bit variable  *
+;* \1 Variable                              *
+;* \2 Value                                 *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro ADD16I
+        clc
+        lda \1
+        adc #<\2
+        sta \3
+        lda \1 + 1
+        adc #>\2
+        sta \3 + 1
+        .endm
+                
 
 ;********************************************
 ;* ADD_FIX16
@@ -1103,7 +1121,7 @@
         sta \3 + 3
         .endm
         
-        
+
 ;********************************************
 ;* FIX16_SUB                                *
 ;* Subtract two 16.16 fixed-point variables *
@@ -1284,13 +1302,15 @@
 @DivDone:
 .endm
 
+;********************************************
+;* CALL_FIX16_MUL                           *
+;********************************************
     .macro CALL_FIX16_MUL
 
     lda #<\1
     sta FIX16_A_PTR
     lda #>\1
     sta FIX16_A_PTR+1
-
     lda #<\2
     sta FIX16_B_PTR
     lda #>\2

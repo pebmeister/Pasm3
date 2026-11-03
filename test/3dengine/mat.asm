@@ -194,6 +194,287 @@ MAT4_MUL:
 @Exit:
         rts
 
+;********************************************
+;* FIX16_DIV                                *
+;* Signed 16.16 division                   *
+;*                                          *
+;* A / B = RESULT                           *
+;*                                          *
+;* Inputs:                                  *
+;*   FIX16_A_PTR      -> Dividend           *
+;*   FIX16_B_PTR      -> Divisor            *
+;*   FIX16_RESULT_PTR -> Result             *
+;*                                          *
+;* DIV_WORKSPACE requires 18 bytes ZP RAM   *
+;* DIV_SIGN requires 1 byte                 *
+;********************************************
+
+FIX16_DIV:
+
+        ;------------------------------------
+        ; Determine result sign
+        ;------------------------------------
+
+        lda #0
+        sta DIV_SIGN
+
+        ldy #3
+        lda (FIX16_A_PTR),y
+        and #$80
+        sta DIV_SIGN
+
+        lda (FIX16_B_PTR),y
+        and #$80
+        beq @SignReady
+
+        lda DIV_SIGN
+        eor #$80
+        sta DIV_SIGN
+
+@SignReady:
+
+        ;------------------------------------
+        ; Copy absolute dividend into ZP
+        ;------------------------------------
+
+        ldy #0
+@CopyDividend:
+        lda (FIX16_A_PTR),y
+        sta DIV_WORKSPACE,y
+        iny
+        cpy #4
+        bne @CopyDividend
+
+        ; Is dividend negative?
+        lda DIV_WORKSPACE+3
+        bpl @DividendReady
+
+        ; Two's complement
+        sec
+        lda #0
+        sbc DIV_WORKSPACE
+        sta DIV_WORKSPACE
+        lda #0
+        sbc DIV_WORKSPACE+1
+        sta DIV_WORKSPACE+1
+        lda #0
+        sbc DIV_WORKSPACE+2
+        sta DIV_WORKSPACE+2
+        lda #0
+        sbc DIV_WORKSPACE+3
+        sta DIV_WORKSPACE+3
+
+@DividendReady:
+
+        ;------------------------------------
+        ; Copy absolute divisor into ZP
+        ;------------------------------------
+
+        ldy #0
+@CopyDivisor:
+        lda (FIX16_B_PTR),y
+        sta DIV_WORKSPACE+4,y
+        iny
+        cpy #4
+        bne @CopyDivisor
+
+        ; Is divisor negative?
+        lda DIV_WORKSPACE+7
+        bpl @DivisorReady
+
+        ; Two's complement
+        sec
+        lda #0
+        sbc DIV_WORKSPACE+4
+        sta DIV_WORKSPACE+4
+        lda #0
+        sbc DIV_WORKSPACE+5
+        sta DIV_WORKSPACE+5
+        lda #0
+        sbc DIV_WORKSPACE+6
+        sta DIV_WORKSPACE+6
+        lda #0
+        sbc DIV_WORKSPACE+7
+        sta DIV_WORKSPACE+7
+
+@DivisorReady:
+
+        ;------------------------------------
+        ; Initialize remainder and quotient
+        ;------------------------------------
+
+        lda #0
+        sta DIV_WORKSPACE+8
+        sta DIV_WORKSPACE+9
+        sta DIV_WORKSPACE+10
+        sta DIV_WORKSPACE+11
+        sta DIV_WORKSPACE+12
+        sta DIV_WORKSPACE+13
+        sta DIV_WORKSPACE+14
+        sta DIV_WORKSPACE+15
+        sta DIV_WORKSPACE+16
+        sta DIV_WORKSPACE+17
+
+        ;------------------------------------
+        ; Division by zero check
+        ;------------------------------------
+
+        lda DIV_WORKSPACE+4
+        ora DIV_WORKSPACE+5
+        ora DIV_WORKSPACE+6
+        ora DIV_WORKSPACE+7
+        bne @continue
+        jmp @DivZero
+@continue
+        ;------------------------------------
+        ; Process 48 bits
+        ;------------------------------------
+
+        ldx #48
+
+@DivLoop:
+
+        ; Shift next dividend bit into carry
+        asl DIV_WORKSPACE
+        rol DIV_WORKSPACE+1
+        rol DIV_WORKSPACE+2
+        rol DIV_WORKSPACE+3
+
+        ; Save incoming bit
+        lda #0
+        rol
+        sta DIV_WORKSPACE+17
+
+        ; Remainder = remainder * 2 + incoming bit
+        asl DIV_WORKSPACE+8
+        rol DIV_WORKSPACE+9
+        rol DIV_WORKSPACE+10
+        rol DIV_WORKSPACE+11
+        rol DIV_WORKSPACE+12
+
+        lda DIV_WORKSPACE+8
+        ora DIV_WORKSPACE+17
+        sta DIV_WORKSPACE+8
+
+        ; Shift quotient left
+        asl DIV_WORKSPACE+13
+        rol DIV_WORKSPACE+14
+        rol DIV_WORKSPACE+15
+        rol DIV_WORKSPACE+16
+
+        ; Check remainder against divisor
+        lda DIV_WORKSPACE+12
+        bne @DivSubtract
+
+        lda DIV_WORKSPACE+11
+        cmp DIV_WORKSPACE+7
+        bcc @DivNext
+        bne @DivSubtract
+
+        lda DIV_WORKSPACE+10
+        cmp DIV_WORKSPACE+6
+        bcc @DivNext
+        bne @DivSubtract
+
+        lda DIV_WORKSPACE+9
+        cmp DIV_WORKSPACE+5
+        bcc @DivNext
+        bne @DivSubtract
+
+        lda DIV_WORKSPACE+8
+        cmp DIV_WORKSPACE+4
+        bcc @DivNext
+
+@DivSubtract:
+
+        ; Remainder -= divisor
+        sec
+        lda DIV_WORKSPACE+8
+        sbc DIV_WORKSPACE+4
+        sta DIV_WORKSPACE+8
+
+        lda DIV_WORKSPACE+9
+        sbc DIV_WORKSPACE+5
+        sta DIV_WORKSPACE+9
+
+        lda DIV_WORKSPACE+10
+        sbc DIV_WORKSPACE+6
+        sta DIV_WORKSPACE+10
+
+        lda DIV_WORKSPACE+11
+        sbc DIV_WORKSPACE+7
+        sta DIV_WORKSPACE+11
+
+        lda DIV_WORKSPACE+12
+        sbc #0
+        sta DIV_WORKSPACE+12
+
+        ; Quotient bit = 1
+        lda DIV_WORKSPACE+13
+        ora #1
+        sta DIV_WORKSPACE+13
+
+@DivNext:
+
+        dex
+        beq @cont
+        jmp @DivLoop
+@cont
+        ;------------------------------------
+        ; Apply result sign
+        ;------------------------------------
+
+        lda DIV_SIGN
+        beq @CopyResult
+
+        ; Two's complement quotient
+        sec
+        lda #0
+        sbc DIV_WORKSPACE+13
+        sta DIV_WORKSPACE+13
+
+        lda #0
+        sbc DIV_WORKSPACE+14
+        sta DIV_WORKSPACE+14
+
+        lda #0
+        sbc DIV_WORKSPACE+15
+        sta DIV_WORKSPACE+15
+
+        lda #0
+        sbc DIV_WORKSPACE+16
+        sta DIV_WORKSPACE+16
+
+@CopyResult:
+
+        ;------------------------------------
+        ; Copy result to destination
+        ;------------------------------------
+
+        ldy #0
+@CopyOutput:
+        lda DIV_WORKSPACE+13,y
+        sta (FIX16_RESULT_PTR),y
+        iny
+        cpy #4
+        bne @CopyOutput
+
+        rts
+
+@DivZero:
+
+        ; Return zero for division by zero
+        ldy #0
+        lda #0
+
+@ClearOutput:
+        sta (FIX16_RESULT_PTR),y
+        iny
+        cpy #4
+        bne @ClearOutput
+
+        rts
+        
 
 ;********************************************
 ;* FIX16_MUL
@@ -212,7 +493,6 @@ MAT4_MUL:
 ;********************************************
 
 FIX16_MUL:
-
         ; Copy operand A to working storage
         ldy #0
         lda (FIX16_A_PTR),y
@@ -383,7 +663,6 @@ FIX16_MUL:
 
         rts
         
-  
   
 ;********************************************
 ;* MAT4_VECTOR_MUL

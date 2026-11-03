@@ -4,6 +4,7 @@
         .inc "main.asm"
         .inc "sin.asm"
         .inc "trig.asm"
+        .inc "kernal.asm"
         .inc "rot.asm"
         .inc "mat.asm"
         .inc "print.asm"
@@ -11,3 +12,4 @@
         .inc "gr.asm"
         .inc "cube.asm"
         .inc "transform.asm"
+        .inc "projection.asm"
