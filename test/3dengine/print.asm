@@ -249,7 +249,7 @@ DisplayResults:
         sta @VectorCnt
         sta @RowCnt
         sta @ColCnt
-        sta @ScrRow
+        ; sta ScrRow
 
 @VectorLoop:
 
@@ -259,7 +259,7 @@ DisplayResults:
 @RowLoop:
 
         ; Position cursor
-        ldx @ScrRow
+        ldx ScrRow
         ldy #2
         clc
         jsr PLOT
@@ -292,16 +292,14 @@ DisplayResults:
         beq @RowDone
 
         ; Print separator
-        lda #<@SPC
-        ldy #>@SPC
-        jsr SAFE_STROUT
+        jsr PRINT_SP
 
         jmp @ColLoop
 
 @RowDone:
 
         ; Advance screen row
-        inc @ScrRow
+        inc ScrRow
 
         ; Next row?
         inc @RowCnt
@@ -320,7 +318,7 @@ DisplayResults:
         beq @Done
 
         ; Blank line between vectors
-        inc @ScrRow
+        inc ScrRow
 
         jmp @VectorLoop
 
@@ -332,8 +330,8 @@ DisplayResults:
 @VectorCnt:  .byte 0
 @RowCnt:     .byte 0
 @ColCnt:     .byte 0
-@ScrRow:     .byte 0
-@SPC:        .byte " ", 0
+
+ScrRow:     .byte 0
 
 
 ; ====================================================
@@ -344,5 +342,165 @@ CLEARSCREEN:
         ldy #>@CLS
         jsr SAFE_STROUT
         rts
+@CLS:   .byte 147,5, 0
 
-@CLS      .byte 147, 5, 0
+PRINT_SP    
+        lda #<@SPC
+        ldy #>@SPC
+        jsr SAFE_STROUT
+        rts
+@SPC:        .byte " ", 0
+        
+; ============================================
+; PRINT_INT16
+; Input: TEMP16 = unsigned 16-bit integer
+; Output: Decimal ASCII via SAFE_STROUT
+; Preserves TEMP16
+; ============================================
+
+PRINT_INT16:
+        lda #0
+        sta INT_LEADING_FLAG
+
+        ldx #0
+        ldy #0
+
+@DigitLoop:
+        lda #$30
+        sta INT_DIGIT_CHAR
+
+@Subtract:
+        sec
+        lda TEMP16
+        sbc POWER10_L,x
+        sta INT_TEMP
+        lda TEMP16+1
+        sbc POWER10_H,x
+        bcc @DigitDone
+
+        sta TEMP16+1
+        lda INT_TEMP
+        sta TEMP16
+        inc INT_DIGIT_CHAR
+        jmp @Subtract
+
+@DigitDone:
+        lda INT_DIGIT_CHAR
+        cmp #$30
+        bne @OutputDigit
+
+        lda INT_LEADING_FLAG
+        bne @OutputDigit
+
+        cpx #4
+        beq @OutputDigit
+        jmp @NextDigit
+
+@OutputDigit:
+        lda #1
+        sta INT_LEADING_FLAG
+
+        lda INT_DIGIT_CHAR
+        sta INT_STRING_BUF,y
+        iny
+
+@NextDigit:
+        inx
+        cpx #5
+        bne @DigitLoop
+
+        lda #0
+        sta INT_STRING_BUF,y
+
+        lda #<INT_STRING_BUF
+        ldy #>INT_STRING_BUF
+        jsr SAFE_STROUT
+        rts
+
+
+; ============================================
+; Variables
+; ============================================
+
+INT_STRING_BUF      .ds 6
+INT_LEADING_FLAG    .ds 1
+INT_DIGIT_CHAR      .ds 1
+INT_TEMP            .ds 1
+
+POWER10_L:
+        .byte <10000, <1000, <100, <10, <1
+
+POWER10_H:
+        .byte >10000, >1000, >100, >10, >1
+       
+        
+       
+PRINT_FIX16:
+    jsr FORMAT_FIX16
+    lda #<FIX_STRING_BUF
+    ldy #>FIX_STRING_BUF
+    jsr SAFE_STROUT
+    rts
+    
+             
+PRINT_SCREEN_VERTICES
+        jsr CLEARSCREEN
+
+        lda #0
+        sta @INDEX
+        sta @ROW
+            
+@VERTEX_Loop
+        ldx @ROW
+        ldy #2
+        clc
+        jsr PLOT
+
+        lda #<@COUNTER
+        ldy #>@COUNTER
+        jsr SAFE_STROUT     ; index
+
+        
+        lda #<@SPC
+        ldy #>@SPC
+        jsr SAFE_STROUT     ; ' '
+        
+
+        ldy @INDEX
+        lda SCREEN_VERTICES, y
+        iny 
+        sta TEMP16
+        lda SCREEN_VERTICES, y
+        iny
+        sty @INDEX
+        sta TEMP16 + 1
+    
+        jsr PRINT_INT16     ; VERTEX X
+
+        lda #<@SPC_COMMA
+        ldy #>@SPC_COMMA
+        jsr SAFE_STROUT     ; ' ,'
+
+        ldy @INDEX
+        lda SCREEN_VERTICES, y
+        iny
+        sty @INDEX
+        sta TEMP16
+        lda #0
+        sta TEMP16 + 1
+        jsr PRINT_INT16     ; @VERTEX Y
+
+        inc @COUNTER
+        inc @ROW
+        lda @ROW
+        cmp #8
+        bne @VERTEX_Loop
+        rts
+@INDEX          .byte 0
+@OPEN_BRACE     .byte "[", 0
+@CLOSE_BRACE    .byte "]", 0
+@SPC            .byte " ", 0
+@SPC_COMMA      .byte ", ", 0
+@ROW            .byte 0
+@COUNTER        .byte "0", 0
+

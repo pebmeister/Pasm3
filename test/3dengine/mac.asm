@@ -137,6 +137,28 @@
 
 
 ;********************************************
+;* MAT4_COPY
+;* Copy a 4x4 matrix (64 bytes)
+;*
+;* Parameters:
+;*   \1 = address of source matrix
+;*   \2   = address of destination matrix
+;*
+;* Uses:
+;*   MOVE32 \1, dest
+;********************************************
+
+        .macro VERT_COPY
+        
+        ldy #127
+@l1:
+        lda \1,y
+        sta \2,y
+        dey
+        bpl @l1
+       .endm
+
+;********************************************
         .macro PRINT_MAT
         
         lda #1
@@ -361,5 +383,14 @@
 
         .endm
         
-        .print pop
+               
+        .macro CALL_PRINT_FIX16
+        lda #<\1
+        sta FIXPTR
+        lda #>\1
+        sta FIXPTR+1
+        jsr PRINT_FIX16
+        rts
+        .endm
         
+        .print pop

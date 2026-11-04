@@ -223,6 +223,14 @@ ROTATION_X:
         lda #0
         sta MAT_B+3
 
+
+        ; Row 1, Col 0 = 0.0
+        lda #0
+        sta MAT_B+16
+        sta MAT_B+17
+        sta MAT_B+18
+        sta MAT_B+19
+        
         ; Row 1: 0, cos, -sin, 0
         ldx #0
 @XCos:

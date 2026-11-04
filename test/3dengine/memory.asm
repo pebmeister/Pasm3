@@ -5,8 +5,10 @@
 PLOT    = $E50A
 CHROUT  = $FFD2
 
+
+
 ;********************************************
-;* MAT_I - Identity matrix
+;* MAT_Z - Zero matrix
 ;********************************************
 MAT_I:
         ; Row 0
@@ -32,6 +34,7 @@ MAT_I:
         .word $0000, $0000    ; 0.0
         .word $0000, $0000    ; 0.0
         .word $0000, $0001    ; 1.0
+
         
 ;********************************************
 ;* MAT_A - Identity matrix
@@ -116,12 +119,14 @@ MAT_C:
         .word $0000, $0000
         
 
-SCALING_MATRIX      .ds 64 
-TRANSLATION_MATRIX  .ds 64
+
 ROT_X_MATRIX        .ds 64
 ROT_Y_MATRIX        .ds 64
 ROT_Z_MATRIX        .ds 64
 ROTATION_MATRIX     .ds 64
+
+SCALING_MATRIX      .ds 64
+TRANSLATION_MATRIX  .ds 64
 
 
 SCREEN_CENTER_X    = 160
@@ -131,18 +136,11 @@ ROT_TEMP_MATRIX:
         .ds 64
         
 ; Four-byte fixed-point values.
-MAT_MUL_A:
-        .word $0000, $0000
-        .ds 8        
-MAT_MUL_B:
-        .word $0000, $0000
-        .ds 8
-MAT_PRODUCT:
-        .ds 8
+MAT_MUL_A:          .ds 8
+MAT_MUL_B:          .ds 8
+MAT_PRODUCT:        .ds 8
+MAT_ACCUM:          .ds 8
 
-MAT_ACCUM:
-        .word $0000, $0000    
-        .ds 8
         
 SCALE_X:
         .ds 4
@@ -244,7 +242,6 @@ PC_SAVE        = *
         SCREEN_TEMP_RESULT      .ds 4
 
         
-            * = $40
             MAT_APTR        .ds 2       ; Current A element pointer
             MAT_BPTR        .ds 2       ; Current B element pointer
             MAT_CPTR        .ds 2       ; Current C element pointer
@@ -264,10 +261,7 @@ PC_SAVE        = *
             MAT4_VOUT_PTR   .ds 2
             MAT4_MATRIX_PTR .ds 2
 
-
-
-
-            *= $60
+       ;     *= $60
             FIXPTR           .ds 4
             TEMP16           .ds 2
 
@@ -303,7 +297,6 @@ DISPLAY_VECTORS:    .byte 1
 WORLD_MATRIX        .ds 64
 MAT_TEMP            .ds 64
 
-
 ROT_SCALE_MATRIX:
         .ds 64
 
@@ -311,13 +304,12 @@ MODEL_MATRIX:
         .ds 64
         
 WORLD_VERTICES:
-        .ds 128
+        .ds 256
         
 ; --- Data Buffers & Lookups (Standard RAM) ---
 TRANSFORMED_VERTEX    .ds 16  ; Temporary working buffer holding [x, y, z, w] in 16.16 fixed-point (4 bytes each)
 
-SCREEN_VERTICES     .ds 24
-
+SCREEN_VERTICES     .ds 256
 
 SCREEN_ONE          .word $0000, $0001
 SCREEN_SCALE_X      .word $0000, $00A0    ; 160.0
@@ -326,3 +318,22 @@ SCREEN_SCALE_Y      .word $0000, $0064    ; 100.0
 DRAW_EDGE_INDEX     .ds 2
 DRAW_EDGE_LEFT      .DS 2
 DRAW_VERTEX_INDEX   .DS 2
+
+
+; Scale: 1.0 (format: .word fractional, integer)
+MY_SCALE_X      .word $0000, $0001
+MY_SCALE_Y      .word $0000, $0001
+MY_SCALE_Z      .word $0000, $0001
+
+; Translation: Center X/Y, push forward on Z (e.g., Z = 2.5)
+MY_TRANS_X      .word $0000, $0000   ; X = 0.0 (centered horizontally)
+MY_TRANS_Y      .word $0000, $0000   ; Y = 0.0 (centered vertically)
+MY_TRANS_Z      .word $0000, $0008   ; 8.0
+
+; ============================================
+; INITIAL TRS (Transform-Rotate-Scale) VALUES
+; ============================================
+; Rotation angles (0 to 255 for a full circle)
+MY_ROT_X        .byte 32 
+MY_ROT_Y        .byte 32
+MY_ROT_Z        .byte 32

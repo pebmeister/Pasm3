@@ -90,7 +90,7 @@ PROJECT_WORLD_VERTICES:
         rts
         
         
-NDC_VERTICES    .ds 128
+NDC_VERTICES    .ds 256
   
 ;********************************************
 ;* DIVIDE_CLIP_VERTICES                     *
@@ -288,7 +288,6 @@ CONVERT_NDC_TO_SCREEN:
         bne @CopyX
         
         ADD_FIX16 SCREEN_TEMP_A, SCREEN_ONE, SCREEN_TEMP_A
-
         
         lda #<SCREEN_TEMP_A
         sta FIX16_A_PTR
@@ -306,7 +305,6 @@ CONVERT_NDC_TO_SCREEN:
         sta FIX16_RESULT_PTR+1
 
         jsr FIX16_MUL
-
 
         ; Store integer X
         ldy #0
@@ -360,7 +358,7 @@ CONVERT_NDC_TO_SCREEN:
         sta FIX16_RESULT_PTR
         lda #>SCREEN_TEMP_RESULT
         sta FIX16_RESULT_PTR+1
-
+        
         jsr FIX16_MUL
 
         ; Store integer Y

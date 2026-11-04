@@ -1,6 +1,3 @@
-raw
-
-
 ;********************************************
 ;* MAT4_MUL
 ;*
@@ -493,6 +490,16 @@ FIX16_DIV:
 ;********************************************
 
 FIX16_MUL:
+        ldx #0
+        lda #0
+@clear
+        sta FIX16_WORK_A, x
+        sta FIX16_WORK_B, x
+        sta FIX16_WORK_RESULT, x
+        inx
+        cpx #4        
+        bne @clear
+        
         ; Copy operand A to working storage
         ldy #0
         lda (FIX16_A_PTR),y
@@ -835,17 +842,6 @@ MAT4_VECTOR_MUL:
 ;*
 ;********************************************
 BUILD_SCALING_MATRIX:
-
-        ; Clear all 64 bytes
-        ldx #0
-        lda #0
-
-@ClearLoop:
-        sta SCALING_MATRIX,x
-        inx
-        cpx #64
-        bne @ClearLoop
-
         ; Set X scale (row 0, column 0)
         lda SCALE_X
         sta SCALING_MATRIX
@@ -893,17 +889,6 @@ BUILD_SCALING_MATRIX:
 ;*
 ;********************************************
  BUILD_TRANSLATION_MATRIX:
-
-        ; Clear all 64 bytes
-        ldx #0
-        lda #0
-
-@ClearLoop:
-        sta TRANSLATION_MATRIX,x
-        inx
-        cpx #64
-        bne @ClearLoop
-
         ; Row 0, column 0 = 1.0
         lda #1
         sta TRANSLATION_MATRIX + 2
@@ -950,7 +935,6 @@ BUILD_SCALING_MATRIX:
         rts
         
 BUILD_ROTATION_MATRIX:
-
         ; Build X rotation
         jsr ROTATION_X
         MAT4_COPY MAT_B, ROT_X_MATRIX
