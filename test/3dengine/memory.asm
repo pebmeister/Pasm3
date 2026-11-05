@@ -317,7 +317,7 @@ MY_SCALE_Z      .word $0000, $0001
 ; Translation: Center X/Y, push forward on Z (e.g., Z = 2.5)
 MY_TRANS_X      .word $0000, $0000   ; X = 0.0 (centered horizontally)
 MY_TRANS_Y      .word $0000, $0000   ; Y = 0.0 (centered vertically)
-MY_TRANS_Z      .word $0000, $0007   ;
+MY_TRANS_Z      .word $0000, $0005   ;
 
 ; ============================================
 ; INITIAL TRS (Transform-Rotate-Scale) VALUES

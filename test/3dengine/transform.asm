@@ -37,7 +37,7 @@ TRANSFORM_MODEL_VERTICES:
         sta MAT4_VOUT_PTR+1
 
         ; Transform vertex
-        jsr MAT4_VECTOR_MUL
+        jsr MAT3_VECTOR_MUL
 
         ; Advance source pointer by 16
         clc

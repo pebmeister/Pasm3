@@ -670,7 +670,215 @@ FIX16_MUL:
 
         rts
         
-  
+;********************************************
+;* MAT3_VECTOR_MUL
+;*
+;* Calculates VOUT = Matrix * VIN
+;*
+;* Specialized affine 4x4 matrix-vector multiply.
+;*
+;* Matrix:  64 bytes (4x4)
+;* Vectors: 16 bytes each
+;*
+;* Performs:
+;*   3 multiplications per output row
+;*   Adds translation directly
+;*   Sets W = 1.0
+;*
+;* Assumptions:
+;*   Input W = 1.0
+;*   Matrix is affine (not perspective)
+;*   Input and output vectors must not overlap.
+;*
+;* Uses:
+;*   MAT_MUL_A, MAT_MUL_B
+;*   MAT_PRODUCT, MAT_ACCUM
+;*   MAT_AROW, MAT_APTR, MAT_BPTR, MAT_CPTR
+;*   MAT_ROW, MAT_K
+;********************************************
+
+MAT3_VECTOR_MUL:
+
+        ; Initialize matrix row pointer
+        lda MAT4_MATRIX_PTR
+        sta MAT_AROW
+        lda MAT4_MATRIX_PTR+1
+        sta MAT_AROW+1
+
+        ; Initialize output pointer
+        lda MAT4_VOUT_PTR
+        sta MAT_CPTR
+        lda MAT4_VOUT_PTR+1
+        sta MAT_CPTR+1
+
+        lda #0
+        sta MAT_ROW
+
+@M3V_RowLoop:
+
+        ; Matrix pointer = start of current row
+        lda MAT_AROW
+        sta MAT_APTR
+        lda MAT_AROW+1
+        sta MAT_APTR+1
+
+        ; Input vector pointer = start of vector
+        lda MAT4_VIN_PTR
+        sta MAT_BPTR
+        lda MAT4_VIN_PTR+1
+        sta MAT_BPTR+1
+
+        ; Clear 32-bit accumulator
+        lda #0
+        sta MAT_ACCUM
+        sta MAT_ACCUM+1
+        sta MAT_ACCUM+2
+        sta MAT_ACCUM+3
+
+        lda #0
+        sta MAT_K
+
+@M3V_InnerLoop:
+
+        ; Copy matrix element into operand A
+        ldy #0
+        lda (MAT_APTR),y
+        sta MAT_MUL_A
+        iny
+        lda (MAT_APTR),y
+        sta MAT_MUL_A+1
+        iny
+        lda (MAT_APTR),y
+        sta MAT_MUL_A+2
+        iny
+        lda (MAT_APTR),y
+        sta MAT_MUL_A+3
+
+        ; Copy vector element into operand B
+        ldy #0
+        lda (MAT_BPTR),y
+        sta MAT_MUL_B
+        iny
+        lda (MAT_BPTR),y
+        sta MAT_MUL_B+1
+        iny
+        lda (MAT_BPTR),y
+        sta MAT_MUL_B+2
+        iny
+        lda (MAT_BPTR),y
+        sta MAT_MUL_B+3
+
+        ; Multiply copied operands
+        CALL_FIX16_MUL MAT_MUL_A, MAT_MUL_B, MAT_PRODUCT
+
+        ; Accumulate product
+        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
+
+        ; Advance matrix pointer by 4 bytes
+        clc
+        lda MAT_APTR
+        adc #4
+        sta MAT_APTR
+        bcc @M3V_APtrReady
+        inc MAT_APTR+1
+
+@M3V_APtrReady:
+
+        ; Advance vector pointer by 4 bytes
+        clc
+        lda MAT_BPTR
+        adc #4
+        sta MAT_BPTR
+        bcc @M3V_BPtrReady
+        inc MAT_BPTR+1
+
+@M3V_BPtrReady:
+
+        inc MAT_K
+        lda MAT_K
+        cmp #3
+        beq @M3V_InnerDone
+        jmp @M3V_InnerLoop
+
+@M3V_InnerDone:
+
+        ; MAT_APTR now points to translation element
+        ; Copy translation into MAT_PRODUCT
+        ldy #0
+        lda (MAT_APTR),y
+        sta MAT_PRODUCT
+        iny
+        lda (MAT_APTR),y
+        sta MAT_PRODUCT+1
+        iny
+        lda (MAT_APTR),y
+        sta MAT_PRODUCT+2
+        iny
+        lda (MAT_APTR),y
+        sta MAT_PRODUCT+3
+
+        ; Add translation to accumulated result
+        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
+
+        ; Store accumulated result in output vector
+        ldy #0
+        lda MAT_ACCUM
+        sta (MAT_CPTR),y
+        iny
+        lda MAT_ACCUM+1
+        sta (MAT_CPTR),y
+        iny
+        lda MAT_ACCUM+2
+        sta (MAT_CPTR),y
+        iny
+        lda MAT_ACCUM+3
+        sta (MAT_CPTR),y
+
+        ; Advance output pointer by 4 bytes
+        clc
+        lda MAT_CPTR
+        adc #4
+        sta MAT_CPTR
+        bcc @M3V_CPtrReady
+        inc MAT_CPTR+1
+
+@M3V_CPtrReady:
+
+        ; Advance matrix row by 16 bytes
+        clc
+        lda MAT_AROW
+        adc #16
+        sta MAT_AROW
+        bcc @M3V_ARowReady
+        inc MAT_AROW+1
+
+@M3V_ARowReady:
+
+        inc MAT_ROW
+        lda MAT_ROW
+        cmp #3
+        beq @M3V_Done
+        jmp @M3V_RowLoop
+
+@M3V_Done:
+
+        ; Set output W = 1.0
+        ; 16.16 representation = $00010000
+
+        ldy #0
+        lda #0
+        sta (MAT_CPTR),y
+        iny
+        sta (MAT_CPTR),y
+        iny
+        lda #1
+        sta (MAT_CPTR),y
+        iny
+        lda #0
+        sta (MAT_CPTR),y
+
+        rts
+        
 ;********************************************
 ;* MAT4_VECTOR_MUL
 ;*
