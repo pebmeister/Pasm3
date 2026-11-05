@@ -108,8 +108,6 @@ MAT_C:
         .word $0000, $0000
         .word $0000, $0000
         .word $0000, $0000
-        
-
 
 ROT_X_MATRIX        .ds 64
 ROT_Y_MATRIX        .ds 64
@@ -133,18 +131,12 @@ MAT_PRODUCT:        .ds 8
 MAT_ACCUM:          .ds 8
 
         
-SCALE_X:
-        .ds 4
-SCALE_Y:
-        .ds 4
-SCALE_Z:
-        .ds 4
-TRANS_X:
-        .ds 4
-TRANS_Y:
-        .ds 4
-TRANS_Z:
-        .ds 4
+SCALE_X:            .ds 4
+SCALE_Y:            .ds 4
+SCALE_Z:            .ds 4
+TRANS_X:            .ds 4
+TRANS_Y:            .ds 4
+TRANS_Z:            .ds 4
         
 ; Formatter Workspace Variables
 FMT_VAL         .ds 4
@@ -195,7 +187,7 @@ CURRENT_VERTEX_PTR .ds 2
 ;* Place pointers in zero page.
 ;********************************************
 PC_SAVE        = *
-            * = 10
+            * = 5
             XCOORD      .ds 2
             LOC         .ds 2
             DX          .ds 2
@@ -224,12 +216,12 @@ PC_SAVE        = *
             CURLOC      = DX
             XD          = YCOL
 
-        SCREEN_SRC_PTR          .ds 2
-        SCREEN_DST_PTR          .ds 2        
-        SCREEN_VERTICES_LEFT    .ds 1
-        SCREEN_TEMP_A           .ds 4
-        SCREEN_TEMP_B           .ds 4
-        SCREEN_TEMP_RESULT      .ds 4
+    SCREEN_SRC_PTR          .ds 2
+    SCREEN_DST_PTR          .ds 2        
+    SCREEN_VERTICES_LEFT    .ds 1
+    SCREEN_TEMP_A           .ds 4
+    SCREEN_TEMP_B           .ds 4
+    SCREEN_TEMP_RESULT      .ds 4
 
         
             MAT_APTR        .ds 2       ; Current A element pointer
@@ -271,58 +263,55 @@ PC_SAVE        = *
             PROJ_DST_PTR        .ds 2
             PROJ_VERTICES_LEFT  .ds 1
             
+            ;MAT_B               .ds 64
+            
             * = PC_SAVE
 
             DIV_WORKSPACE    .ds 18
             DIV_SIGN         .byte 0
 
             ; Display configuration
-DISPLAY_ROWS:       .byte 4
-DISPLAY_COLS:       .byte 1
-DISPLAY_VECTORS:    .byte 1
+DISPLAY_ROWS:           .byte 4
+DISPLAY_COLS:           .byte 1
+DISPLAY_VECTORS:        .byte 1
 
 ;********************************************
 ;* INTERMEDIATE MATRICES
 ;********************************************
-WORLD_MATRIX        .ds 64
-MAT_TEMP            .ds 64
+WORLD_MATRIX            .ds 64
+MAT_TEMP                .ds 64
 
-ROT_SCALE_MATRIX:
-        .ds 64
-
-MODEL_MATRIX:
-        .ds 64
-        
-WORLD_VERTICES:
-        .ds 256
+ROT_SCALE_MATRIX:       .ds 64
+MODEL_MATRIX:           .ds 64
+WORLD_VERTICES:         .ds 256
         
 ; --- Data Buffers & Lookups (Standard RAM) ---
-TRANSFORMED_VERTEX    .ds 16  ; Temporary working buffer holding [x, y, z, w] in 16.16 fixed-point (4 bytes each)
+TRANSFORMED_VERTEX      .ds 16  ; Temporary working buffer holding [x, y, z, w] in 16.16 fixed-point (4 bytes each)
 
-SCREEN_VERTICES     .ds 256
+SCREEN_VERTICES         .ds 256
 
-SCREEN_ONE          .word $0000, $0001
-SCREEN_SCALE_X      .word $0000, $00A0    ; 160.0
-SCREEN_SCALE_Y      .word $0000, $0064    ; 100.0
+SCREEN_ONE              .word $0000, $0001
+SCREEN_SCALE_X          .word $0000, $00A0    ; 160.0
+SCREEN_SCALE_Y          .word $0000, $0064    ; 100.0
 
-DRAW_EDGE_INDEX     .ds 2
-DRAW_EDGE_LEFT      .ds 2
-DRAW_VERTEX_INDEX   .ds 2
+DRAW_EDGE_INDEX         .ds 2
+DRAW_EDGE_LEFT          .ds 2
+DRAW_VERTEX_INDEX       .ds 2
 
 ; Scale: 1.0 (format: .word fractional, integer)
-MY_SCALE_X      .word $0000, $0001
-MY_SCALE_Y      .word $0000, $0001
-MY_SCALE_Z      .word $0000, $0001
+MY_SCALE_X              .word $0000, $0001
+MY_SCALE_Y              .word $0000, $0001
+MY_SCALE_Z              .word $0000, $0001
 
 ; Translation: Center X/Y, push forward on Z (e.g., Z = 2.5)
-MY_TRANS_X      .word $0000, $0000   ; X = 0.0 (centered horizontally)
-MY_TRANS_Y      .word $0000, $0000   ; Y = 0.0 (centered vertically)
-MY_TRANS_Z      .word $0000, $0005   ;
+MY_TRANS_X              .word $0000, $0000   ; X = 0.0 (centered horizontally)
+MY_TRANS_Y              .word $0000, $0000   ; Y = 0.0 (centered vertically)
+MY_TRANS_Z              .word $0000, $0007   ;
 
 ; ============================================
 ; INITIAL TRS (Transform-Rotate-Scale) VALUES
 ; ============================================
 ; Rotation angles (0 to 255 for a full circle)
-MY_ROT_X        .byte 0
-MY_ROT_Y        .byte 0
-MY_ROT_Z        .byte 0
+MY_ROT_X                .byte 0
+MY_ROT_Y                .byte 0
+MY_ROT_Z                .byte 0

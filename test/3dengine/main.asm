@@ -50,22 +50,22 @@ MainLoop:
         jmp MainLoop
         
 @Up
-        ADD8I MY_ROT_X, 5, MY_ROT_X
+        ADD8I MY_ROT_X, 10, MY_ROT_X
         jsr Update_X_Rotation
         jmp Draw
 
 @Down
-        SUB8I MY_ROT_X, 5, MY_ROT_X
+        SUB8I MY_ROT_X, 10, MY_ROT_X
         jsr Update_X_Rotation
         jmp Draw
         
 @Left
-        SUB8I MY_ROT_Y, 5, MY_ROT_Y
+        ADD8I MY_ROT_Y, 10, MY_ROT_Y
         jsr Update_Y_Rotation
         jmp Draw
         
 @Right
-        ADD8I MY_ROT_Y, 5, MY_ROT_Y
+        SUB8I MY_ROT_Y, 10, MY_ROT_Y
         jsr Update_Y_Rotation
         jmp Draw
         
@@ -118,7 +118,8 @@ CreateProjection
         jsr PROJECT_WORLD_VERTICES
 
         ; Perspective divide
-        jsr DIVIDE_CLIP_VERTICES
+        ; jsr DIVIDE_CLIP_VERTICES
+        jsr DIVIDE_CLIP_VERTICES_XY
 
         jsr CONVERT_NDC_TO_SCREEN
         
