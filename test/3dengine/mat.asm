@@ -933,6 +933,10 @@ BUILD_SCALING_MATRIX:
         sta TRANSLATION_MATRIX + 47
 
         rts
+
+
+ROT_ZY_MATRIX:
+        .ds 64
         
 BUILD_ROTATION_MATRIX:
         ; Build X rotation
@@ -947,11 +951,249 @@ BUILD_ROTATION_MATRIX:
         jsr ROTATION_Z
         MAT4_COPY MAT_B, ROT_Z_MATRIX
 
+BUILD_ROT_ZY_MATRIX:
         ; Calculate RZ * RY
-        CALL_MAT4_MUL ROT_Z_MATRIX, ROT_Y_MATRIX, ROT_TEMP_MATRIX
+        CALL_MAT3_MUL ROT_Z_MATRIX, ROT_Y_MATRIX, ROT_ZY_MATRIX
+        rts
 
+BUILD_ROTATION_MATRIX_X:
         ; Calculate (RZ * RY) * RX
-        CALL_MAT4_MUL ROT_TEMP_MATRIX, ROT_X_MATRIX, ROTATION_MATRIX
+        CALL_MAT3_MUL ROT_ZY_MATRIX, ROT_X_MATRIX, ROTATION_MATRIX
 
         rts
         
+        
+ ;********************************************
+;* MAT3_MUL
+;*
+;* Calculates C = A * B
+;*
+;* Matrix layout: 4x4 row-major
+;* Calculates upper-left 3x3 only.
+;* Last row/column initialized as affine identity.
+;*
+;* Each element: signed 16.16, 4 bytes
+;*
+;* Inputs:
+;*   MAT4_A_PTR -> Matrix A
+;*   MAT4_B_PTR -> Matrix B
+;*   MAT4_C_PTR -> Matrix C
+;*
+;* Uses FIX16_MUL and ADD_FIX16.
+;* Matrix C must not overlap A or B.
+;********************************************
+
+MAT3_MUL:
+
+        ;------------------------------------
+        ; Initialize output matrix to zero
+        ;------------------------------------
+
+        lda MAT4_C_PTR
+        sta MAT_CPTR
+        lda MAT4_C_PTR+1
+        sta MAT_CPTR+1
+
+        lda #0
+        tay
+
+@ClearMatrix:
+        sta (MAT_CPTR),y
+        iny
+        cpy #64
+        bne @ClearMatrix
+
+        ; Set bottom-right element to 1.0
+        lda #0
+        ldy #60
+        sta (MAT_CPTR),y
+        iny
+        sta (MAT_CPTR),y
+        iny
+        lda #1
+        sta (MAT_CPTR),y
+        iny
+        lda #0
+        sta (MAT_CPTR),y
+
+        ;------------------------------------
+        ; Initialize matrix pointers
+        ;------------------------------------
+
+        lda MAT4_A_PTR
+        sta MAT_AROW
+        lda MAT4_A_PTR+1
+        sta MAT_AROW+1
+
+        lda MAT4_B_PTR
+        sta MAT_BCOL
+        lda MAT4_B_PTR+1
+        sta MAT_BCOL+1
+
+        lda MAT4_C_PTR
+        sta MAT_CPTR
+        lda MAT4_C_PTR+1
+        sta MAT_CPTR+1
+
+        lda #0
+        sta MAT_ROW
+
+@RowLoop:
+
+        lda #0
+        sta MAT_COL
+
+@ColLoop:
+
+        ; A pointer starts at current row
+        lda MAT_AROW
+        sta MAT_APTR
+        lda MAT_AROW+1
+        sta MAT_APTR+1
+
+        ; B pointer starts at current column
+        lda MAT_BCOL
+        sta MAT_BPTR
+        lda MAT_BCOL+1
+        sta MAT_BPTR+1
+
+        ; Clear 32-bit accumulator
+        lda #0
+        sta MAT_ACCUM
+        sta MAT_ACCUM+1
+        sta MAT_ACCUM+2
+        sta MAT_ACCUM+3
+
+        lda #0
+        sta MAT_K
+
+@InnerLoop:
+
+        ; Set FIX16 operand A pointer
+        lda MAT_APTR
+        sta FIX16_A_PTR
+        lda MAT_APTR+1
+        sta FIX16_A_PTR+1
+
+        ; Set FIX16 operand B pointer
+        lda MAT_BPTR
+        sta FIX16_B_PTR
+        lda MAT_BPTR+1
+        sta FIX16_B_PTR+1
+
+        ; Product destination
+        lda #<MAT_PRODUCT
+        sta FIX16_RESULT_PTR
+        lda #>MAT_PRODUCT
+        sta FIX16_RESULT_PTR+1
+
+        ; Product = A[row][k] * B[k][col]
+        jsr FIX16_MUL
+
+        ; Accumulate product
+        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
+
+        ; A advances by 4 bytes
+        clc
+        lda MAT_APTR
+        adc #4
+        sta MAT_APTR
+        bcc @APtrReady
+        inc MAT_APTR+1
+
+@APtrReady:
+
+        ; B advances by 16 bytes
+        clc
+        lda MAT_BPTR
+        adc #16
+        sta MAT_BPTR
+        bcc @BPtrReady
+        inc MAT_BPTR+1
+
+@BPtrReady:
+
+        inc MAT_K
+        lda MAT_K
+        cmp #3
+        beq @InnerDone
+        jmp @InnerLoop
+
+@InnerDone:
+
+        ; Store C[row][col]
+        ldy #0
+        lda MAT_ACCUM
+        sta (MAT_CPTR),y
+        iny
+        lda MAT_ACCUM+1
+        sta (MAT_CPTR),y
+        iny
+        lda MAT_ACCUM+2
+        sta (MAT_CPTR),y
+        iny
+        lda MAT_ACCUM+3
+        sta (MAT_CPTR),y
+
+        ; C advances by 4 bytes
+        clc
+        lda MAT_CPTR
+        adc #4
+        sta MAT_CPTR
+        bcc @CPtrReady
+        inc MAT_CPTR+1
+
+@CPtrReady:
+
+        ; B column advances by 4 bytes
+        clc
+        lda MAT_BCOL
+        adc #4
+        sta MAT_BCOL
+        bcc @BColReady
+        inc MAT_BCOL+1
+
+@BColReady:
+
+        inc MAT_COL
+        lda MAT_COL
+        cmp #3
+        beq @ColDone
+        jmp @ColLoop
+
+@ColDone:
+
+        ; Skip fourth column in output
+        clc
+        lda MAT_CPTR
+        adc #4
+        sta MAT_CPTR
+        bcc @CPtrNextRow
+        inc MAT_CPTR+1
+
+@CPtrNextRow:
+
+        ; A advances to next row
+        clc
+        lda MAT_AROW
+        adc #16
+        sta MAT_AROW
+        bcc @ARowReady
+        inc MAT_AROW+1
+
+@ARowReady:
+
+        ; Reset B column to beginning of B
+        lda MAT4_B_PTR
+        sta MAT_BCOL
+        lda MAT4_B_PTR+1
+        sta MAT_BCOL+1
+
+        inc MAT_ROW
+        lda MAT_ROW
+        cmp #3
+        beq @Exit
+        jmp @RowLoop
+
+@Exit:
+        rts

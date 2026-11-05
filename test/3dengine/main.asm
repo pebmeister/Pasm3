@@ -12,47 +12,103 @@
         jsr HGRCls
         jsr HGROn
                 
+        jsr Update_Scale
 
+        MOVE8 MY_ROT_X, ROT_X_ANGLE
+        MOVE8 MY_ROT_Y, ROT_Y_ANGLE
+        MOVE8 MY_ROT_Z, ROT_Z_ANGLE
+
+        jsr ROTATION_X
+        MAT4_COPY MAT_B, ROT_X_MATRIX
+        jsr ROTATION_Y
+        MAT4_COPY MAT_B, ROT_Y_MATRIX
+        jsr ROTATION_Z
+        MAT4_COPY MAT_B, ROT_Z_MATRIX
+
+        jsr BUILD_ROT_ZY_MATRIX
+        jsr BUILD_ROTATION_MATRIX_X
+
+        jsr Update_Translation
         jmp Draw
         
-
 MainLoop:
         jsr GETIN
         beq MainLoop
         
-        cmp #$11    ;down        
+        cmp #$11    ; down        
         beq @Down
 
-        cmp #$91    ;up
+        cmp #$91    ; up
         beq @Up
         
+        cmp #$9D    ; Left
+        beq @Left
+
+        cmp #$1D    ; Right
+        beq @Right
+
         jmp MainLoop
         
 @Up
-        ADD8I MY_ROT_X, 10, MY_ROT_X
+        ADD8I MY_ROT_X, 5, MY_ROT_X
+        jsr Update_X_Rotation
         jmp Draw
 
 @Down
-        SUB8I MY_ROT_X, 10, MY_ROT_X
+        SUB8I MY_ROT_X, 5, MY_ROT_X
+        jsr Update_X_Rotation
+        jmp Draw
+        
+@Left
+        SUB8I MY_ROT_Y, 5, MY_ROT_Y
+        jsr Update_Y_Rotation
+        jmp Draw
+        
+@Right
+        ADD8I MY_ROT_Y, 5, MY_ROT_Y
+        jsr Update_Y_Rotation
         jmp Draw
         
 Draw
-        jsr Build_model
+        CALL_MAT4_MUL ROTATION_MATRIX, SCALING_MATRIX, ROT_SCALE_MATRIX
+        CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX        
+
         jsr CreateProjection
         jsr HGRCls
         jsr DRAW_PYRAMID_EDGES
         jmp MainLoop
-        
-Build_model
-        SET_SCALE        MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
-        SET_ROTATION     MY_ROT_X, MY_ROT_Y, MY_ROT_Z
-        SET_TRANSLATION  MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z
 
-        CALL_MAT4_MUL ROTATION_MATRIX, SCALING_MATRIX, ROT_SCALE_MATRIX
-        CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX
-        
+Update_Scale
+        SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
         rts
         
+Update_X_Rotation
+        MOVE8 MY_ROT_X, ROT_X_ANGLE
+        jsr ROTATION_X        
+        MAT4_COPY MAT_B, ROT_X_MATRIX
+        jsr BUILD_ROTATION_MATRIX_X
+        rts
+
+Update_Y_Rotation
+        MOVE8 MY_ROT_Y, ROT_Y_ANGLE
+        jsr ROTATION_Y
+        MAT4_COPY MAT_B, ROT_Y_MATRIX
+        jsr BUILD_ROT_ZY_MATRIX
+        jsr BUILD_ROTATION_MATRIX_X
+        rts
+
+Update_Z_Rotation
+        MOVE8 MY_ROT_Z, ROT_Z_ANGLE
+        jsr ROTATION_Z
+        MAT4_COPY MAT_B, ROT_Z_MATRIX
+        jsr BUILD_ROT_ZY_MATRIX
+        jsr BUILD_ROTATION_MATRIX_X
+        rts
+        
+Update_Translation
+        SET_TRANSLATION  MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z
+        rts
+                
 CreateProjection
          
         ; Transform model vertices

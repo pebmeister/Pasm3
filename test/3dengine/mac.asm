@@ -85,6 +85,35 @@
         .endm        
         
 ;********************************************
+;* CALL_MAT3_MUL
+;*
+;* /1 = Matrix A
+;* /2 = Matrix B
+;* /3 = Matrix C
+;********************************************
+
+        .macro CALL_MAT3_MUL
+
+        lda #<\1
+        sta MAT4_A_PTR
+        lda #>\1
+        sta MAT4_A_PTR+1
+
+        lda #<\2
+        sta MAT4_B_PTR
+        lda #>\2
+        sta MAT4_B_PTR+1
+
+        lda #<\3
+        sta MAT4_C_PTR
+        lda #>\3
+        sta MAT4_C_PTR+1
+
+        jsr MAT3_MUL
+
+        .endm
+        
+;********************************************
 ;* CALL_MAT4_VECTOR_MUL
 ;*
 ;* /1 = Matrix address

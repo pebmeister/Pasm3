@@ -460,12 +460,8 @@ PRINT_SCREEN_VERTICES
         ldy #>@COUNTER
         jsr SAFE_STROUT     ; index
 
+        jsr PRINT_SP
         
-        lda #<@SPC
-        ldy #>@SPC
-        jsr SAFE_STROUT     ; ' '
-        
-
         ldy @INDEX
         lda SCREEN_VERTICES, y
         iny 
@@ -499,7 +495,6 @@ PRINT_SCREEN_VERTICES
 @INDEX          .byte 0
 @OPEN_BRACE     .byte "[", 0
 @CLOSE_BRACE    .byte "]", 0
-@SPC            .byte " ", 0
 @SPC_COMMA      .byte ", ", 0
 @ROW            .byte 0
 @COUNTER        .byte "0", 0
