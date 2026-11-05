@@ -492,13 +492,6 @@ FIX16_DIV:
 FIX16_MUL:
         ldx #0
         lda #0
-@clear
-        sta FIX16_WORK_A, x
-        sta FIX16_WORK_B, x
-        sta FIX16_WORK_RESULT, x
-        inx
-        cpx #4        
-        bne @clear
         
         ; Copy operand A to working storage
         ldy #0
@@ -1201,15 +1194,6 @@ MAT3_MUL:
         sta MAT_CPTR
         lda MAT4_C_PTR+1
         sta MAT_CPTR+1
-
-        lda #0
-        tay
-
-@ClearMatrix:
-        sta (MAT_CPTR),y
-        iny
-        cpy #64
-        bne @ClearMatrix
 
         ; Set bottom-right element to 1.0
         lda #0

@@ -1121,16 +1121,15 @@
         sta \3 + 3
         .endm
         
-
 ;********************************************
-;* FIX16_SUB                                *
+;* SUB_FIX16                                *
 ;* Subtract two 16.16 fixed-point variables *
 ;* \1 Source variable 1 (16.16)             *
 ;* \2 Source variable 2 to subtract (16.16) *
 ;* \3 Destination (16.16)                   *
 ;* Destroys A                               *
 ;********************************************
-        .macro FIX16_SUB
+        .macro SUB_FIX16
         sec
         lda \1
         sbc \2
@@ -1146,7 +1145,6 @@
         sta \3 + 3
         .endm
         
-
 ;********************************************
 ;* DIV_FIX16                                *
 ;* Unsigned 16.16 division (ZP Optimized)   *
