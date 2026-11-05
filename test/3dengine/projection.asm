@@ -24,7 +24,7 @@ PROJECTION_MATRIX:
         .word $0000, $0001    ;  1.0
         .word $0000, $0000    ;  0
         
-        CLIP_VERTICES   .ds 128
+        CLIP_VERTICES   .ds 256
         
 
 PROJECT_WORLD_VERTICES:
@@ -47,7 +47,7 @@ PROJECT_WORLD_VERTICES:
         lda #>CLIP_VERTICES
         sta PROJ_DST_PTR+1
 
-        lda CUBE_VERTEX_COUNT
+        lda PYRAMID_VERTEX_COUNT
         sta PROJ_VERTICES_LEFT
 
 @ProjectLoop:
@@ -116,7 +116,7 @@ DIVIDE_CLIP_VERTICES:
         lda #>NDC_VERTICES
         sta PROJ_DST_PTR+1
 
-        lda CUBE_VERTEX_COUNT
+        lda PYRAMID_VERTEX_COUNT
         sta PROJ_VERTICES_LEFT
 
 @DivideVertex:
@@ -270,7 +270,7 @@ CONVERT_NDC_TO_SCREEN:
         lda #>SCREEN_VERTICES
         sta SCREEN_DST_PTR+1
 
-        lda CUBE_VERTEX_COUNT
+        lda PYRAMID_VERTEX_COUNT
         sta SCREEN_VERTICES_LEFT
 
 @ConvertVertex:

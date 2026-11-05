@@ -12,19 +12,35 @@
         jsr HGRCls
         jsr HGROn
                 
-        lda #0
-        sta ScrRow
-        jsr CLEARSCREEN
 
-        jsr Build_model
+        jmp Draw
+        
 
 MainLoop:
+        jsr GETIN
+        beq MainLoop
+        
+        cmp #$11    ;down        
+        beq @Down
+
+        cmp #$91    ;up
+        beq @Up
+        
+        jmp MainLoop
+        
+@Up
+        ADD8I MY_ROT_X, 10, MY_ROT_X
+        jmp Draw
+
+@Down
+        SUB8I MY_ROT_X, 10, MY_ROT_X
+        jmp Draw
+        
+Draw
         jsr Build_model
         jsr CreateProjection
-
         jsr HGRCls
-        jsr DRAW_CUBE_EDGES
-
+        jsr DRAW_PYRAMID_EDGES
         jmp MainLoop
         
 Build_model
@@ -53,18 +69,18 @@ CreateProjection
         rts
  
 ;********************************************
-;* DRAW_CUBE_EDGES                         *
+;* DRAW_PYRAMID_EDGES                       *
 ;*                                          *
-;* Draws all edges in CUBE_EDGES            *
+;* Draws all edges in PYRAMID_EDGES         *
 ;* using SCREEN_VERTICES and _Line.         *
 ;********************************************
 
-DRAW_CUBE_EDGES:
+DRAW_PYRAMID_EDGES:
 
         lda #0
         sta DRAW_EDGE_INDEX
 
-        lda CUBE_EDGE_COUNT
+        lda PYRAMID_EDGE_COUNT
         sta DRAW_EDGE_LEFT
 
 @DrawEdge:
@@ -74,7 +90,7 @@ DRAW_CUBE_EDGES:
         ;------------------------------------
 
         ldy DRAW_EDGE_INDEX
-        lda CUBE_EDGES,y
+        lda PYRAMID_EDGES,y
         sta DRAW_VERTEX_INDEX
 
         ; Calculate offset = vertex index * 3
@@ -99,7 +115,7 @@ DRAW_CUBE_EDGES:
 
         ldy DRAW_EDGE_INDEX
         iny
-        lda CUBE_EDGES,y
+        lda PYRAMID_EDGES,y
         sta DRAW_VERTEX_INDEX
 
         ; Calculate offset = vertex index * 3
@@ -135,3 +151,4 @@ DRAW_CUBE_EDGES:
         bne @DrawEdge
 
         rts
+        

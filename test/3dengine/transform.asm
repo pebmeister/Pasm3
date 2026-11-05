@@ -7,9 +7,9 @@ TRANSFORM_MODEL_VERTICES:
         sta MAT4_MATRIX_PTR+1
 
         ; Initialize source pointer
-        lda #<CUBE_VERTICES
+        lda #<PYRAMID_VERTICES
         sta MODEL_SRC_PTR
-        lda #>CUBE_VERTICES
+        lda #>PYRAMID_VERTICES
         sta MODEL_SRC_PTR+1
 
         ; Initialize destination pointer
@@ -19,7 +19,7 @@ TRANSFORM_MODEL_VERTICES:
         sta MODEL_DST_PTR+1
 
         ; Eight vertices
-        lda CUBE_VERTEX_COUNT
+        lda PYRAMID_VERTEX_COUNT
         sta MODEL_VERTICES_LEFT
 
 @TransformLoop:

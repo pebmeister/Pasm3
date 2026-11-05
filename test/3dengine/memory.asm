@@ -316,9 +316,8 @@ SCREEN_SCALE_X      .word $0000, $00A0    ; 160.0
 SCREEN_SCALE_Y      .word $0000, $0064    ; 100.0
 
 DRAW_EDGE_INDEX     .ds 2
-DRAW_EDGE_LEFT      .DS 2
-DRAW_VERTEX_INDEX   .DS 2
-
+DRAW_EDGE_LEFT      .ds 2
+DRAW_VERTEX_INDEX   .ds 2
 
 ; Scale: 1.0 (format: .word fractional, integer)
 MY_SCALE_X      .word $0000, $0001
@@ -328,12 +327,12 @@ MY_SCALE_Z      .word $0000, $0001
 ; Translation: Center X/Y, push forward on Z (e.g., Z = 2.5)
 MY_TRANS_X      .word $0000, $0000   ; X = 0.0 (centered horizontally)
 MY_TRANS_Y      .word $0000, $0000   ; Y = 0.0 (centered vertically)
-MY_TRANS_Z      .word $0000, $0008   ; 8.0
+MY_TRANS_Z      .word $0000, $0007   ;
 
 ; ============================================
 ; INITIAL TRS (Transform-Rotate-Scale) VALUES
 ; ============================================
 ; Rotation angles (0 to 255 for a full circle)
-MY_ROT_X        .byte 32 
-MY_ROT_Y        .byte 32
-MY_ROT_Z        .byte 32
+MY_ROT_X        .byte 0
+MY_ROT_Y        .byte 0
+MY_ROT_Z        .byte 0
