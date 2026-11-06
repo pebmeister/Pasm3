@@ -1,6 +1,7 @@
         .inc "basic.asm"
         .inc "macros.asm"
         .inc "mac.asm"
+        .inc "key.asm"
         .inc "main.asm"
         .inc "sin.asm"
         .inc "trig.asm"

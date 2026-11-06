@@ -35,38 +35,54 @@ MainLoop:
         jsr GETIN
         beq MainLoop
         
-        cmp #$11    ; down        
-        beq @Down
+        cmp #KEY_W          ; Rot_X_Clock        
+        beq @Rot_X_Clock
 
-        cmp #$91    ; up
-        beq @Up
+        cmp #KEY_S          ; Rot_X_Counter_Clock
+        beq @Rot_X_Counter_Clock
         
-        cmp #$9D    ; Left
-        beq @Left
+        cmp #KEY_D          ; Rot_Y_Clock
+        beq @Rot_Y_Clock
 
-        cmp #$1D    ; Right
-        beq @Right
+        cmp #KEY_A          ; Rot_Y_Counter_Clock
+        beq @Rot_Y_Counter_Clock
+
+        cmp #KEY_E          ; Rot_Z_Clock
+        beq @Rot_Z_Clock
+
+        cmp #KEY_Q          ; Rot_Z_Counter_Clock
+        beq @Rot_Z_Counter_Clock
 
         jmp MainLoop
         
-@Up
+@Rot_X_Clock
         ADD8I MY_ROT_X, 10, MY_ROT_X
         jsr Update_X_Rotation
         jmp Draw
 
-@Down
+@Rot_X_Counter_Clock
         SUB8I MY_ROT_X, 10, MY_ROT_X
         jsr Update_X_Rotation
         jmp Draw
         
-@Left
+@Rot_Y_Clock
         ADD8I MY_ROT_Y, 10, MY_ROT_Y
         jsr Update_Y_Rotation
         jmp Draw
         
-@Right
+@Rot_Y_Counter_Clock
         SUB8I MY_ROT_Y, 10, MY_ROT_Y
         jsr Update_Y_Rotation
+        jmp Draw
+        
+@Rot_Z_Clock
+        ADD8I MY_ROT_Z, 10, MY_ROT_Z
+        jsr Update_Z_Rotation
+        jmp Draw
+        
+@Rot_Z_Counter_Clock
+        SUB8I MY_ROT_Z, 10, MY_ROT_Z
+        jsr Update_Z_Rotation
         jmp Draw
         
 Draw

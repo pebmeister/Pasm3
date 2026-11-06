@@ -1389,3 +1389,25 @@ MAT3_MUL:
 
 @Exit:
         rts
+ 
+;********************************************
+;* STORE_FIX16
+;*
+;* Store SCREEN_TEMP_A into destination
+;* pointed to by MAT4_VOUT_PTR + Y.
+;********************************************
+
+        .macro STORE_FIX16
+        lda SCREEN_TEMP_A
+        sta (MAT4_VOUT_PTR),y
+        iny
+        lda SCREEN_TEMP_A+1
+        sta (MAT4_VOUT_PTR),y
+        iny
+        lda SCREEN_TEMP_A+2
+        sta (MAT4_VOUT_PTR),y
+        iny
+        lda SCREEN_TEMP_A+3
+        sta (MAT4_VOUT_PTR),y
+        .endm
+        
