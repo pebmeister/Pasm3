@@ -1,5 +1,7 @@
 ; ====================================================
-; Minimal Fixed-Point Print Baseline
+; 3D Rotation
+; written by Paul Baxter using Pasm3
+; https://github.com/pebmeister/Pasm3.git
 ; ====================================================
 
         .basic_hdr
@@ -10,9 +12,8 @@
         jsr _HGRBColor
 
         jsr HGRCls
-        jsr HGROn
-                
-        jsr Update_Scale
+                                
+        SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
 
         MOVE8 MY_ROT_Z, ROT_Z_ANGLE
         MOVE8 MY_ROT_Y, ROT_Y_ANGLE
@@ -26,65 +27,132 @@
         jsr BUILD_ROTATION_MATRIX_X
 
         jsr Update_Translation
+
+        jsr HGROn
         jmp Draw
         
 MainLoop:
         jsr GETIN
         beq MainLoop
         
+        ; =======================================================
+        ; Set Rotation
+        ; =======================================================
+
+        ; ===== Z =====
         cmp #KEY_E          ; Rot_Z_Clock
         beq @Rot_Z_Clock
 
         cmp #KEY_Q          ; Rot_Z_Counter_Clock
         beq @Rot_Z_Counter_Clock
 
+        ; ===== Y =====
         cmp #KEY_D          ; Rot_Y_Clock
         beq @Rot_Y_Clock
 
         cmp #KEY_A          ; Rot_Y_Counter_Clock
         beq @Rot_Y_Counter_Clock
 
+        ; ===== X =====
         cmp #KEY_W          ; Rot_X_Clock        
         beq @Rot_X_Clock
 
         cmp #KEY_S          ; Rot_X_Counter_Clock
         beq @Rot_X_Counter_Clock
         
+        ; =======================================================
+        ; Set Scale
+        ; =======================================================
+
+        ; ===== Z =====
+        cmp #KEY_SHIFT_E    ; Scale_Z_Inc
+        beq @Scale_Z_Inc
+
+        cmp #KEY_SHIFT_Q    ; Scale_Z_Dec
+        beq @Scale_Z_Dec
+
+        ; ===== Y =====
+        cmp #KEY_SHIFT_D    ; Scale_Y_Inc
+        beq @Scale_Y_Inc
+
+        cmp #KEY_SHIFT_A    ; Scale_Y_Dec
+        beq @Scale_Y_Dec
+
+        ; ===== X =====
+        cmp #KEY_SHIFT_W    ; Scale_X_Inc
+        beq @Scale_X_Inc
+
+        cmp #KEY_SHIFT_S    ; Scale_X_Dec
+        beq @Scale_X_Dec
+
+        ; =======================================================
+        ; Reset
+        ; =======================================================
         cmp #KEY_RETURN
         beq @Reset
         
         jmp MainLoop
         
-@Rot_X_Clock
-        ADD8I ROT_X_ANGLE, 10, ROT_X_ANGLE
-        jsr Update_X_Rotation
-        jmp Draw
-
-@Rot_X_Counter_Clock
-        SUB8I ROT_X_ANGLE, 10, ROT_X_ANGLE
-        jsr Update_X_Rotation
-        jmp Draw
-        
-@Rot_Y_Clock
-        ADD8I ROT_Y_ANGLE, 10, ROT_Y_ANGLE
-        jsr Update_Y_Rotation
-        jmp Draw
-        
-@Rot_Y_Counter_Clock
-        SUB8I ROT_Y_ANGLE, 10, ROT_Y_ANGLE
-        jsr Update_Y_Rotation
-        jmp Draw
-        
 @Rot_Z_Clock
-        ADD8I ROT_Z_ANGLE, 10, ROT_Z_ANGLE
+        ADD8I ROT_Z_ANGLE, ROT_DELTA, ROT_Z_ANGLE
         jsr Update_Z_Rotation
         jmp Draw
         
 @Rot_Z_Counter_Clock
-        SUB8I ROT_Z_ANGLE, 10, ROT_Z_ANGLE
+        SUB8I ROT_Z_ANGLE, ROT_DELTA, ROT_Z_ANGLE
         jsr Update_Z_Rotation
         jmp Draw
 
+@Rot_Y_Clock
+        ADD8I ROT_Y_ANGLE, ROT_DELTA, ROT_Y_ANGLE
+        jsr Update_Y_Rotation
+        jmp Draw
+        
+@Rot_Y_Counter_Clock
+        SUB8I ROT_Y_ANGLE, ROT_DELTA, ROT_Y_ANGLE
+        jsr Update_Y_Rotation
+        jmp Draw
+
+@Rot_X_Clock
+        ADD8I ROT_X_ANGLE, ROT_DELTA, ROT_X_ANGLE
+        jsr Update_X_Rotation
+        jmp Draw
+
+@Rot_X_Counter_Clock
+        SUB8I ROT_X_ANGLE, ROT_DELTA, ROT_X_ANGLE
+        jsr Update_X_Rotation
+        jmp Draw
+          
+@Scale_Z_Inc
+        ADD_FIX16 SCALE_Z, SCALE_INCREMENT, SCALE_Z
+        jsr BUILD_SCALING_MATRIX_Z
+        jmp Draw
+          
+@Scale_Z_Dec
+        ADD_FIX16 SCALE_Z, SCALE_DECREMENT, SCALE_Z
+        jsr BUILD_SCALING_MATRIX_Z
+        jmp Draw
+              
+@Scale_Y_Inc
+        ADD_FIX16 SCALE_Y, SCALE_INCREMENT, SCALE_Y
+        jsr BUILD_SCALING_MATRIX_Y
+        jmp Draw
+          
+@Scale_Y_Dec
+        ADD_FIX16 SCALE_Y, SCALE_DECREMENT, SCALE_Y
+        jsr BUILD_SCALING_MATRIX_Y
+        jmp Draw
+              
+@Scale_X_Inc
+        ADD_FIX16 SCALE_X, SCALE_INCREMENT, SCALE_X
+        jsr BUILD_SCALING_MATRIX_X
+        jmp Draw
+          
+@Scale_X_Dec
+        ADD_FIX16 SCALE_X, SCALE_DECREMENT, SCALE_X
+        jsr BUILD_SCALING_MATRIX_X
+        jmp Draw
+              
 @Reset
         MOVE8 MY_ROT_Z, ROT_Z_ANGLE
         MOVE8 MY_ROT_Y, ROT_Y_ANGLE
@@ -96,6 +164,8 @@ MainLoop:
 
         jsr BUILD_ROT_ZY_MATRIX
         jsr BUILD_ROTATION_MATRIX_X
+
+        SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
 
         jsr Update_Translation
         jmp Draw
@@ -109,9 +179,6 @@ Draw
         jsr DRAW_PYRAMID_EDGES
         jmp MainLoop
 
-Update_Scale
-        SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
-        rts
         
 Update_X_Rotation
         jsr ROTATION_X        
@@ -134,10 +201,10 @@ Update_Translation
         SET_TRANSLATION  MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z
         rts
                 
-CreateProjection
-         
+CreateProjection         
         ; Transform model vertices
-        jsr TRANSFORM_MODEL_VERTICES
+        ; jsr TRANSFORM_WORLD_VERTICES
+        jsr TRANSFORM_PYRAMID_VERTICES
 
         ; Perspective projection
         jsr PROJECT_WORLD_VERTICES
@@ -146,6 +213,7 @@ CreateProjection
         ; jsr DIVIDE_CLIP_VERTICES
         jsr DIVIDE_CLIP_VERTICES_XY
 
+        ; set to screen
         jsr CONVERT_NDC_TO_SCREEN
         
         rts

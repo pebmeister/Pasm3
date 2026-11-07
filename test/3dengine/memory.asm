@@ -315,3 +315,11 @@ MY_TRANS_Z              .word $0000, $0007   ;
 MY_ROT_X                .byte 0
 MY_ROT_Y                .byte 0
 MY_ROT_Z                .byte 0
+ROT_DELTA               = 10
+SCALE_INCREMENT:
+        .word $199A, $0000     ; 0.1
+
+SCALE_DECREMENT:
+        .word $E666, $FFFF     ; -0.1
+        
+        

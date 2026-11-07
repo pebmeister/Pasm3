@@ -1037,12 +1037,7 @@ MAT4_VECTOR_MUL:
 @M4V_Done:
         rts
 
-;********************************************
-;*
-;* BUILD_SCALING_MATRIX
-;*
-;********************************************
-BUILD_SCALING_MATRIX:
+BUILD_SCALING_MATRIX_X:
         ; Set X scale (row 0, column 0)
         lda SCALE_X
         sta SCALING_MATRIX
@@ -1052,7 +1047,9 @@ BUILD_SCALING_MATRIX:
         sta SCALING_MATRIX + 2
         lda SCALE_X + 3
         sta SCALING_MATRIX + 3
+        rts
 
+BUILD_SCALING_MATRIX_Y:
         ; Set Y scale (row 1, column 1)
         lda SCALE_Y
         sta SCALING_MATRIX + 20
@@ -1062,8 +1059,9 @@ BUILD_SCALING_MATRIX:
         sta SCALING_MATRIX + 22
         lda SCALE_Y + 3
         sta SCALING_MATRIX + 23
-
-        ; Set Z scale (row 2, column 2)
+        rts
+        
+BUILD_SCALING_MATRIX_Z
         lda SCALE_Z
         sta SCALING_MATRIX + 40
         lda SCALE_Z + 1
@@ -1072,7 +1070,9 @@ BUILD_SCALING_MATRIX:
         sta SCALING_MATRIX + 42
         lda SCALE_Z + 3
         sta SCALING_MATRIX + 43
-
+        rts
+            
+BUILD_SCALING_MATRIX_W
         ; Set W = 1.0 (row 3, column 3)
         lda #0
         sta SCALING_MATRIX + 60
@@ -1081,7 +1081,18 @@ BUILD_SCALING_MATRIX:
         sta SCALING_MATRIX + 62
         lda #0
         sta SCALING_MATRIX + 63
-
+        rts
+            
+;********************************************
+;*
+;* BUILD_SCALING_MATRIX
+;*
+;********************************************
+BUILD_SCALING_MATRIX:
+        jsr BUILD_SCALING_MATRIX_X
+        jsr BUILD_SCALING_MATRIX_Y
+        jsr BUILD_SCALING_MATRIX_Z
+        jsr BUILD_SCALING_MATRIX_W
         rts
         
 ;********************************************

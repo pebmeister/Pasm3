@@ -1,3 +1,6 @@
+.print push
+.print off
+
 ; ============================================
 ; COMMODORE 64 KERNAL PETSCII KEYCODE EQUATES
 ; Returned by KERNAL GETIN ($FFE4) or standard input
@@ -309,3 +312,5 @@ KEY_LEFT        = $9D       ; Cursor Left
 ;KEY_F3          = $86       ; F3 (Unshifted)
 ;KEY_F5          = $87       ; F5 (Unshifted)
 ;KEY_F7          = $88       ; F7 (Unshifted)
+
+.print pop

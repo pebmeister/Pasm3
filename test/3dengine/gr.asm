@@ -372,6 +372,8 @@ CalcPlot
 ; Clamps Y0, Y1 to screen range 0-199 ($C7)
 ; ============================================
 CLAMP_LINE_COORDS
+        rts
+        
         ; --- Clamp X0 ---
         lda X0 + 1
         bmi @clamp_x0_zero
@@ -393,16 +395,11 @@ CLAMP_LINE_COORDS
         sta X0 + 1
 
 @clamp_y0
-        ; --- Clamp Y0 ---
+        ; --- Clamp Y0 (unsigned 0-199) ---
         lda Y0
-        bmi @clamp_y0_zero
         cmp #200
         bcc @clamp_x1
         lda #199
-        sta Y0
-        jmp @clamp_x1
-@clamp_y0_zero
-        lda #0
         sta Y0
 
 @clamp_x1
@@ -953,4 +950,3 @@ MaskDataEnd
         .byte %11111100 ; 6
         .byte %11111110 ; 7
         .byte %11111111 ; 8
-

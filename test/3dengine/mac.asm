@@ -208,7 +208,58 @@
 
         .endm
 
+;********************************************
+;*                                          *
+;* SET_SCALE_N SCALE, N                     *
+;*                                          *
+;*                                          *
+;*  destroys a                              *
+;*                                          *
+;********************************************
+        .macro SET_SCALE_N
+        lda \2
+        sta \1
+        lda \2 + 1
+        sta \1 + 1
+        lda \2 + 2
+        sta \1 + 2
+        lda \2 + 3
+        sta \1 + 3
+        .endm
 
+;********************************************
+;*                                          *
+;* SET_SCALE_X X                            *
+;*                                          *
+;*  destroys a                              *
+;*                                          *
+;********************************************
+        .macro SET_SCALE_X
+        SET_SCALE_N SCALE_X, \1
+        .endm
+
+;********************************************
+;*                                          *
+;* SET_SCALE_Y Y                            *
+;*                                          *
+;*  destroys a                              *
+;*                                          *
+;********************************************
+        .macro SET_SCALE_Y
+        SET_SCALE_N SCALE_Y, \1
+        .endm
+        
+;********************************************
+;*                                          *
+;* SET_SCALE_Z Z                            *
+;*                                          *
+;*  destroys a                              *
+;*                                          *
+;********************************************
+        .macro SET_SCALE_Z
+        SET_SCALE_N SCALE_Z, \1
+        .endm
+       
 ;********************************************
 ;*                                          *
 ;* SET_SCALE X, Y, Z                        *
@@ -219,42 +270,14 @@
 ;********************************************
         .macro SET_SCALE
 
-        ; Copy X
-        lda \1
-        sta SCALE_X
-        lda \1 + 1
-        sta SCALE_X + 1
-        lda \1 + 2
-        sta SCALE_X + 2
-        lda \1 + 3
-        sta SCALE_X + 3
-
-        ; Copy Y
-        lda \2
-        sta SCALE_Y
-        lda \2 + 1
-        sta SCALE_Y + 1
-        lda \2 + 2
-        sta SCALE_Y + 2
-        lda \2 + 3
-        sta SCALE_Y + 3
-
-        ; Copy Z
-        lda \3
-        sta SCALE_Z
-        lda \3 + 1
-        sta SCALE_Z + 1
-        lda \3 + 2
-        sta SCALE_Z + 2
-        lda \3 + 3
-        sta SCALE_Z + 3
+        SET_SCALE_X \1
+        SET_SCALE_Y \2
+        SET_SCALE_Z \3
 
         jsr BUILD_SCALING_MATRIX
 
         .endm
         
-        ; SET_SCALE_I X, Y, Z
-
 ;********************************************
 ;*                                          *
 ;* SET_SCALE_I X, Y, Z                      *
