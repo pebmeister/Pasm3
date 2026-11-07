@@ -14,16 +14,13 @@
                 
         jsr Update_Scale
 
-        MOVE8 MY_ROT_X, ROT_X_ANGLE
-        MOVE8 MY_ROT_Y, ROT_Y_ANGLE
         MOVE8 MY_ROT_Z, ROT_Z_ANGLE
+        MOVE8 MY_ROT_Y, ROT_Y_ANGLE
+        MOVE8 MY_ROT_X, ROT_X_ANGLE
 
-        jsr ROTATION_X
-        MAT4_COPY MAT_B, ROT_X_MATRIX
-        jsr ROTATION_Y
-        MAT4_COPY MAT_B, ROT_Y_MATRIX
         jsr ROTATION_Z
-        MAT4_COPY MAT_B, ROT_Z_MATRIX
+        jsr ROTATION_Y
+        jsr ROTATION_X
 
         jsr BUILD_ROT_ZY_MATRIX
         jsr BUILD_ROTATION_MATRIX_X
@@ -35,54 +32,72 @@ MainLoop:
         jsr GETIN
         beq MainLoop
         
-        cmp #KEY_W          ; Rot_X_Clock        
-        beq @Rot_X_Clock
-
-        cmp #KEY_S          ; Rot_X_Counter_Clock
-        beq @Rot_X_Counter_Clock
-        
-        cmp #KEY_D          ; Rot_Y_Clock
-        beq @Rot_Y_Clock
-
-        cmp #KEY_A          ; Rot_Y_Counter_Clock
-        beq @Rot_Y_Counter_Clock
-
         cmp #KEY_E          ; Rot_Z_Clock
         beq @Rot_Z_Clock
 
         cmp #KEY_Q          ; Rot_Z_Counter_Clock
         beq @Rot_Z_Counter_Clock
 
+        cmp #KEY_D          ; Rot_Y_Clock
+        beq @Rot_Y_Clock
+
+        cmp #KEY_A          ; Rot_Y_Counter_Clock
+        beq @Rot_Y_Counter_Clock
+
+        cmp #KEY_W          ; Rot_X_Clock        
+        beq @Rot_X_Clock
+
+        cmp #KEY_S          ; Rot_X_Counter_Clock
+        beq @Rot_X_Counter_Clock
+        
+        cmp #KEY_RETURN
+        beq @Reset
+        
         jmp MainLoop
         
 @Rot_X_Clock
-        ADD8I MY_ROT_X, 10, MY_ROT_X
+        ADD8I ROT_X_ANGLE, 10, ROT_X_ANGLE
         jsr Update_X_Rotation
         jmp Draw
 
 @Rot_X_Counter_Clock
-        SUB8I MY_ROT_X, 10, MY_ROT_X
+        SUB8I ROT_X_ANGLE, 10, ROT_X_ANGLE
         jsr Update_X_Rotation
         jmp Draw
         
 @Rot_Y_Clock
-        ADD8I MY_ROT_Y, 10, MY_ROT_Y
+        ADD8I ROT_Y_ANGLE, 10, ROT_Y_ANGLE
         jsr Update_Y_Rotation
         jmp Draw
         
 @Rot_Y_Counter_Clock
-        SUB8I MY_ROT_Y, 10, MY_ROT_Y
+        SUB8I ROT_Y_ANGLE, 10, ROT_Y_ANGLE
         jsr Update_Y_Rotation
         jmp Draw
         
 @Rot_Z_Clock
-        ADD8I MY_ROT_Z, 10, MY_ROT_Z
+        ADD8I ROT_Z_ANGLE, 10, ROT_Z_ANGLE
         jsr Update_Z_Rotation
         jmp Draw
         
 @Rot_Z_Counter_Clock
-        SUB8I MY_ROT_Z, 10, MY_ROT_Z
+        SUB8I ROT_Z_ANGLE, 10, ROT_Z_ANGLE
         jsr Update_Z_Rotation
+        jmp Draw
+
+@Reset
+        MOVE8 MY_ROT_Z, ROT_Z_ANGLE
+        MOVE8 MY_ROT_Y, ROT_Y_ANGLE
+        MOVE8 MY_ROT_X, ROT_X_ANGLE
+
+        jsr ROTATION_Z
+        jsr ROTATION_Y
+        jsr ROTATION_X
+
+        jsr BUILD_ROT_ZY_MATRIX
+        jsr BUILD_ROTATION_MATRIX_X
+
+        jsr Update_Translation
         jmp Draw
         
 Draw
@@ -99,24 +114,18 @@ Update_Scale
         rts
         
 Update_X_Rotation
-        MOVE8 MY_ROT_X, ROT_X_ANGLE
         jsr ROTATION_X        
-        MAT4_COPY MAT_B, ROT_X_MATRIX
         jsr BUILD_ROTATION_MATRIX_X
         rts
 
 Update_Y_Rotation
-        MOVE8 MY_ROT_Y, ROT_Y_ANGLE
         jsr ROTATION_Y
-        MAT4_COPY MAT_B, ROT_Y_MATRIX
         jsr BUILD_ROT_ZY_MATRIX
         jsr BUILD_ROTATION_MATRIX_X
         rts
 
 Update_Z_Rotation
-        MOVE8 MY_ROT_Z, ROT_Z_ANGLE
         jsr ROTATION_Z
-        MAT4_COPY MAT_B, ROT_Z_MATRIX
         jsr BUILD_ROT_ZY_MATRIX
         jsr BUILD_ROTATION_MATRIX_X
         rts
