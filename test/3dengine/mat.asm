@@ -1094,13 +1094,13 @@ BUILD_SCALING_MATRIX:
         jsr BUILD_SCALING_MATRIX_Z
         jsr BUILD_SCALING_MATRIX_W
         rts
-        
+
 ;********************************************
 ;*
-;* BUILD_TRANSLATION_MATRIX
+;* BUILD_TRANSLATION_MATRIX_W
 ;*
 ;********************************************
- BUILD_TRANSLATION_MATRIX:
+BUILD_TRANSLATION_MATRIX_W
         ; Row 0, column 0 = 1.0
         lda #1
         sta TRANSLATION_MATRIX + 2
@@ -1114,6 +1114,12 @@ BUILD_SCALING_MATRIX:
         ; Row 3, column 3 = 1.0
         sta TRANSLATION_MATRIX + 62
 
+;********************************************
+;*
+;* BUILD_TRANSLATION_MATRIX_X
+;*
+;********************************************
+BUILD_TRANSLATION_MATRIX_X:
         ; Translation X (row 0, column 3)
         lda TRANS_X
         sta TRANSLATION_MATRIX + 12
@@ -1123,7 +1129,14 @@ BUILD_SCALING_MATRIX:
         sta TRANSLATION_MATRIX + 14
         lda TRANS_X + 3
         sta TRANSLATION_MATRIX + 15
-
+        rts
+        
+;********************************************
+;*
+;* BUILD_TRANSLATION_MATRIX_Y
+;*
+;********************************************
+BUILD_TRANSLATION_MATRIX_Y:
         ; Translation Y (row 1, column 3)
         lda TRANS_Y
         sta TRANSLATION_MATRIX + 28
@@ -1133,7 +1146,14 @@ BUILD_SCALING_MATRIX:
         sta TRANSLATION_MATRIX + 30
         lda TRANS_Y + 3
         sta TRANSLATION_MATRIX + 31
+        rts
 
+;********************************************
+;*
+;* BUILD_TRANSLATION_MATRIX_Z
+;*
+;********************************************
+BUILD_TRANSLATION_MATRIX_Z:
         ; Translation Z (row 2, column 3)
         lda TRANS_Z
         sta TRANSLATION_MATRIX + 44
@@ -1143,9 +1163,20 @@ BUILD_SCALING_MATRIX:
         sta TRANSLATION_MATRIX + 46
         lda TRANS_Z + 3
         sta TRANSLATION_MATRIX + 47
-
         rts
 
+
+;********************************************
+;*
+;* BUILD_TRANSLATION_MATRIX
+;*
+;********************************************
+ BUILD_TRANSLATION_MATRIX:
+        jsr BUILD_TRANSLATION_MATRIX_X
+        jsr BUILD_TRANSLATION_MATRIX_Y
+        jsr BUILD_TRANSLATION_MATRIX_Z
+        jsr BUILD_TRANSLATION_MATRIX_W
+        rts
 
 ROT_ZY_MATRIX:
         .ds 64

@@ -322,4 +322,7 @@ SCALE_INCREMENT:
 SCALE_DECREMENT:
         .word $E666, $FFFF     ; -0.1
         
-        
+TRANS_INCREMENT:
+        .word $199A, $0000     ; 0.1
+TRANS_DECREMENT
+        .word $E666, $FFFF     ; -0.1

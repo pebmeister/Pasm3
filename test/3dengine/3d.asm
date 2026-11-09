@@ -3,6 +3,7 @@
         .inc "mac.asm"
         .inc "key.asm"
         .inc "main.asm"
+        .inc "draw.asm"
         .inc "sin.asm"
         .inc "trig.asm"
         .inc "kernal.asm"
