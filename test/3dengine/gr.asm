@@ -1,3 +1,5 @@
+; https://www.youtube.com/watch?v=KWydVEX0n3g
+
 ; ============================================
 ; C64 VIC-II COLOR EQUATES
 ; ============================================
@@ -18,44 +20,134 @@ COLOR_LIGHT_GREEN = 13
 COLOR_LIGHT_BLUE  = 14
 COLOR_LIGHT_GREY  = 15    ; Also known as Grey 3
 
-
-; ====================================================
-; BANK 1 GRAPHICS CONFIGURATION
-; ====================================================
-BITMAPBASE  = $4000
-COLORBASE   = $6000
-
-         
          ; written by Paul Baxter
 
-;********************************************
-        ; Some zero page has multiple uses
+BITMAPBASE
+        .ds 2
 
+COLORBASE
+        .ds 2
+
+;********************************************
+;*                                          *
+;*  BankSelect                              *
+;*                                          *
+;*  A IN: VIC-II bank number 0-3            *
+;*                                          *
+;********************************************
+BankSelect
+        and #%00000011
+        eor #%00000011
+        sta TMP
+
+        lda $DD00
+        and #%11111100
+        ora TMP
+        sta $DD00
+        rts
+        
+;********************************************
+;* SetHGRLayout                             *
+;*                                          *
+;* Configures VIC-II register $D018         *
+;*                                          *
+;* IN:                                      *
+;*   A reg = Screen RAM slot (0-15)         *
+;*           0=$0000, 1=$0400 ... 8=$2000   *
+;*   Y reg = Bitmap slot (0 or 1)           *
+;*           0=$0000, 1=$2000               *
+;*                                          *
+;* OUT:                                     *
+;*   $D018 programmed with combined value   *
+;********************************************
+SetHGRLayout:
+        ; Shift Screen RAM slot (0-15) into bits 7-4
+        asl
+        asl
+        asl
+        asl
+        sta TMP             ; Save temporary shifted Screen RAM value
+
+        ; Align Bitmap slot (0 or 1) into bit 3
+        tya
+        and #%00000001
+        asl
+        asl
+        asl                 ; Shift to bit 3 ($00 or $08)
+
+        ; Combine and store in $D018
+        ora TMP
+        sta $D018
+        rts
+
+;********************************************
+;* InitVICPointers                          *
+;*                                          *
+;* Reads $DD00 and $D018 to calculate the   *
+;* 16-bit base addresses for BITMAPBASE     *
+;* and COLORBASE.                           *
+;********************************************
+InitVICPointers:
+        ; Clear low bytes (both base addresses are always 1KB/8KB aligned)
+        lda #0
+        sta BITMAPBASE
+        sta COLORBASE
+
+        ; -------------------------------------------
+        ; 1. Calculate Bank High Byte ($00, $40, $80, $C0)
+        ; -------------------------------------------
+        lda $DD00
+        and #%00000011          ; Extract bank bits (1,0)
+        eor #%00000011          ; Invert (%11->0, %10->1, %01->2, %00->3)
+        asl
+        asl
+        asl
+        asl
+        asl
+        asl                     ; Shift to high byte bits (Bank * $40)
+        sta BITMAPBASE + 1
+        sta COLORBASE + 1
+
+        ; -------------------------------------------
+        ; 2. Calculate BITMAPBASE High Byte
+        ; -------------------------------------------
+        lda $D018
+        and #%00001000          ; Extract Bit 3 (0 = $0000 offset, 1 = $2000 offset)
+        asl
+        asl                     ; Shift into bit 5 position ($20 offset)
+        ora BITMAPBASE + 1
+        sta BITMAPBASE + 1
+
+        ; -------------------------------------------
+        ; 3. Calculate COLORBASE High Byte
+        ; -------------------------------------------
+        lda $D018
+        and #%11100000          ; Extract Screen RAM bits (7-5)
+        lsr
+        lsr                     ; Shift bits 7-5 down to bits 5-3 ($00, $04, $08... $38)
+        ora COLORBASE + 1
+        sta COLORBASE + 1
+
+        rts
+        
+ HGRInit
+        jsr InitVICPointers
+        jsr InitBitmapScanlineTables
+        rts
 
 ;********************************************
 ;*                                          *
 ;*  HGROn                                   *
-;*  Enter High-Res Bitmap Mode in Bank 1    *
+;*                                          *
+;* User should call BankSelect and          *
+
 ;*                                          *
 ;********************************************
 HGROn
-        ; 1. Set VIC Bank to Bank 1 ($4000-$7FFF) via CIA 2 ($DD00)
-        ; Bits 1,0 = %10 (Inverted address lines A15=0, A14=1)
-        lda $DD00
-        and #%11111000      
-        ora #%00000010      
-        sta $DD00
-
-        ; 2. Set Screen RAM to $6000 (bits 7-4 = %1000 -> offset $2000)
-        ; and Bitmap to $4000 (bit 3 = 0 -> offset $0000)
-        ; Combined $D018 value: %10000000 ($80)
-        lda #%10000000
-        sta $D018
-
-        ; 3. Turn on High-Resolution Bitmap Mode ($D011 bit 5 = 1)
+        
         lda $D011
         ora #%00100000
-        sta $D011
+        sta $D011  
         rts
 
 ;********************************************
@@ -70,74 +162,67 @@ HGROff
         and #%11011111
         sta $D011
 
-        ; 2. Restore default text screen ($0400) and character ROM pointers ($D018 = $14)
-        lda #$14
-        sta $D018
-
-        ; 3. Restore VIC Bank to Bank 0 ($0000-$3FFF) via CIA 2 ($DD00)
-        ; Bits 1,0 = %11
-        lda $DD00
-        ora #%00000011
-        sta $DD00
         rts
         
         
 ;********************************************
-;*                                          *
-;*  HGRCLS                                  *
-;*                                          *
-;*  Clear graphics bitmap and colors        *
-;*                                          *
-;* ---------------------------------------- *
-;*        CALLS                             *
-;* ---------------------------------------- *
-;*  ClearColor                              *
-;* ---------------------------------------- *
+;* HGRCls                                   *
+;* Clear graphics bitmap (8000 bytes)       *
+;* using dynamic BITMAPBASE pointer         *
 ;********************************************
-HGRCls
-        ldx #0
+HGRCls:
+        ; Copy BITMAPBASE to LOC for indirect clearing
+        MOVE16 BITMAPBASE, LOC
+        
+        ldx #31             ; 31 full pages (31 * 256 = 7936 bytes)
+        ldy #0
         lda #0
-@_ClrLoop
-        sta BITMAPBASE + ($0100 * 0),x
-        sta BITMAPBASE + ($0100 * 1),x
-        sta BITMAPBASE + ($0100 * 2),x
-        sta BITMAPBASE + ($0100 * 3),x
-        sta BITMAPBASE + ($0100 * 4),x
-        sta BITMAPBASE + ($0100 * 5),x
-        sta BITMAPBASE + ($0100 * 6),x
-        sta BITMAPBASE + ($0100 * 7),x
-        sta BITMAPBASE + ($0100 * 8),x
-        sta BITMAPBASE + ($0100 * 9),x
-        sta BITMAPBASE + ($0100 * 10),x
-        sta BITMAPBASE + ($0100 * 11),x
-        sta BITMAPBASE + ($0100 * 12),x
-        sta BITMAPBASE + ($0100 * 13),x
-        sta BITMAPBASE + ($0100 * 14),x
-        sta BITMAPBASE + ($0100 * 15),x
-        sta BITMAPBASE + ($0100 * 16),x
-        sta BITMAPBASE + ($0100 * 17),x
-        sta BITMAPBASE + ($0100 * 18),x
-        sta BITMAPBASE + ($0100 * 19),x
-        sta BITMAPBASE + ($0100 * 20),x
-        sta BITMAPBASE + ($0100 * 21),x
-        sta BITMAPBASE + ($0100 * 22),x
-        sta BITMAPBASE + ($0100 * 23),x
-        sta BITMAPBASE + ($0100 * 24),x
-        sta BITMAPBASE + ($0100 * 25),x
-        sta BITMAPBASE + ($0100 * 26),x
-        sta BITMAPBASE + ($0100 * 27),x
-        sta BITMAPBASE + ($0100 * 28),x
-        sta BITMAPBASE + ($0100 * 29),x
-        sta BITMAPBASE + ($0100 * 30),x
-        inx
-        bne @_ClrLoop
-@_ClrLoop2
-        sta BITMAPBASE + ($0100 * 31),x
-        inx
-        cpx #8000 -($0100 * 31)
-        bne @_ClrLoop2
-
+@FullPages:
+        sta (LOC),y
+        iny
+        bne @FullPages
+        inc LOC + 1         ; Move to next page high byte
+        dex
+        bne @FullPages
+        
+        ; Clear remaining 64 bytes (8000 - 7936 = 64)
+        ldy #0
+@Remainder:
+        sta (LOC),y
+        iny
+        cpy #64
+        bne @Remainder
+        
         jmp ClearColor
+
+;********************************************
+;* ClearColor                               *
+;* Clear color memory (1000 bytes)          *
+;* using dynamic COLORBASE pointer          *
+;********************************************
+ClearColor:
+        ; Copy COLORBASE to COLORPTR for indirect clearing
+        MOVE16 COLORBASE, COLORPTR
+        
+        ldx #3              ; 3 full pages (3 * 256 = 768 bytes)
+        ldy #0
+        lda COLOR           ; Fill with current color attribute
+@ColorPages:
+        sta (COLORPTR),y
+        iny
+        bne @ColorPages
+        inc COLORPTR + 1    ; Move to next page high byte
+        dex
+        bne @ColorPages
+        
+        ; Clear remaining 232 bytes (1000 - 768 = 232)
+        ldy #0
+@ColorRemainder:
+        sta (COLORPTR),y
+        iny
+        cpy #232
+        bne @ColorRemainder
+        rts
 
 ;********************************************
 ;*                                          *
@@ -188,33 +273,6 @@ _HGRFColor
 
 ;********************************************
 ;*                                          *
-;*  ClearColor                              *
-;*     clear Color memory                   *
-;*                                          *
-;* ---------------------------------------- *
-;*        PAGE ZERO USAGE                   *
-;* ---------------------------------------- *
-;*  COLOR   =              1 byte           *
-;* ---------------------------------------- *
-;********************************************
-ClearColor
-        lda COLOR
-        ldx #0
-@Clear3
-        sta COLORBASE + ($0100 * 0),x
-        sta COLORBASE + ($0100 * 1),x
-        sta COLORBASE + ($0100 * 2),x
-        inx
-        bne @Clear3
-@Clear4
-        sta COLORBASE + ($0100 * 3),x
-        inx
-        cpx #1000-3*255
-        bne @Clear4
-        rts
-
-;********************************************
-;*                                          *
 ;*  _Plot                                   *
 ;*       XCOORD     IN  2 byte x coordinate *
 ;*       X register IN  y coordinate        *
@@ -258,31 +316,38 @@ _Plot
 ;*                                          *
 ;* CalcColorByte                            *
 ;*                                          *
-;* COLORPTR = x location                    *
-;* YCOL = y location                        *
+;* COLORPTR = x location (in pixels)        *
+;* YCOL = y location (0-199)                *
 ;*                                          *
-;* ---------------------------------------- *
-;*        PAGE ZERO USAGE                   *
-;* ---------------------------------------- *
-;*  YCOL        = PTR1          2 bytes     *
-;*  COLORPTR    = TMPDATA       2 bytes     *
-;* ---------------------------------------- *
+;* OUT:                                     *
+;* COLORPTR = Absolute address of color byte*
+;*                                          *
+;-------------------------------------------*
+;*          PAGE ZERO USAGE                 *
+;-------------------------------------------*
+;* YCOL         = PTR1        2 bytes       *
+;* COLORPTR     = TMPDATA     2 bytes       *
 ;********************************************
-CalcColorByte
-        ; YCOL + 0 has y value
-        ; zero out high byte
+CalcColorByte:
+        ; YCOL holds the Y coordinate (0-199). Zero out its high byte.
         lda #0
         sta YCOL + 1
-        RSHIFT16 COLORPTR, 3  ; COLORPTR = x / 8
-        RSHIFT16 YCOL, 3      ; ycol int(y/8)*40
+
+        ; Convert X coordinate to character column: COLORPTR = X / 8
+        RSHIFT16 COLORPTR, 3
+
+        ; Convert Y coordinate to character row offset: 
+        ; row = int(y / 8) * 40
+        RSHIFT16 YCOL, 3
         MULT40 YCOL
 
-        ; COLORPTR = COLORPTR + ycol
+        ; Add row offset to column offset: COLORPTR = (X / 8) + (row offset)
         ADD16 COLORPTR, YCOL, COLORPTR
 
-        ; COLORPTR = COLORPTR + COLORBASE
-        ADD16I COLORPTR, COLORBASE, COLORPTR
+        ; Add dynamic COLORBASE pointer to get the final absolute RAM address
+        ADD16 COLORPTR, COLORBASE, COLORPTR
         rts
+        
 
 ;********************************************
 ;*                                          *
@@ -293,87 +358,43 @@ CalcColorByte
 ;*      LOC    OUT  byte of bitmap          *
 ;*      X reg  OUT  bit of bitmap           *
 ;*                                          *
-;* ---------------------------------------- *
-;*        PAGE ZERO USAGE                   *
-;* ---------------------------------------- *
-;*  LOC         = UNUSED2       2 byte      *
-;*  XCOORD      = LINNUM        2 bytes     *
-;*  TMP         = UNUSED2 + 2   2 bytes     *
+;--------------------------------------------*
+;*      PAGE ZERO USAGE                     *
+;--------------------------------------------*
+;*  LOC         = UNUSED2    2 byte         *
+;*  XCOORD      = LINNUM     2 bytes        *
+;*  TMP         = UNUSED2 + 2  2 bytes      *
 ;********************************************
-CalcPlot
-; 320*int(y/8)=32*[8*int(y/8)] + 8*[8*int(y/8)]
-        lda #0
+CalcPlot:
+        ; 1. Fetch scanline base address using Y (in X register)
+        lda BITMAP_SCANLINE_LO, x
         sta LOC
-        txa             ; X register has Y coordinate
-        lsr
-        lsr
-        lsr
-        sta LOC + 1     ; high-byte of 32*8*int(y/8)
+        lda BITMAP_SCANLINE_HI, x
+        sta LOC + 1
 
-;-------------------------------------------------
-
-        lsr
-        ror LOC
-        lsr
-        ror LOC         ; low byte of 8*[8*int(y/8)]
-
-;-------------------------------------------------
-
-        adc LOC + 1
-        adc #>BITMAPBASE
-        sta LOC+1       ; high byte of memory=BITMAPBASE + 320*int(y/8)
-
-;-------------------------------------------------
-
+        ; 2. Add horizontal byte offset: (XCOORD & 0xFFF8)
         lda XCOORD
-        and #%11111000  ; 8*int(x/8)
+        and #%11111000
+        clc
         adc LOC
-        sta LOC         ; set address memory block of bytes
-
-;-----------------------------------------------
-
+        sta LOC
         lda XCOORD + 1
         adc LOC + 1
         sta LOC + 1
 
-;-----------------------------------------------
-
-        txa
-        and #%00000111 ; int(y/7), byte offset inside bLOCk
-        tay
-
-;-----------------------------------------------
-
+        ; 3. Calculate bit index: 7 - (XCOORD & 7) [optimized via EOR #7]
         lda XCOORD
-        and #%00000111 ; int(x/7), bit inside byte
+        and #%00000111
+        eor #%00000111
         tax
-
-;-----------------------------------------------
-
-        ; add y to LOC
-        sty TMP
-        lda #0
-        sta TMP + 1
-        ADD16 TMP, LOC, LOC
-
-;-----------------------------------------------
-
-        ; given: x (0 - 7)
-        ; x = 7 - x
-        MOVE8I TMP, 7
-        stx TMP + 1
-        SUB8 TMP, TMP + 1, TMP
-        ldx TMP
         rts
-
+                
 ; ============================================
 ; CLAMP_LINE_COORDS
 ; Clamps X0, X1 to screen range 0-319 ($013F)
 ; Clamps Y0, Y1 to screen range 0-199 ($C7)
 ; ============================================
 CLAMP_LINE_COORDS
-        ; rts
-        
         ; --- Clamp X0 ---
         lda X0 + 1
         bmi @clamp_x0_zero
@@ -949,3 +970,68 @@ MaskDataEnd
         .byte %11111100 ; 6
         .byte %11111110 ; 7
         .byte %11111111 ; 8
+
+; ============================================
+; BITMAP SCANLINE LOOKUP TABLES (200 bytes each)
+; ============================================
+BITMAP_SCANLINE_LO:
+        .ds 200
+
+BITMAP_SCANLINE_HI:
+        .ds 200
+
+;********************************************
+;* InitBitmapScanlineTables                 *
+;*                                          *
+;* Populates BITMAP_SCANLINE_LO and HI      *
+;* tables dynamically for Y (0-199)         *
+;* using BITMAPBASE and 16-bit macros       *
+;********************************************
+InitBitmapScanlineTables:
+        ldx #0                  ; Y coordinate loop counter (0-199)
+
+@InitLoop:
+        stx TMP                 ; Save current Y value
+
+        ; 1. Start with BITMAPBASE
+        MOVE16 BITMAPBASE, LOC
+
+        ; 2. Add (Y / 8) * 320 for the character row offset
+        txa
+        lsr
+        lsr
+        lsr                     ; A = character row (0-24)
+        beq @AddFineY           ; If row 0, skip row addition
+        sta TMP + 1             ; Use TMP+1 as row loop counter
+
+@RowLoop:
+        ADD16I LOC, 320, LOC
+        dec TMP + 1
+        bne @RowLoop
+
+@AddFineY:
+        ; 3. Add fine vertical offset within the character block (Y & 7)
+        lda TMP                 ; Recover Y
+        and #%00000111          ; Mask lower 3 bits
+        sta TMP + 1             ; Store fine offset in TMP+1 memory
+
+        clc
+        lda LOC
+        adc TMP + 1             ; Add fine offset to low byte
+        sta LOC
+        bcc @StoreTables
+        inc LOC + 1             ; Handle carry into high byte if needed
+
+@StoreTables:
+        ; 4. Save low and high bytes into lookup tables at index Y (in X register)
+        ldx TMP                 ; Restore Y index
+        lda LOC
+        sta BITMAP_SCANLINE_LO, x
+        lda LOC + 1
+        sta BITMAP_SCANLINE_HI, x
+
+        inx
+        cpx #200
+        bne @InitLoop
+        rts
+        

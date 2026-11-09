@@ -5,6 +5,21 @@
 ; ====================================================
 
         .basic_hdr
+        
+        jsr CLEARSCREEN
+        
+        lda #$36
+        sta $01             ; Configure C64 memory banking:
+                            ; LORAM=0, HIRAM=1, CHAREN=1
+                            ; BASIC ROM disabled, KERNAL and I/O enabled.                       
+        lda #1
+        jsr BankSelect
+
+        lda #8              ; Screen RAM at $6000 (slot 8)
+        ldy #0              ; Bitmap at $4000 (slot 0)
+        jsr SetHGRLayout
+        
+        jsr HGRInit
 
         lda #COLOR_WHITE
         jsr _HGRFColor
@@ -12,7 +27,7 @@
         jsr _HGRBColor
 
         jsr HGRCls
-                                
+                                                    
         SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
 
         MOVE8 MY_ROT_Z, ROT_Z_ANGLE

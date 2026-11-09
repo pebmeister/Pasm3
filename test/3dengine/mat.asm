@@ -1184,15 +1184,12 @@ ROT_ZY_MATRIX:
 BUILD_ROTATION_MATRIX:
         ; Build X rotation
         jsr ROTATION_X
-        MAT4_COPY MAT_B, ROT_X_MATRIX
-
+        
         ; Build Y rotation
         jsr ROTATION_Y
-        MAT4_COPY MAT_B, ROT_Y_MATRIX
 
         ; Build Z rotation
         jsr ROTATION_Z
-        MAT4_COPY MAT_B, ROT_Z_MATRIX
 
 BUILD_ROT_ZY_MATRIX:
         ; Calculate RZ * RY
@@ -1206,7 +1203,7 @@ BUILD_ROTATION_MATRIX_X:
         rts
         
         
- ;********************************************
+;********************************************
 ;* MAT3_MUL
 ;*
 ;* Calculates C = A * B
