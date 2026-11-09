@@ -66,32 +66,43 @@ MainLoop:
 
         ; ===== Z =====
         cmp #KEY_SHIFT_E    ; Scale_Z_Inc
-        beq @Scale_Z_Inc
+        bne @Check_Scale_Z_Dec
+        jmp @Scale_Z_Inc
 
+@Check_Scale_Z_Dec
         cmp #KEY_SHIFT_Q    ; Scale_Z_Dec
-        beq @Scale_Z_Dec
+        bne @Check_Scale_Y_Inc
+        jmp @Scale_Z_Dec
 
         ; ===== Y =====
+@Check_Scale_Y_Inc
         cmp #KEY_SHIFT_D    ; Scale_Y_Inc
-        beq @Scale_Y_Inc
+        bne @Check_Scale_Y_Dec
+        jmp @Scale_Y_Inc
 
+@Check_Scale_Y_Dec
         cmp #KEY_SHIFT_A    ; Scale_Y_Dec
-        beq @Scale_Y_Dec
+        bne @Check_Scale_X_Inc
+        jmp @Scale_Y_Dec
 
         ; ===== X =====
+@Check_Scale_X_Inc
         cmp #KEY_SHIFT_W    ; Scale_X_Inc
-        beq @Scale_X_Inc
+        bne @Check_Scale_X_Dec
+        jmp @Scale_X_Inc
 
+@Check_Scale_X_Dec
         cmp #KEY_SHIFT_S    ; Scale_X_Dec
-        beq @Scale_X_Dec
+        bne @Check_Reset
+        jmp @Scale_X_Dec
 
         ; =======================================================
         ; Reset
         ; =======================================================
+@Check_Reset
         cmp #KEY_RETURN
-        beq @Reset
-        
-        jmp MainLoop
+        bne MainLoop
+        jmp @Reset
         
 @Rot_Z_Clock
         ADD8I ROT_Z_ANGLE, ROT_DELTA, ROT_Z_ANGLE
