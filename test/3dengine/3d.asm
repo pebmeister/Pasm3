@@ -9,7 +9,7 @@
         .inc "kernal.asm"
         .inc "rot.asm"
         .inc "mat.asm"
-        .inc "print.asm"
+        ; .inc "print.asm"
         .inc "memory.asm"
         .inc "gr.asm"
         .inc "cube.asm"

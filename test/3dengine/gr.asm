@@ -122,15 +122,20 @@ InitVICPointers:
         ; 3. Calculate COLORBASE High Byte
         ; -------------------------------------------
         lda $D018
-        and #%11100000          ; Extract Screen RAM bits (7-5)
+        and #%11110000          ; Extract Screen RAM bits (7-4) [FIXED MASK]
         lsr
-        lsr                     ; Shift bits 7-5 down to bits 5-3 ($00, $04, $08... $38)
+        lsr                     ; Shift bits 7-4 down to bits 5-2
         ora COLORBASE + 1
         sta COLORBASE + 1
 
         rts
         
- HGRInit
+;********************************************
+;*                                          *
+;*  HGRInit                                 *
+;*                                          *
+;********************************************
+HGRInit
         jsr InitVICPointers
         jsr InitBitmapScanlineTables
         jsr PatchHGRCls
@@ -223,37 +228,44 @@ HGRCls
         rts
 
 ;********************************************
-;* PatchHGRCls                              *
-;* Patch the bitmap high-byte operands in   *
-;* HGRCls for the current BITMAPBASE.       *
+;* PatchHGRCls (100% Runtime Version)       *
+;* Patches HGRCls instruction high bytes    *
+;* using the active runtime BITMAPBASE.     *
 ;********************************************
-PatchHGRCls
-        .var PATCH_INDEX = 0
-        .var PATCH_VALUE = BITMAPBASE
-        .var ADDR = HGRCls@ClrLoop + 1
-        .while PATCH_INDEX < 32
-            MOVE16 ADDR, TMP
-            lda #<PATCH_VALUE
-            ldy #0
-            sta (TMP),y
-            iny
-            lda #>PATCH_VALUE
-            sta (TMP),y
-            PATCH_VALUE = PATCH_VALUE + $100
-            ADDR = ADDR + 3
-            PATCH_INDEX = PATCH_INDEX + 1
-        .wend
-        ADDR = HGRCls@ClrLoop2 + 1
-        MOVE16 ADDR, TMP
-        lda #<PATCH_VALUE
-        ldy #0
-        sta (TMP),y
-        iny
-        lda #>PATCH_VALUE
-        sta (TMP),y
-    
-        rts
+PatchHGRCls:
+        lda BITMAPBASE + 1      ; Get active high byte (e.g. $40 or $60)
+        sta TMP                 ; TMP = current page high byte
 
+        ; Point to the first high-byte operand in HGRCls
+        ; (Assuming HGRCls@ClrLoop + 2 points to the high byte of the first 'sta $xxxx, x' instruction)
+        lda #< (HGRCls@ClrLoop + 2)
+        sta LOC
+        lda #> (HGRCls@ClrLoop + 2)
+        sta LOC + 1
+
+        ldx #32                 ; 32 pages to patch (8KB)
+
+@PatchLoop:
+        lda TMP                 ; Get current page high byte
+        ldy #0
+        sta (LOC), y            ; Store into instruction operand high byte
+
+        ; Advance TMP page counter
+        inc TMP
+
+        ; Advance LOC pointer to the next instruction's high byte 
+        ; (Each absolute indexed 'sta $xxxx, x' instruction is 3 bytes long)
+        lda LOC
+        clc
+        adc #3
+        sta LOC
+        bcc @SkipInc
+        inc LOC + 1
+@SkipInc:
+        dex
+        bne @PatchLoop
+        rts
+        
 ;********************************************
 ;* ClearColor                               *
 ;* Clear color memory (1000 bytes)          *
@@ -354,24 +366,29 @@ _HGRFColor
 ;* ---------------------------------------- *
 ;********************************************
 _Plot
-        stx YCOL
-        MOVE16 XCOORD, COLORPTR
+        stx YCOL                ; Save Y coordinate (0-199)
+        MOVE16 XCOORD, COLORPTR 
 
-        ; Calc Bitmap location
-        jsr CalcPlot
+        ; 1. Calculate Bitmap location and bit mask
+        jsr CalcPlot            ; Returns bit index (0-7) in X
+        stx TMP                 ; Save bit index safely in TMP (or TMP+1)
+
+        ; 2. Plot the pixel into the bitmap
         ldy #0
         lda (LOC),y
+        ldx TMP                 ; Restore bit index for mask lookup
         ora MaskStart,x
         sta (LOC),y
 
 .ifdef USE_COLOR
-        ; Calc color map location
+        ; 3. Calculate color map location using original Y coordinate
+        ldx YCOL                ; Restore original Y coordinate for color lookup
         jsr CalcColorByte
         lda COLOR
         ldy #0
         sta (COLORPTR),y
 .endif
-        ;rts
+        rts                     ; Make sure the rts isn't commented out!
 
 .ifdef USE_COLOR
 ;********************************************
@@ -420,9 +437,9 @@ CalcColorByte:
 ;*      LOC    OUT  byte of bitmap          *
 ;*      X reg  OUT  bit of bitmap           *
 ;*                                          *
-;--------------------------------------------*
+;-------------------------------------------*
 ;*      PAGE ZERO USAGE                     *
-;--------------------------------------------*
+;-------------------------------------------*
 ;*  LOC         = UNUSED2    2 byte         *
 ;*  XCOORD      = LINNUM     2 bytes        *
 ;*  TMP         = UNUSED2 + 2  2 bytes      *
@@ -1044,7 +1061,6 @@ BITMAP_SCANLINE_LO:
 
 BITMAP_SCANLINE_HI:
         .ds 200
-
 ;********************************************
 ;* InitBitmapScanlineTables                 *
 ;*                                          *
@@ -1053,10 +1069,10 @@ BITMAP_SCANLINE_HI:
 ;* using BITMAPBASE and 16-bit macros       *
 ;********************************************
 InitBitmapScanlineTables:
-        ldx #0                  ; Y coordinate loop counter (0-199)
+        ldx #0                  ; X holds our scanline Y index (0-199)
 
 @InitLoop:
-        stx TMP                 ; Save current Y value
+        stx TMP                 ; Save current Y value safely
 
         ; 1. Start with BITMAPBASE
         MOVE16 BITMAPBASE, LOC
@@ -1088,15 +1104,16 @@ InitBitmapScanlineTables:
         inc LOC + 1             ; Handle carry into high byte if needed
 
 @StoreTables:
-        ; 4. Save low and high bytes into lookup tables at index Y (in X register)
-        ldx TMP                 ; Restore Y index
+        ; 4. Save low and high bytes into lookup tables at index Y
+        ldx TMP                 ; Restore Y index into X for indexed storage
         lda LOC
         sta BITMAP_SCANLINE_LO, x
         lda LOC + 1
         sta BITMAP_SCANLINE_HI, x
 
+        ; 5. Restore loop counter from TMP, increment, and check
+        ldx TMP                 
         inx
         cpx #200
         bne @InitLoop
         rts
-        

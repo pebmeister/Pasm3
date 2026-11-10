@@ -193,8 +193,9 @@ public:
         for (const auto& item : sorted_symbols) {
             const std::string& sym = *item.name;
             const auto& entry = *item.entry;
+            
 
-            if (use_all_symbols || !entry.usage.empty()) {
+            if ((use_all_symbols || !entry.usage.empty()) && sym.find("@") == std::string::npos) {
                 auto [def_file_id, def_line] = entry.defined;
                 std::string def_fname = std::filesystem::path(src_mgr.GetFileName(def_file_id)).filename().string();
                 std::string def_str = std::format("{}:{}", def_fname, def_line);
