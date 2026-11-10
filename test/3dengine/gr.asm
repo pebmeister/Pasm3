@@ -133,6 +133,7 @@ InitVICPointers:
  HGRInit
         jsr InitVICPointers
         jsr InitBitmapScanlineTables
+        jsr PatchHGRCls
         rts
 
 ;********************************************
@@ -168,32 +169,91 @@ HGROff
 ;********************************************
 ;* HGRCls                                   *
 ;* Clear graphics bitmap (8000 bytes)       *
-;* using dynamic BITMAPBASE pointer         *
+;*                                          *
+;* High bytes of STA addresses are patched  *
+;* by PatchHGRCls when the VIC bank changes. *
 ;********************************************
-HGRCls:
-        ; Copy BITMAPBASE to LOC for indirect clearing
-        MOVE16 BITMAPBASE, LOC
-        
-        ldx #31             ; 31 full pages (31 * 256 = 7936 bytes)
-        ldy #0
+HGRCls
+        ldx #0
         lda #0
-@FullPages:
-        sta (LOC),y
-        iny
-        bne @FullPages
-        inc LOC + 1         ; Move to next page high byte
-        dex
-        bne @FullPages
-        
-        ; Clear remaining 64 bytes (8000 - 7936 = 64)
-        ldy #0
-@Remainder:
-        sta (LOC),y
-        iny
-        cpy #64
-        bne @Remainder
+
+@ClrLoop
+        sta $4000,x
+        sta $4100,x
+        sta $4200,x
+        sta $4300,x
+        sta $4400,x
+        sta $4500,x
+        sta $4600,x
+        sta $4700,x
+        sta $4800,x
+        sta $4900,x
+        sta $4A00,x
+        sta $4B00,x
+        sta $4C00,x
+        sta $4D00,x
+        sta $4E00,x
+        sta $4F00,x
+        sta $5000,x
+        sta $5100,x
+        sta $5200,x
+        sta $5300,x
+        sta $5400,x
+        sta $5500,x
+        sta $5600,x
+        sta $5700,x
+        sta $5800,x
+        sta $5900,x
+        sta $5A00,x
+        sta $5B00,x
+        sta $5C00,x
+        sta $5D00,x
+        sta $5E00,x
+        sta $5F00,x
+
+        inx
+        bne @ClrLoop
+
+@ClrLoop2
+        sta $5F00,x
+        inx
+        cpx #8000 - ($0100 * 31)
+        bne @ClrLoop2
         
         jmp ClearColor
+
+;********************************************
+;* PatchHGRCls                              *
+;* Patch the bitmap high-byte operands in   *
+;* HGRCls for the current BITMAPBASE.       *
+;********************************************
+PatchHGRCls
+
+        .var PATCH_INDEX = 0
+        .var PATCH_VALUE = BITMAPBASE
+        .var ADDR = HGRCls@ClrLoop + 1
+        .while PATCH_INDEX < 32
+            MOVE16 ADDR, TMP
+            lda #<PATCH_VALUE
+            ldy #0
+            sta (TMP),y
+            iny
+            lda #>PATCH_VALUE
+            sta (TMP),y
+            PATCH_VALUE = PATCH_VALUE + $100
+            ADDR = ADDR + 3
+            PATCH_INDEX = PATCH_INDEX + 1
+        .wend
+        ADDR = HGRCls@ClrLoop2 + 1
+        MOVE16 ADDR, TMP
+        lda #<PATCH_VALUE
+        ldy #0
+        sta (TMP),y
+        iny
+        lda #>PATCH_VALUE
+        sta (TMP),y
+    
+        rts
 
 ;********************************************
 ;* ClearColor                               *
