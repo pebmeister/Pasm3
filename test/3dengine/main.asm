@@ -19,13 +19,9 @@
 
         lda #COLOR_WHITE
         jsr _HGRFColor
-        lda #COLOR_BLACK
+        lda #COLOR_GREEN
         jsr _HGRBColor
-
-        lda #COLOR_WHITE
-        jsr _HGRFColor
-        lda #COLOR_BLACK
-        jsr _HGRBColor
+        sta Border
 
         jsr HGRCls
         jsr ClearColor
