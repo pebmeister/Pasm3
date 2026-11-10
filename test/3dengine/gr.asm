@@ -144,8 +144,7 @@ InitVICPointers:
 
 ;*                                          *
 ;********************************************
-HGROn
-        
+HGROn        
         lda $D011
         ora #%00100000
         sta $D011  
@@ -162,16 +161,14 @@ HGROff
         lda $D011
         and #%11011111
         sta $D011
-
         rts
-        
-        
+
 ;********************************************
 ;* HGRCls                                   *
 ;* Clear graphics bitmap (8000 bytes)       *
 ;*                                          *
 ;* High bytes of STA addresses are patched  *
-;* by PatchHGRCls when the VIC bank changes. *
+;* by PatchHGRCls when the VIC bank changes.*
 ;********************************************
 HGRCls
         ldx #0
@@ -219,8 +216,11 @@ HGRCls
         inx
         cpx #8000 - ($0100 * 31)
         bne @ClrLoop2
-        
+
+.ifdef USE_COLOR
         jmp ClearColor
+.endif        
+        rts
 
 ;********************************************
 ;* PatchHGRCls                              *
@@ -228,7 +228,6 @@ HGRCls
 ;* HGRCls for the current BITMAPBASE.       *
 ;********************************************
 PatchHGRCls
-
         .var PATCH_INDEX = 0
         .var PATCH_VALUE = BITMAPBASE
         .var ADDR = HGRCls@ClrLoop + 1
@@ -365,13 +364,16 @@ _Plot
         ora MaskStart,x
         sta (LOC),y
 
+.ifdef USE_COLOR
         ; Calc color map location
         jsr CalcColorByte
         lda COLOR
         ldy #0
         sta (COLORPTR),y
-        rts
+.endif
+        ;rts
 
+.ifdef USE_COLOR
 ;********************************************
 ;*                                          *
 ;* CalcColorByte                            *
@@ -407,7 +409,7 @@ CalcColorByte:
         ; Add dynamic COLORBASE pointer to get the final absolute RAM address
         ADD16 COLORPTR, COLORBASE, COLORPTR
         rts
-        
+.endif     
 
 ;********************************************
 ;*                                          *
@@ -581,8 +583,9 @@ CLAMP_LINE_COORDS
         jsr HGRHorizontalLine
 
         ; Set the Lines color memory
-        jmp HCPlotLine
-
+        ; jmp HCPlotLine
+        rts
+        
 ;---------------------------------------
 
 NotHorizontal
@@ -805,6 +808,7 @@ NotHorizontal
         ldx _Y
         jmp _Plot
 
+.ifdef USE_COLOR
 ;********************************************
 ;
 ;  HCPlotLine
@@ -894,6 +898,7 @@ HCPlotLine
         sta (COLORPTR),y
 @Exit
         rts
+.endif
 
 ;********************************************
 ;

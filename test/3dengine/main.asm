@@ -27,6 +27,7 @@
         jsr _HGRBColor
 
         jsr HGRCls
+        jsr ClearColor
                                                     
         SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
 
