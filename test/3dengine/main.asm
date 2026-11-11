@@ -25,21 +25,6 @@
 
         jsr HGRCls
         jsr ClearColor
-                                                    
-        SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
-
-        MOVE8 MY_ROT_Z, ROT_Z_ANGLE
-        MOVE8 MY_ROT_Y, ROT_Y_ANGLE
-        MOVE8 MY_ROT_X, ROT_X_ANGLE
-
-        jsr ROTATION_Z
-        jsr ROTATION_Y
-        jsr ROTATION_X
-
-        jsr BUILD_ROT_ZY_MATRIX
-        jsr BUILD_ROTATION_MATRIX_X
-
-        SET_TRANSLATION  MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z
 
         jsr HGROn
         jsr Draw
