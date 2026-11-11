@@ -26,6 +26,7 @@
         jsr HGRCls
         jsr ClearColor
 
+        jsr Reset
         jsr HGROn
         jsr Draw
         
