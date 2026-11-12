@@ -288,20 +288,22 @@ public:
         return false;
     }
 
-    /**
-     * @brief Looks up a symbol's value by name using case-insensitive evaluation.
-     * @param name The symbol name to locate.
-     * @param location Source location registering this lookup usage.
-     * @return std::optional<uint16_t> containing the value if found; otherwise, std::nullopt.
-     */
-    [[nodiscard]] std::optional<uint16_t> Lookup(std::string_view name, const std::pair<int, int>& location) {
+    [[nodiscard]] std::optional<uint16_t> Lookup(
+        std::string_view name,
+        const std::pair<int, int>& location) {
+
         if (auto it = symbols_.find(name); it != symbols_.end()) {
-            it->second.usage.push_back(location);
+            auto& usage = it->second.usage;
+
+            if (std::find(usage.begin(), usage.end(), location) == usage.end()) {
+                usage.push_back(location);
+            }
+
             return it->second.value;
         }
+
         return std::nullopt;
     }
-
     /**
      * @brief Prints the symbol table formatted in columns with 16-bit hex values.
      */

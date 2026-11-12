@@ -9,17 +9,12 @@
         sta $01             ; Configure C64 memory banking:
                             ; LORAM=0, HIRAM=1, CHAREN=1
                             ; BASIC ROM disabled, KERNAL and I/O enabled.                       
-        lda #1
-        jsr BankSelect
-        lda #12             ; Screen RAM slot
-        ldy #0              ; Bitmap slot
-        jsr SetHGRLayout
 
-        jsr HGRInit
-
-        lda #COLOR_WHITE
+        jsr SwitchToHGR     ; Turn on graphics memory
+                            
+        lda #COLOR_YELLOW
         jsr _HGRFColor
-        lda #COLOR_GREEN
+        lda #COLOR_BLUE
         jsr _HGRBColor
         sta Border
 
@@ -28,7 +23,6 @@
 
         jsr Reset
 
-        jsr HGROn
         jsr Draw
         
 MainLoop:
@@ -151,10 +145,21 @@ ProcessKey
         ; =======================================================
 @Check_Reset
         cmp #KEY_RETURN
-        bne @Done
+        bne @Check_Info
         jmp Reset
+
+
+        ; =======================================================
+        ; DisplayInfo
+        ; =======================================================
+@Check_Info
+        cmp #KEY_SPACE
+        bne @Done
+        jmp ShowInfo
+        
 @Done
         rts
+        
         
         ; *************************************************************    
         ; Rot_Z_Clock
@@ -300,3 +305,22 @@ Reset
         SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
         SET_TRANSLATION MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z
         rts 
+
+        ; *************************************************************    
+        ; ShowInfo
+        ; *************************************************************            
+ShowInfo
+        lda Border
+        pha
+        jsr SwitchToText
+        jsr DrawInfo
+        
+@InfoLoop
+        jsr GETIN
+        beq @InfoLoop
+        
+        jsr SwitchToHGR
+        pla
+        sta Border
+        rts
+            

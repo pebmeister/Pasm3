@@ -67,7 +67,7 @@ SCRATCH_FRAC    .ds 2
 TEMP_PROD32     .ds 4
 
 ; Engine Buffers & Constants
-FIX_STRING_BUF  .ds 50     
+STRING_BUF  .ds 50     
 
 ;********************************************
 ;* Rotation test variables
@@ -105,6 +105,7 @@ CURRENT_VERTEX_PTR .ds 2
 ;* Place pointers in zero page.
 ;********************************************
 PC_SAVE        = *
+;--------------------------------------
             * = 5
             XCOORD      .ds 2
             LOC         .ds 2
@@ -127,20 +128,17 @@ PC_SAVE        = *
             YDIST       .ds 2
             StartX      .ds 2
             COLOR       .ds 1
-
-
             _X          = XCOORD
             COUNTER     = LOC
             CURLOC      = DX
             XD          = YCOL
-
+;--------------------------------------
     SCREEN_SRC_PTR          .ds 2
     SCREEN_DST_PTR          .ds 2        
     SCREEN_VERTICES_LEFT    .ds 1
     SCREEN_TEMP_A           .ds 4
     SCREEN_TEMP_B           .ds 4
     SCREEN_TEMP_RESULT      .ds 4
-
         
             MAT_APTR        .ds 2       ; Current A element pointer
             MAT_BPTR        .ds 2       ; Current B element pointer
@@ -233,7 +231,7 @@ MY_ROT_Y                .byte 0
 MY_ROT_Z                .byte 0
 
 
-ROT_DELTA               = 10
+ROT_DELTA               = 5
 SCALE_INCREMENT:
         .word $199A, $0000     ; 0.1
 

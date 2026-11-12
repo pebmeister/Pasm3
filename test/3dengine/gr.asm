@@ -31,8 +31,14 @@ COLORBASE
 ;********************************************
 ;*                                          *
 ;*  BankSelect                              *
+;*      register $DD00                      *
 ;*                                          *
 ;*  A IN: VIC-II bank number 0-3            *
+;*                                          *
+;*  $00     $0000 - $3FFF  (default)        *
+;*  $01     $4000 - $7FFF                   *
+;*  $02     $8000 - $BFFF                   *
+;*  $03     $C000 - $FFFF                   *
 ;*                                          *
 ;********************************************
 BankSelect
@@ -45,22 +51,48 @@ BankSelect
         ora TMP
         sta $DD00
         rts
-        
+ 
 ;********************************************
-;* SetHGRLayout                             *
+;* SetVICSlots                              *
 ;*                                          *
 ;* Configures VIC-II register $D018         *
 ;*                                          *
 ;* IN:                                      *
-;*   A reg = Screen RAM slot (0-15)         *
-;*           0=$0000, 1=$0400 ... 8=$2000   *
+;*   A reg = Screen RAM slot ($00-$0F)      *
 ;*   Y reg = Bitmap slot (0 or 1)           *
-;*           0=$0000, 1=$2000               *
 ;*                                          *
-;* OUT:                                     *
-;*   $D018 programmed with combined value   *
+;*  --------------------------------------  *
+;*         Screen RAM Slot                  *
+;*  --------------------------------------  *
+;*  slot    address                         *
+;*                                          *
+;*  $00     $0000                           *
+;*  $01     $0400 (default)                 *
+;*  $02     $0800                           *
+;*  $03     $0C00                           *
+;*  $04     $1000                           *
+;*  $05     $1400                           *
+;*  $06     $1800                           *
+;*  $07     $1C00                           *
+;*  $08     $2000                           *
+;*  $09     $2400                           *
+;*  $0A     $2800                           *
+;*  $0B     $2C00                           *
+;*  $0C	    $3000                           *
+;*  $0D     $3400                           *
+;*  $0E     $3800                           *
+;*	$0F     $3C00                           *
+;*                                          *
+;*  --------------------------------------  *
+;*         Bitmap Slot                      *
+;*  --------------------------------------  *
+;*  slot    address                         *
+;*                                          *
+;*  $00     $0000                           *
+;*  $01     $2000                           *
+;*                                          *
 ;********************************************
-SetHGRLayout:
+SetVICSlots:
         ; Shift Screen RAM slot (0-15) into bits 7-4
         asl
         asl
@@ -565,7 +597,7 @@ CLAMP_LINE_COORDS
        
         lda Y0
         cmp Y1
-        bne NotHorizontal
+        bne @NotHorizontal
 
 ;---------------------------------------
         BLE16 X0, X1, @X0_Less_Equal
@@ -605,7 +637,7 @@ CLAMP_LINE_COORDS
         
 ;---------------------------------------
 
-NotHorizontal
+@NotHorizontal
         MOVE8I DY+1, 0
 
         ; DX% = abs(x0%-x1%)

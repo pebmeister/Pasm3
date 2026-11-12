@@ -2,6 +2,7 @@
         .inc "macros.asm"
         .inc "mac.asm"
         .inc "main.asm"
+        .inc "info.asm"
         .inc "key.asm"
         .inc "draw.asm"
         .inc "sin.asm"
@@ -14,3 +15,4 @@
         .inc "cube.asm"
         .inc "transform.asm"
         .inc "projection.asm"
+        .inc "print.asm"

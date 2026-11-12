@@ -4,38 +4,31 @@ Draw
 
         jsr CreateProjection
         jsr HGRCls
-        jsr DRAW_PYRAMID_EDGES
-        rts
-
+        jmp DRAW_PYRAMID_EDGES
         
 Update_X_Rotation
         jsr ROTATION_X        
-        jsr BUILD_ROTATION_MATRIX_X
-        rts
+        jmp BUILD_ROTATION_MATRIX_X
 
 Update_Y_Rotation
         jsr ROTATION_Y
         jsr BUILD_ROT_ZY_MATRIX
-        jsr BUILD_ROTATION_MATRIX_X
-        rts
+        jmp BUILD_ROTATION_MATRIX_X
 
 Update_Z_Rotation
         jsr ROTATION_Z
         jsr BUILD_ROT_ZY_MATRIX
-        jsr BUILD_ROTATION_MATRIX_X
+        jmp BUILD_ROTATION_MATRIX_X
         rts
         
 Update_X_Translation
-        jsr BUILD_TRANSLATION_MATRIX_X
-        rts
+        jmp BUILD_TRANSLATION_MATRIX_X
 
 Update_Y_Translation
-        jsr BUILD_TRANSLATION_MATRIX_Y
-        rts
+        jmp BUILD_TRANSLATION_MATRIX_Y
 
 Update_Z_Translation
-        jsr BUILD_TRANSLATION_MATRIX_Z
-        rts
+        jmp BUILD_TRANSLATION_MATRIX_Z
                 
 CreateProjection         
         ; Transform model vertices
@@ -50,9 +43,8 @@ CreateProjection
         jsr DIVIDE_CLIP_VERTICES_XY
 
         ; set to screen
-        jsr CONVERT_NDC_TO_SCREEN
+        jmp CONVERT_NDC_TO_SCREEN
         
-        rts
  
 ;********************************************
 ;* DRAW_PYRAMID_EDGES                       *

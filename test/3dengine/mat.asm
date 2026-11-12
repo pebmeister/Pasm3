@@ -1175,9 +1175,8 @@ BUILD_TRANSLATION_MATRIX_Z:
         jsr BUILD_TRANSLATION_MATRIX_X
         jsr BUILD_TRANSLATION_MATRIX_Y
         jsr BUILD_TRANSLATION_MATRIX_Z
-        jsr BUILD_TRANSLATION_MATRIX_W
-        rts
-
+        jmp BUILD_TRANSLATION_MATRIX_W
+        
 ROT_ZY_MATRIX:
         .ds 64
         
@@ -1199,7 +1198,6 @@ BUILD_ROT_ZY_MATRIX:
 BUILD_ROTATION_MATRIX_X:
         ; Calculate (RZ * RY) * RX
         CALL_MAT3_MUL ROT_ZY_MATRIX, ROT_X_MATRIX, ROTATION_MATRIX
-
         rts
         
         
@@ -1222,7 +1220,6 @@ BUILD_ROTATION_MATRIX_X:
 ;* Uses FIX16_MUL and ADD_FIX16.
 ;* Matrix C must not overlap A or B.
 ;********************************************
-
 MAT3_MUL:
 
         ;------------------------------------
