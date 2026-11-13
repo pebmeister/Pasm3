@@ -445,4 +445,34 @@
         rts
         .endm
         
+        .macro CallPatch 
+            MOVE8 \1 + 1, TMP ; Get active high byte (e.g. $40 or $60)
+            lda #< (\2 + 2)
+            sta LOC
+            lda #> (\2 + 2)
+            sta LOC + 1
+            ldx #\3
+            jsr ApplyPatchClearPatches@Patch
+         .endm
+
+        
+        ; ============================================
+        ; MACRO: LOAD_MESH
+        ; Usage: LOAD_MESH PYRAMID_EDGES, SCREEN_VERTICES, PYRAMID_EDGE_COUNT
+        ; ============================================
+        .macro DRAW_MESH
+        lda #<\1
+        sta EDGES_PTR
+        lda #>\1
+        sta EDGES_PTR+1
+
+        lda #<\2
+        sta VERTICES_PTR
+        lda #>\2
+        sta VERTICES_PTR+1
+
+        lda \3
+        sta NUM_EDGES
+        .endm
+        
         .print pop

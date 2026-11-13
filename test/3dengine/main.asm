@@ -12,9 +12,9 @@
 
         jsr SwitchToHGR     ; Turn on graphics memory
                             
-        lda #COLOR_YELLOW
+        lda #COLOR_BLACK
         jsr _HGRFColor
-        lda #COLOR_BLUE
+        lda #COLOR_YELLOW
         jsr _HGRBColor
         sta Border
 
@@ -22,6 +22,16 @@
         jsr ClearColor
 
         jsr Reset
+
+        lda #<_PYRAMID_VERTICES
+        sta MODEL_VERTICES_PTR
+        lda #>_PYRAMID_VERTICES
+        sta MODEL_VERTICES_PTR + 1
+
+        lda #<_PYRAMID_EDGES
+        sta MODEL_EDGES_PTR
+        lda #>_PYRAMID_EDGES
+        sta MODEL_EDGES_PTR + 1
 
         jsr Draw
         
@@ -148,7 +158,6 @@ ProcessKey
         bne @Check_Info
         jmp Reset
 
-
         ; =======================================================
         ; DisplayInfo
         ; =======================================================
@@ -159,8 +168,7 @@ ProcessKey
         
 @Done
         rts
-        
-        
+                
         ; *************************************************************    
         ; Rot_Z_Clock
         ; *************************************************************            

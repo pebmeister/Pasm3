@@ -73,7 +73,7 @@ CUBE_EDGE_COUNT:
         .byte 12
         
         
-PYRAMID_VERTICES:
+_PYRAMID_VERTICES:
         ; Vertex 0: X=-1, Y=-1, Z=-1, W=1
         .word $0000,$FFFF
         .word $0000,$FFFF
@@ -105,7 +105,7 @@ PYRAMID_VERTICES:
         .word $0000,$0001
 
 
-PYRAMID_EDGES:
+_PYRAMID_EDGES:
         ; Base
         .byte 0,1
         .byte 1,2
@@ -118,9 +118,9 @@ PYRAMID_EDGES:
         .byte 2,4
         .byte 3,4
 
-PYRAMID_VERTEX_COUNT:
+_PYRAMID_VERTEX_COUNT:
         .byte 5
 
-PYRAMID_EDGE_COUNT:
+_PYRAMID_EDGE_COUNT:
         .byte 8
         

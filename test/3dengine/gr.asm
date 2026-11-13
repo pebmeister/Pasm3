@@ -1,3 +1,5 @@
+         ; written by Paul Baxter
+
 ; https://www.youtube.com/watch?v=KWydVEX0n3g
 
 ; ============================================
@@ -21,12 +23,8 @@ COLOR_LIGHT_BLUE  = 14
 COLOR_LIGHT_GREY  = 15    ; Also known as Grey 3
 
          ; written by Paul Baxter
-
-BITMAPBASE
-        .ds 2
-
-COLORBASE
-        .ds 2
+BITMAPBASE          .ds 2
+COLORBASE           .ds 2
 
 ;********************************************
 ;*                                          *
@@ -170,7 +168,7 @@ InitVICPointers:
 HGRInit
         jsr InitVICPointers
         jsr InitBitmapScanlineTables
-        jsr PatchHGRCls
+        jsr ApplyPatchClearPatches
         rts
 
 ;********************************************
@@ -196,7 +194,7 @@ HGROn
 HGROff
         ; 1. Turn off High-Resolution Bitmap Mode ($D011 bit 5 = 0)
         lda $D011
-        and #%11011111
+        and #~%00100000
         sta $D011
         rts
 
@@ -208,76 +206,84 @@ HGROff
 ;* by PatchHGRCls when the VIC bank changes.*
 ;********************************************
 HGRCls
+        .var BytesToClear = 8000
         ldx #0
         lda #0
-
 @ClrLoop
-        sta $4000,x
-        sta $4100,x
-        sta $4200,x
-        sta $4300,x
-        sta $4400,x
-        sta $4500,x
-        sta $4600,x
-        sta $4700,x
-        sta $4800,x
-        sta $4900,x
-        sta $4A00,x
-        sta $4B00,x
-        sta $4C00,x
-        sta $4D00,x
-        sta $4E00,x
-        sta $4F00,x
-        sta $5000,x
-        sta $5100,x
-        sta $5200,x
-        sta $5300,x
-        sta $5400,x
-        sta $5500,x
-        sta $5600,x
-        sta $5700,x
-        sta $5800,x
-        sta $5900,x
-        sta $5A00,x
-        sta $5B00,x
-        sta $5C00,x
-        sta $5D00,x
-        sta $5E00,x
-        sta $5F00,x
-
+        .var page = 0        
+        .repeat
+            sta $4000,x
+            page = page + 1
+        .until page > BytesToClear / $100
         inx
         bne @ClrLoop
 
-@ClrLoop2
-        sta $5F00,x
+        .var Remain = BytesToClear - ((page -1) * $100)
+@Remainder:
+        sta $4000,x
         inx
-        cpx #8000 - ($0100 * 31)
-        bne @ClrLoop2
+        cpx #Remain
+        bne @Remainder
 
-.ifdef USE_COLOR
+.ifndef USE_COLOR
+        rts
+.else
         jmp ClearColor
-.endif        
+.endif      
+
+;********************************************
+;* HClearColor                              *
+;* Clear graphics color                     *
+;*                                          *
+;* High bytes of STA addresses are patched  *
+;* by PatchHGRCls when the VIC bank changes.*
+;********************************************
+ClearColor
+        .var BytesToClear = 1000
+        ldx #0
+        lda COLOR           ; Fill with current color attribute
+@ClrLoop
+        .var page = 0        
+        .repeat
+            sta $4000,x
+            page = page + 1
+        .until page > BytesToClear / $100
+        inx
+        bne @ClrLoop
+
+        .var Remain = BytesToClear - ((page -1) * $100)
+@Remainder:
+        sta $4000,x
+        inx
+        cpx #Remain
+        bne @Remainder
+
+;*******************************************************
+;* ApplyPatchClearPatches (100% Runtime Version)       *
+;* Patches HGRCls and ClearColor high bytes            *
+;* using the active runtime BITMAPBASE.                *
+;*******************************************************
+ApplyPatchClearPatches:
+        CallPatch BITMAPBASE, HGRCls@ClrLoop, 8000 / $100
+        lda #< (HGRCls@Remainder + 2)
+        sta LOC
+        lda #> (HGRCls@Remainder + 2)
+        sta LOC + 1
+        lda TMP                 ; Get current page high byte
+        ldy #0
+        sta (LOC), y            ; Store into instruction operand high byte
+        
+        CallPatch COLORBASE, ClearColor@ClrLoop, 1000 / $100
+        lda #< (ClearColor@Remainder + 2)
+        sta LOC
+        lda #> (ClearColor@Remainder + 2)
+        sta LOC + 1
+        lda TMP                 ; Get current page high byte
+        ldy #0
+        sta (LOC), y            ; Store into instruction operand high byte
         rts
 
-;********************************************
-;* PatchHGRCls (100% Runtime Version)       *
-;* Patches HGRCls instruction high bytes    *
-;* using the active runtime BITMAPBASE.     *
-;********************************************
-PatchHGRCls:
-        lda BITMAPBASE + 1      ; Get active high byte (e.g. $40 or $60)
-        sta TMP                 ; TMP = current page high byte
-
-        ; Point to the first high-byte operand in HGRCls
-        ; (Assuming HGRCls@ClrLoop + 2 points to the high byte of the first 'sta $xxxx, x' instruction)
-        lda #< (HGRCls@ClrLoop + 2)
-        sta LOC
-        lda #> (HGRCls@ClrLoop + 2)
-        sta LOC + 1
-
-        ldx #32                 ; 32 pages to patch (8KB)
-
-@PatchLoop:
+@Patch:
         lda TMP                 ; Get current page high byte
         ldy #0
         sta (LOC), y            ; Store into instruction operand high byte
@@ -295,38 +301,10 @@ PatchHGRCls:
         inc LOC + 1
 @SkipInc:
         dex
-        bne @PatchLoop
+        bne @Patch
+        
         rts
         
-;********************************************
-;* ClearColor                               *
-;* Clear color memory (1000 bytes)          *
-;* using dynamic COLORBASE pointer          *
-;********************************************
-ClearColor:
-        ; Copy COLORBASE to COLORPTR for indirect clearing
-        MOVE16 COLORBASE, COLORPTR
-        
-        ldx #3              ; 3 full pages (3 * 256 = 768 bytes)
-        ldy #0
-        lda COLOR           ; Fill with current color attribute
-@ColorPages:
-        sta (COLORPTR),y
-        iny
-        bne @ColorPages
-        inc COLORPTR + 1    ; Move to next page high byte
-        dex
-        bne @ColorPages
-        
-        ; Clear remaining 232 bytes (1000 - 768 = 232)
-        ldy #0
-@ColorRemainder:
-        sta (COLORPTR),y
-        iny
-        cpy #232
-        bne @ColorRemainder
-        rts
-
 ;********************************************
 ;*                                          *
 ;*  HGRBColor                               *

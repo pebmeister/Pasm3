@@ -4,7 +4,7 @@ Draw
 
         jsr CreateProjection
         jsr HGRCls
-        jmp DRAW_PYRAMID_EDGES
+        jmp DRAW_MESH_EDGES
         
 Update_X_Rotation
         jsr ROTATION_X        
@@ -30,11 +30,11 @@ Update_Y_Translation
 Update_Z_Translation
         jmp BUILD_TRANSLATION_MATRIX_Z
                 
-CreateProjection         
-        ; Transform model vertices
-        ; jsr TRANSFORM_WORLD_VERTICES
-        jsr TRANSFORM_PYRAMID_VERTICES
 
+CreateProjection
+        ; Transform model vertices
+        jsr TRANSFORM_WORLD_VERTICES
+        
         ; Perspective projection
         jsr PROJECT_WORLD_VERTICES
 
@@ -46,54 +46,49 @@ CreateProjection
         jmp CONVERT_NDC_TO_SCREEN
         
  
-;********************************************
-;* DRAW_PYRAMID_EDGES                       *
-;*                                          *
-;* Draws all edges in PYRAMID_EDGES         *
-;* using SCREEN_VERTICES and _Line.         *
-;********************************************
-
-DRAW_PYRAMID_EDGES:
-
+; ============================================
+; DRAW_MESH_EDGES
+; Draws all edges using generic variables:
+; - MODEL_EDGES_PTR: points to edge index table
+; - MODEL_VERTICES_PTR (or SCREEN_VERTICES): points to screen vertices
+; - MODEL_NUM_EDGES: total number of edges to draw
+; ============================================
+DRAW_MESH_EDGES:
+        lda MODEL_NUM_EDGES
+        sta DRAW_EDGE_LEFT
         lda #0
         sta DRAW_EDGE_INDEX
 
-        lda PYRAMID_EDGE_COUNT
-        sta DRAW_EDGE_LEFT
-
 @DrawEdge:
-
-        ;------------------------------------
-        ; Get first vertex index
-        ;------------------------------------
-
+        ; ------------------------------------
+        ; Get first vertex index from MODEL_EDGES_PTR
+        ; ------------------------------------
         ldy DRAW_EDGE_INDEX
-        lda PYRAMID_EDGES,y
+        lda (MODEL_EDGES_PTR),y
         sta DRAW_VERTEX_INDEX
 
-        ; Calculate offset = vertex index * 3
+        ; Calculate offset = vertex index * 3 (3 bytes per vertex: X_lo, X_hi, Y)
         asl
         clc
         adc DRAW_VERTEX_INDEX
         tay
 
-        ; Load X0, Y0
-        lda SCREEN_VERTICES,y
+        ; Load X0, Y0 from SCREEN_VERTICES using Y offset
+        lda (VERTICES_PTR),y
         sta X0
         iny
-        lda SCREEN_VERTICES,y
+        lda (VERTICES_PTR),y
         sta X0+1
         iny
-        lda SCREEN_VERTICES,y
+        lda (VERTICES_PTR),y
         sta Y0
 
-        ;------------------------------------
-        ; Get second vertex index
-        ;------------------------------------
-
+        ; ------------------------------------
+        ; Get second vertex index from MODEL_EDGES_PTR
+        ; ------------------------------------
         ldy DRAW_EDGE_INDEX
         iny
-        lda PYRAMID_EDGES,y
+        lda (MODEL_EDGES_PTR),y
         sta DRAW_VERTEX_INDEX
 
         ; Calculate offset = vertex index * 3
@@ -102,26 +97,24 @@ DRAW_PYRAMID_EDGES:
         adc DRAW_VERTEX_INDEX
         tay
 
-        ; Load X1, Y1
-        lda SCREEN_VERTICES,y
+        ; Load X1, Y1 from SCREEN_VERTICES using Y offset
+        lda (VERTICES_PTR),y
         sta X1
         iny
-        lda SCREEN_VERTICES,y
+        lda (VERTICES_PTR),y
         sta X1+1
         iny
-        lda SCREEN_VERTICES,y
+        lda (VERTICES_PTR),y
         sta Y1
 
-        ;------------------------------------
-        ; Draw edge
-        ;------------------------------------
-
+        ; ------------------------------------
+        ; Draw edge via line routine
+        ; ------------------------------------
         jsr _Line
 
-        ;------------------------------------
+        ; ------------------------------------
         ; Next edge
-        ;------------------------------------
-
+        ; ------------------------------------
         inc DRAW_EDGE_INDEX
         inc DRAW_EDGE_INDEX
 
@@ -129,4 +122,3 @@ DRAW_PYRAMID_EDGES:
         bne @DrawEdge
 
         rts
-        
