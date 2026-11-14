@@ -34,6 +34,7 @@ Update_Z_Translation
 CreateProjection
         ; Transform model vertices
         jsr TRANSFORM_WORLD_VERTICES
+        ;jsr TRANSFORM_PYRAMID_VERTICES
         
         ; Perspective projection
         jsr PROJECT_WORLD_VERTICES
@@ -50,7 +51,6 @@ CreateProjection
 ; DRAW_MESH_EDGES
 ; Draws all edges using generic variables:
 ; - MODEL_EDGES_PTR: points to edge index table
-; - MODEL_VERTICES_PTR (or SCREEN_VERTICES): points to screen vertices
 ; - MODEL_NUM_EDGES: total number of edges to draw
 ; ============================================
 DRAW_MESH_EDGES:
@@ -74,13 +74,13 @@ DRAW_MESH_EDGES:
         tay
 
         ; Load X0, Y0 from SCREEN_VERTICES using Y offset
-        lda (VERTICES_PTR),y
+        lda SCREEN_VERTICES,y
         sta X0
         iny
-        lda (VERTICES_PTR),y
+        lda SCREEN_VERTICES,y
         sta X0+1
         iny
-        lda (VERTICES_PTR),y
+        lda SCREEN_VERTICES,y
         sta Y0
 
         ; ------------------------------------
@@ -98,13 +98,13 @@ DRAW_MESH_EDGES:
         tay
 
         ; Load X1, Y1 from SCREEN_VERTICES using Y offset
-        lda (VERTICES_PTR),y
+        lda SCREEN_VERTICES,y
         sta X1
         iny
-        lda (VERTICES_PTR),y
+        lda SCREEN_VERTICES,y
         sta X1+1
         iny
-        lda (VERTICES_PTR),y
+        lda SCREEN_VERTICES,y
         sta Y1
 
         ; ------------------------------------

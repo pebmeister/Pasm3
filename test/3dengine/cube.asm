@@ -1,4 +1,4 @@
-CUBE_VERTICES:
+__CUBE_VERTICES:
         ; Vertex 0: X=-1, Y=-1, Z=-1, W=1
         .word $0000,$FFFF
         .word $0000,$FFFF
@@ -47,7 +47,7 @@ CUBE_VERTICES:
         .word $0000,$0001
         .word $0000,$0001
         
-CUBE_EDGES:
+__CUBE_EDGES:
         ; Back face
         .byte 0,1
         .byte 1,2
@@ -66,14 +66,14 @@ CUBE_EDGES:
         .byte 2,6
         .byte 3,7
 
-CUBE_VERTEX_COUNT:
+__CUBE_VERTEX_COUNT:
         .byte 8
 
-CUBE_EDGE_COUNT:
+__CUBE_EDGE_COUNT:
         .byte 12
         
         
-_PYRAMID_VERTICES:
+__PYRAMID_VERTICES:
         ; Vertex 0: X=-1, Y=-1, Z=-1, W=1
         .word $0000,$FFFF
         .word $0000,$FFFF
@@ -105,7 +105,7 @@ _PYRAMID_VERTICES:
         .word $0000,$0001
 
 
-_PYRAMID_EDGES:
+__PYRAMID_EDGES:
         ; Base
         .byte 0,1
         .byte 1,2
@@ -118,9 +118,9 @@ _PYRAMID_EDGES:
         .byte 2,4
         .byte 3,4
 
-_PYRAMID_VERTEX_COUNT:
+__PYRAMID_VERTEX_COUNT:
         .byte 5
 
-_PYRAMID_EDGE_COUNT:
+__PYRAMID_EDGE_COUNT:
         .byte 8
         

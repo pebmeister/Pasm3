@@ -37,12 +37,16 @@ SwitchToHGR
             sta COLOR_SAVE
             lda COLORBASE + 1
             sta COLOR_SAVE + 1
- 
+            
+            rts
+            
 DrawInfo        
             lda #COLOR_BLUE
             sta SCREENC
             sta Border
 
+            ; jmp DrawDebugInfo
+            
             ldx #0
             ldy #0
             clc
@@ -399,3 +403,165 @@ DrawInfo
 @BITMAP_BASE_COLOR      .byte KEY_YELLOW, 0
 @COLOR_BASE_COLOR       .byte KEY_YELLOW, 0
 @ROW                    .byte 0
+
+
+               
+  DrawDebugInfo
+        lda MODEL_VERTICES_PTR
+        sta @VERT_PTR
+        lda MODEL_VERTICES_PTR + 1
+        sta @VERT_PTR + 1
+
+        ; Print header at row 0
+        ldx #0                  ; Row
+        ldy #0                  ; Col
+        sec
+        jsr PLOT
+
+        lda #<@DGB_HDR
+        ldy #>@DGB_HDR
+        jsr SAFE_STROUT
+
+        lda #1                  ; First data row (row 0 is header)
+        sta @ROW
+        jsr @PrintVertex
+
+
+        lda #<WORLD_VERTICES
+        sta @VERT_PTR
+        lda #>WORLD_VERTICES
+        sta @VERT_PTR + 1
+
+
+        inc @ROW
+        ldx @ROW
+        ldy #0
+        clc
+        jsr PLOT
+
+        lda #<@WORLD_HDR
+        ldy #>@WORLD_HDR
+        jsr SAFE_STROUT
+
+        lda MODEL_VERTICES_PTR
+        sta TEMP16
+        lda MODEL_VERTICES_PTR + 1
+        sta TEMP16 + 1
+        jsr PRINT_INT16_HEX
+                
+        inc @ROW
+        inc @ROW
+        jsr @PrintVertex
+
+
+        rts
+
+        
+@PrintVertex
+        ; Initialize counters
+        lda #0
+        sta @INDEX
+
+@VertLoop
+        ; Have we printed all vertices?
+        lda @INDEX
+        cmp MODEL_VERTEX_COUNT
+        bcs @Done
+
+        ;------------------------------------
+        ; X coordinate - column 0
+        ;------------------------------------
+        ldx @ROW
+        ldy #0
+        clc
+        jsr PLOT
+
+        lda @VERT_PTR
+        sta FIXPTR
+        lda @VERT_PTR + 1
+        sta FIXPTR + 1
+        jsr PRINT_FIX16
+
+        ; Advance pointer to Y (+4)
+        clc
+        lda @VERT_PTR
+        adc #4
+        sta @VERT_PTR
+        bcc @NoCarryY
+        inc @VERT_PTR + 1
+@NoCarryY:
+
+        ;------------------------------------
+        ; Y coordinate - column 13
+        ;------------------------------------
+        ldx @ROW
+        ldy #13
+        clc
+        jsr PLOT
+
+        lda @VERT_PTR
+        sta FIXPTR
+        lda @VERT_PTR + 1
+        sta FIXPTR + 1
+        jsr PRINT_FIX16
+
+        ; Advance pointer to Z (+4)
+        clc
+        lda @VERT_PTR
+        adc #4
+        sta @VERT_PTR
+        bcc @NoCarryZ
+        inc @VERT_PTR + 1
+@NoCarryZ:
+
+        ;------------------------------------
+        ; Z coordinate - column 26
+        ;------------------------------------
+        ldx @ROW
+        ldy #26
+        clc
+        jsr PLOT
+
+        lda @VERT_PTR
+        sta FIXPTR
+        lda @VERT_PTR + 1
+        sta FIXPTR + 1
+        jsr PRINT_FIX16
+
+        ; Advance pointer past W to next vertex (+8)
+        clc
+        lda @VERT_PTR
+        adc #8
+        sta @VERT_PTR
+        bcc @NoCarryNext
+        inc @VERT_PTR + 1
+@NoCarryNext:
+
+        ; Advance counters
+        inc @INDEX
+        inc @ROW
+
+        jmp @VertLoop
+
+@Done:
+        rts
+
+
+;--------------------------------------------
+; Debug workspace
+;--------------------------------------------
+@VERT_PTR:
+        .ds 2
+
+@INDEX:
+        .ds 1
+
+@ROW:
+        .ds 1
+
+@WORLD_HDR  .byte KEY_YELLOW, "WORLD VERTICES  ", KEY_WHITE, 0
+
+@DGB_HDR:
+        .byte KEY_WHITE, "X            Y            Z", 0
+
+        

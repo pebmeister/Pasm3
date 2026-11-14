@@ -200,16 +200,17 @@ PROJECTION_MATRIX:
         
 
 PROJECT_WORLD_VERTICES:
+
         ; Projection matrix
         lda #<PROJECTION_MATRIX
         sta MAT4_MATRIX_PTR
         lda #>PROJECTION_MATRIX
         sta MAT4_MATRIX_PTR+1
 
-        ; Source vertices (uses generic MODEL_VERTICES_PTR)
-        lda MODEL_VERTICES_PTR
+        ; Source vertices
+        lda #<WORLD_VERTICES
         sta PROJ_SRC_PTR
-        lda MODEL_VERTICES_PTR+1
+        lda #>WORLD_VERTICES
         sta PROJ_SRC_PTR+1
 
         ; Destination vertices
@@ -222,6 +223,7 @@ PROJECT_WORLD_VERTICES:
         sta PROJ_VERTICES_LEFT
 
 @ProjectLoop:
+
         lda PROJ_SRC_PTR
         sta MAT4_VIN_PTR
         lda PROJ_SRC_PTR+1
@@ -241,6 +243,7 @@ PROJECT_WORLD_VERTICES:
         sta PROJ_SRC_PTR
         bcc @SourceReady
         inc PROJ_SRC_PTR+1
+
 @SourceReady:
 
         ; Advance destination by 16 bytes
@@ -250,19 +253,34 @@ PROJECT_WORLD_VERTICES:
         sta PROJ_DST_PTR
         bcc @DestinationReady
         inc PROJ_DST_PTR+1
+
 @DestinationReady:
 
         dec PROJ_VERTICES_LEFT
         bne @ProjectLoop
-        rts
 
+        rts
+        
+          
+;********************************************
+;* DIVIDE_CLIP_VERTICES                     *
+;*                                          *
+;* Converts clip coordinates to NDC         *
+;* X = X / W                                *
+;* Y = Y / W                                *
+;* Z = Z / W                                *
+;* W = preserved                            *
+;********************************************
 
 DIVIDE_CLIP_VERTICES:
+
+        ; Source: CLIP_VERTICES
         lda #<CLIP_VERTICES
         sta PROJ_SRC_PTR
         lda #>CLIP_VERTICES
         sta PROJ_SRC_PTR+1
 
+        ; Destination: NDC_VERTICES
         lda #<NDC_VERTICES
         sta PROJ_DST_PTR
         lda #>NDC_VERTICES
@@ -272,7 +290,11 @@ DIVIDE_CLIP_VERTICES:
         sta PROJ_VERTICES_LEFT
 
 @DivideVertex:
+
+        ;------------------------------------
         ; X / W
+        ;------------------------------------
+
         lda PROJ_SRC_PTR
         sta FIX16_A_PTR
         lda PROJ_SRC_PTR+1
@@ -293,7 +315,10 @@ DIVIDE_CLIP_VERTICES:
 
         jsr FIX16_DIV
 
+        ;------------------------------------
         ; Y / W
+        ;------------------------------------
+
         clc
         lda PROJ_SRC_PTR
         adc #4
@@ -320,7 +345,10 @@ DIVIDE_CLIP_VERTICES:
 
         jsr FIX16_DIV
 
+        ;------------------------------------
         ; Z / W
+        ;------------------------------------
+
         clc
         lda PROJ_SRC_PTR
         adc #8
@@ -347,8 +375,12 @@ DIVIDE_CLIP_VERTICES:
 
         jsr FIX16_DIV
 
+        ;------------------------------------
         ; Preserve original W
+        ;------------------------------------
+
         ldy #12
+
 @CopyW:
         lda (PROJ_SRC_PTR),y
         sta (PROJ_DST_PTR),y
@@ -356,12 +388,17 @@ DIVIDE_CLIP_VERTICES:
         cpy #16
         bne @CopyW
 
+        ;------------------------------------
+        ; Advance to next vertex
+        ;------------------------------------
+
         clc
         lda PROJ_SRC_PTR
         adc #16
         sta PROJ_SRC_PTR
         bcc @SourceReady
         inc PROJ_SRC_PTR+1
+
 @SourceReady:
 
         clc
@@ -370,15 +407,16 @@ DIVIDE_CLIP_VERTICES:
         sta PROJ_DST_PTR
         bcc @DestinationReady
         inc PROJ_DST_PTR+1
+
 @DestinationReady:
 
         dec PROJ_VERTICES_LEFT
         beq @exit
         jmp @DivideVertex
-@exit:
+@exit
         rts
         
-        
+
 SCREEN_MUL_SIGN: .ds 1
 
 ;********************************************
@@ -667,9 +705,9 @@ CONVERT_NDC_TO_SCREEN:
         sta FIX16_RESULT_PTR+1
 
 
-;        jsr SCREEN_MUL160
+        jsr SCREEN_MUL160
 
-        jsr FIX16_MUL
+;        jsr FIX16_MUL
 
         ; Store integer X
         ldy #0

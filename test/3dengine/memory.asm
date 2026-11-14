@@ -253,6 +253,6 @@ TRANS_INCREMENT:
 TRANS_DECREMENT:
         .word $E666, $FFFF     ; -0.1
         
-MODEL_VERTEX_COUNT              .byte _PYRAMID_VERTEX_COUNT
-MODEL_NUM_EDGES                 .byte _PYRAMID_EDGE_COUNT
+MODEL_VERTEX_COUNT              .ds 1
+MODEL_NUM_EDGES                 .ds 1
 

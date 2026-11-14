@@ -1,4 +1,4 @@
-ProcessKey
+ProcessKey:
         ; =======================================================
         ; Check Set Rotation
         ; =======================================================
@@ -97,14 +97,35 @@ ProcessKey
 
         ; ===== X =====
 @Check_Trans_X_Inc
-        cmp #KEY_CTRL_W    ; Scale_X_Inc
+        cmp #KEY_CTRL_W    ; Trans_X_Inc
         bne @Check_Trans_X_Dec
         jmp Trans_X_Inc
 
 @Check_Trans_X_Dec
-        cmp #KEY_HOME     ; Scale_X_Dec
-        bne @Check_Reset
+        cmp #KEY_HOME     ; Trans_X_Dec
+        bne @Check_Load_Pyramid
         jmp Trans_X_Dec
+
+        ; =======================================================
+        ; Check Change Model
+        ; =======================================================
+@Check_Load_Pyramid
+        cmp #KEY_P        ; Load_Pyramid
+        bne @Check_Load_Cube
+        jmp Load_Pyramid
+
+@Check_Load_Cube
+        cmp #KEY_C        ; Load_Cube
+        bne @Check_Info
+        jmp Load_Cube
+
+        ; =======================================================
+        ; Info
+        ; =======================================================
+@Check_Info
+        cmp #KEY_SPACE
+        bne @Check_Reset
+        jmp Info
 
         ; =======================================================
         ; Reset
@@ -242,6 +263,7 @@ Trans_X_Dec
         ADD_FIX16 TRANS_X, TRANS_DECREMENT, TRANS_X
         jmp BUILD_TRANSLATION_MATRIX_X
                             
+
         ; *************************************************************    
         ; Reset
         ; *************************************************************            
@@ -260,3 +282,60 @@ Reset
         SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
         SET_TRANSLATION MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z
         rts 
+
+        ; *************************************************************    
+        ; Info
+        ; *************************************************************            
+Info
+        lda Border
+        sta @Border_Color
+        jsr SwitchToText
+        jsr DrawInfo
+@Loop
+        jsr GETIN
+        beq @Loop
+
+        
+        jsr SwitchToHGR
+        lda @Border_Color
+        sta Border
+        rts
+
+@Border_Color
+        .ds 1
+        
+        ; *************************************************************    
+        ; Load_Pyramid
+        ; *************************************************************            
+Load_Pyramid
+        lda #<__PYRAMID_VERTICES
+        sta MODEL_VERTICES_PTR
+        lda #>__PYRAMID_VERTICES
+        sta MODEL_VERTICES_PTR + 1
+        lda #<__PYRAMID_EDGES
+        sta MODEL_EDGES_PTR
+        lda #>__PYRAMID_EDGES
+        sta MODEL_EDGES_PTR + 1
+        lda __PYRAMID_VERTEX_COUNT
+        sta MODEL_VERTEX_COUNT              
+        lda __PYRAMID_EDGE_COUNT
+        sta MODEL_NUM_EDGES
+        rts
+
+        ; *************************************************************    
+        ; Load_Cube
+        ; *************************************************************            
+Load_Cube
+        lda #<__CUBE_VERTICES
+        sta MODEL_VERTICES_PTR
+        lda #>__CUBE_VERTICES
+        sta MODEL_VERTICES_PTR + 1
+        lda #<__CUBE_EDGES
+        sta MODEL_EDGES_PTR
+        lda #>__CUBE_EDGES
+        sta MODEL_EDGES_PTR + 1
+        lda __CUBE_VERTEX_COUNT
+        sta MODEL_VERTEX_COUNT              
+        lda __CUBE_EDGE_COUNT
+        sta MODEL_NUM_EDGES
+        rts
