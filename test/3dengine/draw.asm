@@ -33,9 +33,22 @@ Update_Z_Translation
 
 CreateProjection
         ; Transform model vertices
-        jsr TRANSFORM_WORLD_VERTICES
-        ;jsr TRANSFORM_PYRAMID_VERTICES
+        lda CUR_MODEL
+        cmp #1
+        beq @Pyramid
+        cmp #2
+        beq @Cube
         
+        jsr TRANSFORM_WORLD_VERTICES
+        jmp @Done_Transform
+@Cube
+        jsr TRANSFORM_CUBE_VERTICES
+        jmp @Done_Transform
+@Pyramid
+        jsr TRANSFORM_PYRAMID_VERTICES
+        ; jmp @Done_Transform
+
+@Done_Transform
         ; Perspective projection
         jsr PROJECT_WORLD_VERTICES
 
@@ -46,7 +59,6 @@ CreateProjection
         ; set to screen
         jmp CONVERT_NDC_TO_SCREEN
         
- 
 ; ============================================
 ; DRAW_MESH_EDGES
 ; Draws all edges using generic variables:

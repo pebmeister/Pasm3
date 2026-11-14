@@ -255,4 +255,5 @@ TRANS_DECREMENT:
         
 MODEL_VERTEX_COUNT              .ds 1
 MODEL_NUM_EDGES                 .ds 1
+CUR_MODEL                       .ds 1
 

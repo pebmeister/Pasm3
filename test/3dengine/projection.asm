@@ -957,4 +957,3 @@ DIVIDE_CLIP_VERTICES_XY:
 
 @Exit:
         rts
-        

@@ -320,6 +320,8 @@ Load_Pyramid
         sta MODEL_VERTEX_COUNT              
         lda __PYRAMID_EDGE_COUNT
         sta MODEL_NUM_EDGES
+        lda #1
+        sta CUR_MODEL
         rts
 
         ; *************************************************************    
@@ -338,4 +340,6 @@ Load_Cube
         sta MODEL_VERTEX_COUNT              
         lda __CUBE_EDGE_COUNT
         sta MODEL_NUM_EDGES
+        lda #2
+        sta CUR_MODEL
         rts
