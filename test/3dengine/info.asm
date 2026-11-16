@@ -7,6 +7,7 @@ TXT_BANK        = 0
 TXT_SCR_RAM     = 1
 HGR_BANK        = 2
 HGR_SRC_RAM     = 0
+HGR_BITMAP_SLOT = 1
 
             ; ************************************
             ;
@@ -34,8 +35,8 @@ SwitchToHGR
             lda #HGR_BANK
             jsr BankSelect
 
-            lda #HGR_SRC_RAM    ; Screen Ram
-            ldy #$01            ; Bitmap
+            lda #HGR_SRC_RAM        ; Screen Ram
+            ldy #HGR_BITMAP_SLOT    ; Bitmap
             ldx #VIC_MODE_BITMAP
             jsr SetVICSlots
 
@@ -49,9 +50,9 @@ SwitchToHGR
             ; ************************************
 DrawInfo        
             lda #COLOR_BLUE
-            sta SCREENC
             sta Border
-            
+            sta SCREENC
+
             ldx #0
             ldy #0
             clc
@@ -98,14 +99,12 @@ DrawInfo
             sta TEMP16 + 1
             jsr PRINT_INT16
 
-                   
             ; Scale
             ldx @ROW
             ldy #SCALE_COL
             clc
             jsr PLOT
-
-                        
+                      
             lda #<@SCALE_COLOR
             ldy #>@SCALE_COLOR
             jsr SAFE_STROUT
@@ -116,7 +115,6 @@ DrawInfo
             sta FIXPTR + 1
             jsr PRINT_FIX16
            
-            
             ; Translate
             ldx @ROW
             ldy #TRANS_COL
@@ -311,7 +309,6 @@ DrawInfo
             sta FIXPTR + 1
             jsr PRINT_FIX16
 
-
             inc @ROW
             ldx @ROW
             ldy #0
@@ -415,6 +412,11 @@ DrawInfo
 
 
 DrawDebugInfo
+        
+        lda #COLOR_RED
+        sta Border
+        sta SCREENC
+
         lda MODEL_VERTICES_PTR
         sta @VERT_PTR
         lda MODEL_VERTICES_PTR + 1
@@ -434,12 +436,10 @@ DrawDebugInfo
         sta @ROW
         jsr @PrintVertex
 
-
         lda #<WORLD_VERTICES
         sta @VERT_PTR
         lda #>WORLD_VERTICES
         sta @VERT_PTR + 1
-
 
         inc @ROW
         ldx @ROW
@@ -462,6 +462,7 @@ DrawDebugInfo
         jsr @PrintVertex
 
         rts        
+
 @PrintVertex
         ; Initialize counters
         lda #0
@@ -550,7 +551,6 @@ DrawDebugInfo
 
 @Done:
         rts
-
 
 ;--------------------------------------------
 ; Debug workspace

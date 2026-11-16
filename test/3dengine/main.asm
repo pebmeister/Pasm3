@@ -22,8 +22,10 @@
         jsr ClearColor
 
         jsr Reset
-        jsr Load_Pyramid
-        
+        jsr Load_Cube
+
+        ; jsr Debug
+
         jsr Draw
         
 MainLoop:
@@ -32,3 +34,4 @@ MainLoop:
         jsr ProcessKey
         jsr Draw
         jmp MainLoop
+        

@@ -310,10 +310,10 @@ Info
         sta @Border_Color
         jsr SwitchToText
         jsr DrawInfo
+        
 @Loop
         jsr GETIN
         beq @Loop
-
         
         jsr SwitchToHGR
         lda @Border_Color

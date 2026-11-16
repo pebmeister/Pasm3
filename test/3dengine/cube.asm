@@ -1,3 +1,4 @@
+; written by Paul Baxter using Pasm3
 __CUBE_VERTICES:
         ; Vertex 0: X=-1, Y=-1, Z=-1, W=1
         .word $0000,$FFFF
@@ -66,6 +67,22 @@ __CUBE_EDGES:
         .byte 2,6
         .byte 3,7
 
+CUBE_VISIBLE
+    .ds 6
+    
+CUBE_FACES:
+    ; Front/back faces
+    .byte 0, 3, 2, 1
+    .byte 4, 5, 6, 7
+
+    ; Top/bottom faces
+    .byte 0, 1, 5, 4
+    .byte 3, 7, 6, 2
+
+    ; Left/right faces
+    .byte 0, 4, 7, 3
+    .byte 1, 2, 6, 5
+    
 __CUBE_VERTEX_COUNT:
         .byte 8
 
