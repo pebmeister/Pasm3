@@ -123,9 +123,17 @@ ProcessKey:
         ; Info
         ; =======================================================
 @Check_Info
-        cmp #KEY_SPACE
-        bne @Check_Reset
+        cmp #KEY_I
+        bne @Check_Debug
         jmp Info
+
+        ; =======================================================
+        ; Info
+        ; =======================================================
+@Check_Debug
+        cmp #KEY_SHIFT_I
+        bne @Check_Reset
+        jmp Debug
 
         ; =======================================================
         ; Reset
@@ -282,6 +290,17 @@ Reset
         SET_SCALE MY_SCALE_X, MY_SCALE_Y, MY_SCALE_Z
         SET_TRANSLATION MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z
         rts 
+
+
+        ; *************************************************************    
+        ; Debug
+        ; *************************************************************            
+Debug
+        lda Border
+        sta Info@Border_Color
+        jsr SwitchToText
+        jsr DrawDebugInfo
+        jmp Info@Loop
 
         ; *************************************************************    
         ; Info

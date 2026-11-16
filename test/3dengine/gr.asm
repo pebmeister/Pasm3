@@ -22,9 +22,11 @@ COLOR_LIGHT_GREEN = 13
 COLOR_LIGHT_BLUE  = 14
 COLOR_LIGHT_GREY  = 15    ; Also known as Grey 3
 
-         ; written by Paul Baxter
 BITMAPBASE          .ds 2
 COLORBASE           .ds 2
+
+VIC_MODE_BITMAP     = 0
+VIC_MODE_TEXT       = 1
 
 ;********************************************
 ;*                                          *
@@ -58,6 +60,9 @@ BankSelect
 ;* IN:                                      *
 ;*   A reg = Screen RAM slot ($00-$0F)      *
 ;*   Y reg = Bitmap slot (0 or 1)           *
+;*   X reg = VIC mode                       *
+;*           0 = Bitmap                     *
+;*           1 = Text (charset at $1000)    *
 ;*                                          *
 ;*  --------------------------------------  *
 ;*         Screen RAM Slot                  *
@@ -91,22 +96,42 @@ BankSelect
 ;*                                          *
 ;********************************************
 SetVICSlots:
-        ; Shift Screen RAM slot (0-15) into bits 7-4
+        ; Shift Screen RAM slot into bits 7-4
         asl
         asl
         asl
         asl
-        sta TMP             ; Save temporary shifted Screen RAM value
+        sta TMP
 
-        ; Align Bitmap slot (0 or 1) into bit 3
+        ; Check display mode
+        cpx #VIC_MODE_TEXT
+        beq @TextMode
+
+        ;====================================
+        ; BITMAP MODE
+        ;====================================
+        ; Align bitmap slot into bit 3
+
         tya
         and #%00000001
         asl
         asl
-        asl                 ; Shift to bit 3 ($00 or $08)
+        asl
 
-        ; Combine and store in $D018
         ora TMP
+        sta $D018
+        rts
+
+@TextMode:
+        ;====================================
+        ; TEXT MODE
+        ;====================================
+        ; Character ROM at $1000
+        ; Bits 3-1 = %010
+        ; Bit 0 set to match $15 configuration
+
+        lda TMP
+        ora #%00000101
         sta $D018
         rts
 
@@ -206,23 +231,27 @@ HGROff
 ;* by PatchHGRCls when the VIC bank changes.*
 ;********************************************
 HGRCls
-        .var BytesToClear = 8000
+        .var HGR_PGS =  8000 / $100
+        .var HGR_REMAIN = 8000 - (HGR_PGS * $100)
+ 
         ldx #0
         lda #0
 @ClrLoop
         .var page = 0        
         .repeat
-            sta $4000,x
+            sta $FF00,x
+            .print push
+            .print off
             page = page + 1
-        .until page > BytesToClear / $100
+            .print pop
+        .until page >= HGR_PGS
         inx
         bne @ClrLoop
 
-        .var Remain = BytesToClear - ((page -1) * $100)
 @Remainder:
-        sta $4000,x
+        sta $FF00,x
         inx
-        cpx #Remain
+        cpx #HGR_REMAIN
         bne @Remainder
 
 .ifndef USE_COLOR
@@ -239,24 +268,28 @@ HGRCls
 ;* by PatchHGRCls when the VIC bank changes.*
 ;********************************************
 ClearColor
-        .var BytesToClear = 1000
+        .var CLR_PGS =  1000 / $100
+        .var CLR_REMAIN = 1000 - (CLR_PGS * $100)
         ldx #0
         lda COLOR           ; Fill with current color attribute
 @ClrLoop
         .var page = 0        
         .repeat
-            sta $4000,x
+            sta $FF00,x
+            .print push
+            .print off
             page = page + 1
-        .until page > BytesToClear / $100
+            .print pop
+        .until page >= CLR_PGS
         inx
         bne @ClrLoop
 
-        .var Remain = BytesToClear - ((page -1) * $100)
 @Remainder:
-        sta $4000,x
+        sta $FF00,x
         inx
-        cpx #Remain
+        cpx #CLR_REMAIN
         bne @Remainder
+        rts
 
 ;*******************************************************
 ;* ApplyPatchClearPatches (100% Runtime Version)       *
@@ -264,7 +297,7 @@ ClearColor
 ;* using the active runtime BITMAPBASE.                *
 ;*******************************************************
 ApplyPatchClearPatches:
-        CallPatch BITMAPBASE, HGRCls@ClrLoop, 8000 / $100
+        CallPatch BITMAPBASE, HGRCls@ClrLoop, HGR_PGS
         lda #< (HGRCls@Remainder + 2)
         sta LOC
         lda #> (HGRCls@Remainder + 2)
@@ -273,7 +306,7 @@ ApplyPatchClearPatches:
         ldy #0
         sta (LOC), y            ; Store into instruction operand high byte
         
-        CallPatch COLORBASE, ClearColor@ClrLoop, 1000 / $100
+        CallPatch COLORBASE, ClearColor@ClrLoop, CLR_PGS
         lda #< (ClearColor@Remainder + 2)
         sta LOC
         lda #> (ClearColor@Remainder + 2)
@@ -1127,3 +1160,4 @@ InitBitmapScanlineTables:
         cpx #200
         bne @InitLoop
         rts
+        

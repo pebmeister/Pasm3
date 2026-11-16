@@ -3,49 +3,54 @@ SCALE_COL       = 8
 TRANS_COL       = 18
 MISC_COL        = 16
 
-BITMAP_SAVE   .ds 2
-COLOR_SAVE    .ds 2
+TXT_BANK        = 0
+TXT_SCR_RAM     = 1
+HGR_BANK        = 2
+HGR_SRC_RAM     = 0
 
+            ; ************************************
+            ;
+            ; SwitchToText
+            ;
+            ; ************************************
 SwitchToText:
-            lda #$00            ; Select VIC Bank 0 ($0000-$3FFF)
+            ; $0400–$07E7 Text screen (1000 bytes)
+            lda #TXT_BANK
             jsr BankSelect
-
-            lda #$15            ; Screen RAM at $0400 (bits 7-4 = 1) 
-                                ; Charset ROM at $1000 (bits 3-1 = 2)
-            sta $D018
+            
+            lda #TXT_SCR_RAM    ; Screen Ram
+            ldx #VIC_MODE_TEXT
+            jsr SetVICSlots
 
             jsr HGROff          ; Turn off bitmap mode ($D011 bit 5 = 0)
             jmp CLEARSCREEN     ; Clear the text buffer
-         
+        
+            ; ************************************
+            ;
+            ; SwitchToHGR
+            ;
+            ; ************************************
 SwitchToHGR
-            lda #$02
+            lda #HGR_BANK
             jsr BankSelect
 
-            lda #$00            ; Screen Ram
+            lda #HGR_SRC_RAM    ; Screen Ram
             ldy #$01            ; Bitmap
+            ldx #VIC_MODE_BITMAP
             jsr SetVICSlots
 
             jsr HGRInit
-            jsr HGROn
+            jmp HGROn
             
-            lda BITMAPBASE
-            sta BITMAP_SAVE
-            lda BITMAPBASE + 1
-            sta BITMAP_SAVE + 1
-            
-            lda COLORBASE
-            sta COLOR_SAVE
-            lda COLORBASE + 1
-            sta COLOR_SAVE + 1
-            
-            rts
-            
+            ; ************************************
+            ;
+            ; DrawInfo
+            ;
+            ; ************************************
 DrawInfo        
             lda #COLOR_BLUE
             sta SCREENC
             sta Border
-
-            ; jmp DrawDebugInfo
             
             ldx #0
             ldy #0
@@ -92,22 +97,26 @@ DrawInfo
             lda #0
             sta TEMP16 + 1
             jsr PRINT_INT16
+
                    
             ; Scale
             ldx @ROW
             ldy #SCALE_COL
             clc
             jsr PLOT
+
                         
             lda #<@SCALE_COLOR
             ldy #>@SCALE_COLOR
             jsr SAFE_STROUT
+            
             lda #<SCALE_X
             sta FIXPTR
             lda #>SCALE_X
             sta FIXPTR + 1
             jsr PRINT_FIX16
            
+            
             ; Translate
             ldx @ROW
             ldy #TRANS_COL
@@ -349,9 +358,9 @@ DrawInfo
             lda #<@BITMAP_BASE_COLOR
             ldy #>@BITMAP_BASE_COLOR
             jsr SAFE_STROUT
-            lda BITMAP_SAVE
+            lda BITMAPBASE
             sta TEMP16
-            lda BITMAP_SAVE + 1
+            lda BITMAPBASE + 1
             sta TEMP16 + 1
             jsr PRINT_INT16_HEX
 
@@ -375,9 +384,9 @@ DrawInfo
             lda #<@COLOR_BASE_COLOR
             ldy #>@COLOR_BASE_COLOR
             jsr SAFE_STROUT
-            lda COLOR_SAVE
+            lda COLORBASE
             sta TEMP16
-            lda COLOR_SAVE + 1
+            lda COLORBASE + 1
             sta TEMP16 + 1
             jsr PRINT_INT16_HEX
             rts
@@ -390,8 +399,8 @@ DrawInfo
 @ROT_DELTA_MSG          .byte "ROT    DELTA   ",0
 @SCALE_DELTA_MSG        .byte "SCALE  DELTA ",0
 @TRANS_DELTA_MSG        .byte "TRANS  DELTA ",0
-@BITMAP_MSG             .byte "BITMAP BASE",0
-@COLOR_MSG              .byte "COLOR  BASE",0
+@BITMAP_MSG             .byte "BITMAPBASE",0
+@COLOR_MSG              .byte "COLORBASE",0
 @BNR_COLOR              .byte KEY_WHITE, 0
 @LBL_COLOR              .byte KEY_LT_GRAY, 0
 @ROT_COLOR              .byte KEY_YELLOW, 0
@@ -405,8 +414,7 @@ DrawInfo
 @ROW                    .byte 0
 
 
-               
-  DrawDebugInfo
+DrawDebugInfo
         lda MODEL_VERTICES_PTR
         sta @VERT_PTR
         lda MODEL_VERTICES_PTR + 1
@@ -453,10 +461,7 @@ DrawInfo
         inc @ROW
         jsr @PrintVertex
 
-
-        rts
-
-        
+        rts        
 @PrintVertex
         ; Initialize counters
         lda #0
@@ -563,5 +568,3 @@ DrawInfo
 
 @DGB_HDR:
         .byte KEY_WHITE, "X            Y            Z", 0
-
-        

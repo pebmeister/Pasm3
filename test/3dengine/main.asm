@@ -32,4 +32,3 @@ MainLoop:
         jsr ProcessKey
         jsr Draw
         jmp MainLoop
-

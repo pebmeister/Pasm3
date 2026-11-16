@@ -7,7 +7,6 @@
         .inc "info.asm"
         .inc "key.asm"
         .inc "draw.asm"
-        .inc "sin.asm"
         .inc "trig.asm"
         .inc "rot.asm"
         .inc "mat.asm"
@@ -17,4 +16,5 @@
         .inc "transform.asm"
         .inc "projection.asm"
         .inc "print.asm"
-        
+        .inc "sin.asm"
+
