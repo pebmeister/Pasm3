@@ -19,6 +19,7 @@
             .inc    "key.asm"
             .inc    "mat.asm"
             .inc    "memory.asm"
+            .inc    "page.asm"
             .inc    "print.asm"
             .inc    "processkey.asm"
             .inc    "projection.asm"

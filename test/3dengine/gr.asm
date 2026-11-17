@@ -233,8 +233,8 @@ HGROff:
 ;* by PatchHGRCls when the VIC bank changes.*
 ;********************************************
 HGRCls:
-            .var    HGR_PGS =  8000 / $100
-            .var    HGR_REMAIN = 8000 - (HGR_PGS * $100)
+            HGR_PGS =  8000 / $100
+            HGR_REMAIN = 8000 - (HGR_PGS * $100)
 
             ldx     #0
             lda     #0
@@ -270,8 +270,8 @@ HGRCls:
 ;* by PatchHGRCls when the VIC bank changes.*
 ;********************************************
 ClearColor:
-            .var    CLR_PGS =  1000 / $100
-            .var    CLR_REMAIN = 1000 - (CLR_PGS * $100)
+            CLR_PGS =  1000 / $100
+            CLR_REMAIN = 1000 - (CLR_PGS * $100)
             ldx     #0
             lda     COLOR               ; Fill with current color attribute
 @ClrLoop:
@@ -1093,4 +1093,3 @@ InitBitmapScanlineTables:
             cpx     #200
             bne     @InitLoop
             rts
-

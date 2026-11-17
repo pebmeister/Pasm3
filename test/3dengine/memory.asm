@@ -258,8 +258,12 @@ MODEL_VERTICES_PTR:
             .ds     2                   ;  _PYRAMID_VERTICES
 MODEL_EDGES_PTR:
             .ds     2                   ; .word _PYRAMID_EDGES
-
+            
+            .ds 2
+            
             *       = PC_SAVE
+
+TXPTR       = X0
 
 DIV_WORKSPACE:
             .ds     18

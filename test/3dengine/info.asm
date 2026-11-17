@@ -13,6 +13,40 @@ DrawInfo:
             sta     Border
             sta     SCREENC
 
+
+            ; move pointer to PR_BANNER
+            lda     #< @PR_BANNER
+            sta     LOC
+            lda     #> @PR_BANNER
+            sta     LOC + 1
+
+            ; stor Banner location at PR_BANNER
+            lda     #< @BANNER
+            ldy     #0
+            sta     (LOC), y
+            INC16   LOC
+            lda     #> @BANNER
+            sta     (LOC), y 
+
+            lda     #<@PG_PROG
+            sta     TXPTR
+            lda     #>@PG_PROG
+            sta     TXPTR + 1
+            jsr     DisplayPage
+            
+            rts
+            
+
+@PG_PROG
+            .byte SETROW, 0
+            .byte SETCOL, 0
+            .byte UPDATEPOS            
+            .byte PR_STRING
+@PR_BANNER
+            .word 0
+            .byte ENDPAGE
+            
+            
             ldx     #0
             ldy     #0
             clc

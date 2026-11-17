@@ -622,18 +622,119 @@
         .endm
 
 ;********************************************
-;* MULT16                                   *
+;* MULTU16                                   *
 ;* 16-bit multiplication -> 32-bit result   *
 ;* \1 Variable a (16-bit)                   *
 ;* \2 Variable b (16-bit)                   *
 ;* \3 Destination (32-bit)                  *
 ;********************************************
-        .macro MULT16
+        .macro MULTU16
         PUSH16 \2
         MULT_F_16 \1, \2, \3
         POP16 \2
         .endm
 
+        .macro MULT16
+
+        jmp @START
+
+@SIGN
+        .ds 1
+
+@START
+        PUSH16 \2
+        PUSH16 \1
+
+        lda #0
+        sta @SIGN
+
+        ;------------------------------------
+        ; Check sign of operand A
+        ;------------------------------------
+
+        lda \1+1
+        bpl @A_POSITIVE
+
+        inc @SIGN
+
+        ; A = -A
+        sec
+        lda #0
+        sbc \1
+        sta \1
+        lda #0
+        sbc \1+1
+        sta \1+1
+
+@A_POSITIVE:
+
+        ;------------------------------------
+        ; Check sign of operand B
+        ;------------------------------------
+
+        lda \2+1
+        bpl @B_POSITIVE
+
+        inc @SIGN
+
+        ; B = -B
+        sec
+        lda #0
+        sbc \2
+        sta \2
+        lda #0
+        sbc \2+1
+        sta \2+1
+
+@B_POSITIVE:
+
+        ;------------------------------------
+        ; Multiply absolute values
+        ;------------------------------------
+
+        MULT_F_16 \1, \2, \3
+
+        ;------------------------------------
+        ; Restore original operands
+        ;------------------------------------
+
+        POP16 \1
+        POP16 \2
+
+        ;------------------------------------
+        ; If exactly one operand was negative,
+        ; negate the 32-bit result.
+        ;------------------------------------
+
+        lda @SIGN
+        and #1
+        beq @RESULT_POSITIVE
+
+        ;------------------------------------
+        ; 32-bit two's complement
+        ;------------------------------------
+
+        sec
+        lda #0
+        sbc \3
+        sta \3
+
+        lda #0
+        sbc \3+1
+        sta \3+1
+
+        lda #0
+        sbc \3+2
+        sta \3+2
+
+        lda #0
+        sbc \3+3
+        sta \3+3
+
+@RESULT_POSITIVE:
+
+        .endm
+        
 ;********************************************
 ;* MULT_F_16                                *
 ;* 16-bit multiplication (destroys \2)      *
