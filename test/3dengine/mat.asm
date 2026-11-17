@@ -18,178 +18,178 @@
 
 MAT4_MUL:
 
-        ; Initialize row pointer
-        lda MAT4_A_PTR
-        sta MAT_AROW
-        lda MAT4_A_PTR+1
-        sta MAT_AROW+1
+            ; Initialize row pointer
+            lda     MAT4_A_PTR
+            sta     MAT_AROW
+            lda     MAT4_A_PTR+1
+            sta     MAT_AROW+1
 
-        ; Initialize B column pointer
-        lda MAT4_B_PTR
-        sta MAT_BCOL
-        lda MAT4_B_PTR+1
-        sta MAT_BCOL+1
+            ; Initialize B column pointer
+            lda     MAT4_B_PTR
+            sta     MAT_BCOL
+            lda     MAT4_B_PTR+1
+            sta     MAT_BCOL+1
 
-        ; Initialize output pointer
-        lda MAT4_C_PTR
-        sta MAT_CPTR
-        lda MAT4_C_PTR+1
-        sta MAT_CPTR+1
+            ; Initialize output pointer
+            lda     MAT4_C_PTR
+            sta     MAT_CPTR
+            lda     MAT4_C_PTR+1
+            sta     MAT_CPTR+1
 
-        lda #0
-        sta MAT_ROW
+            lda     #0
+            sta     MAT_ROW
 
 @RowLoop:
 
-        lda #0
-        sta MAT_COL
+            lda     #0
+            sta     MAT_COL
 
 @ColLoop:
 
-        ; A pointer starts at current row
-        lda MAT_AROW
-        sta MAT_APTR
-        lda MAT_AROW+1
-        sta MAT_APTR+1
+            ; A pointer starts at current row
+            lda     MAT_AROW
+            sta     MAT_APTR
+            lda     MAT_AROW+1
+            sta     MAT_APTR+1
 
-        ; B pointer starts at current column
-        lda MAT_BCOL
-        sta MAT_BPTR
-        lda MAT_BCOL+1
-        sta MAT_BPTR+1
+            ; B pointer starts at current column
+            lda     MAT_BCOL
+            sta     MAT_BPTR
+            lda     MAT_BCOL+1
+            sta     MAT_BPTR+1
 
-        ; Clear 32-bit accumulator
-        lda #0
-        sta MAT_ACCUM
-        sta MAT_ACCUM+1
-        sta MAT_ACCUM+2
-        sta MAT_ACCUM+3
+            ; Clear 32-bit accumulator
+            lda     #0
+            sta     MAT_ACCUM
+            sta     MAT_ACCUM+1
+            sta     MAT_ACCUM+2
+            sta     MAT_ACCUM+3
 
-        lda #0
-        sta MAT_K
+            lda     #0
+            sta     MAT_K
 
 @InnerLoop:
 
-        ; Set FIX16 operand A pointer
-        lda MAT_APTR
-        sta FIX16_A_PTR
-        lda MAT_APTR+1
-        sta FIX16_A_PTR+1
+            ; Set FIX16 operand A pointer
+            lda     MAT_APTR
+            sta     FIX16_A_PTR
+            lda     MAT_APTR+1
+            sta     FIX16_A_PTR+1
 
-        ; Set FIX16 operand B pointer
-        lda MAT_BPTR
-        sta FIX16_B_PTR
-        lda MAT_BPTR+1
-        sta FIX16_B_PTR+1
+            ; Set FIX16 operand B pointer
+            lda     MAT_BPTR
+            sta     FIX16_B_PTR
+            lda     MAT_BPTR+1
+            sta     FIX16_B_PTR+1
 
-        ; Store product in MAT_PRODUCT
-        lda #<MAT_PRODUCT
-        sta FIX16_RESULT_PTR
-        lda #>MAT_PRODUCT
-        sta FIX16_RESULT_PTR+1
+            ; Store product in MAT_PRODUCT
+            lda     #<MAT_PRODUCT
+            sta     FIX16_RESULT_PTR
+            lda     #>MAT_PRODUCT
+            sta     FIX16_RESULT_PTR+1
 
-        ; Product = A[row][k] * B[k][col]
-        ; DO NOT USE CALL_FIX16_MUL here because
-        ; we are using hi and lo byte of MAT_PRODUCT
-        jsr FIX16_MUL
+            ; Product = A[row][k] * B[k][col]
+            ; DO NOT USE CALL_FIX16_MUL here because
+            ; we are using hi and lo byte of MAT_PRODUCT
+            jsr     FIX16_MUL
 
-        ; Accumulate product
-        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
+            ; Accumulate product
+            ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
 
-        ; A advances by 4 bytes
-        clc
-        lda MAT_APTR
-        adc #4
-        sta MAT_APTR
-        bcc @APtrReady
-        inc MAT_APTR+1
+            ; A advances by 4 bytes
+            clc
+            lda     MAT_APTR
+            adc     #4
+            sta     MAT_APTR
+            bcc     @APtrReady
+            inc     MAT_APTR+1
 
 @APtrReady:
 
-        ; B advances by 16 bytes
-        clc
-        lda MAT_BPTR
-        adc #16
-        sta MAT_BPTR
-        bcc @BPtrReady
-        inc MAT_BPTR+1
+            ; B advances by 16 bytes
+            clc
+            lda     MAT_BPTR
+            adc     #16
+            sta     MAT_BPTR
+            bcc     @BPtrReady
+            inc     MAT_BPTR+1
 
 @BPtrReady:
 
-        inc MAT_K
-        lda MAT_K
-        cmp #4
-        beq @InnerDone
-        jmp @InnerLoop
+            inc     MAT_K
+            lda     MAT_K
+            cmp     #4
+            beq     @InnerDone
+            jmp     @InnerLoop
 
 @InnerDone:
 
-        ; Store C[row][col]
-        ldy #0
-        lda MAT_ACCUM
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+1
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+2
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+3
-        sta (MAT_CPTR),y
+            ; Store C[row][col]
+            ldy     #0
+            lda     MAT_ACCUM
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+1
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+2
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+3
+            sta     (MAT_CPTR),y
 
-        ; C advances by 4 bytes
-        clc
-        lda MAT_CPTR
-        adc #4
-        sta MAT_CPTR
-        bcc @CPtrReady
-        inc MAT_CPTR+1
+            ; C advances by 4 bytes
+            clc
+            lda     MAT_CPTR
+            adc     #4
+            sta     MAT_CPTR
+            bcc     @CPtrReady
+            inc     MAT_CPTR+1
 
 @CPtrReady:
 
-        ; B column advances by 4 bytes
-        clc
-        lda MAT_BCOL
-        adc #4
-        sta MAT_BCOL
-        bcc @BColReady
-        inc MAT_BCOL+1
+            ; B column advances by 4 bytes
+            clc
+            lda     MAT_BCOL
+            adc     #4
+            sta     MAT_BCOL
+            bcc     @BColReady
+            inc     MAT_BCOL+1
 
 @BColReady:
 
-        inc MAT_COL
-        lda MAT_COL
-        cmp #4
-        beq @ColDone
-        jmp @ColLoop
+            inc     MAT_COL
+            lda     MAT_COL
+            cmp     #4
+            beq     @ColDone
+            jmp     @ColLoop
 
 @ColDone:
 
-        ; A advances to next row
-        clc
-        lda MAT_AROW
-        adc #16
-        sta MAT_AROW
-        bcc @ARowReady
-        inc MAT_AROW+1
+            ; A advances to next row
+            clc
+            lda     MAT_AROW
+            adc     #16
+            sta     MAT_AROW
+            bcc     @ARowReady
+            inc     MAT_AROW+1
 
 @ARowReady:
 
-        ; Reset B column to beginning of B
-        lda MAT4_B_PTR
-        sta MAT_BCOL
-        lda MAT4_B_PTR+1
-        sta MAT_BCOL+1
+            ; Reset B column to beginning of B
+            lda     MAT4_B_PTR
+            sta     MAT_BCOL
+            lda     MAT4_B_PTR+1
+            sta     MAT_BCOL+1
 
-        inc MAT_ROW
-        lda MAT_ROW
-        cmp #4
-        beq @Exit
-        jmp @RowLoop
+            inc     MAT_ROW
+            lda     MAT_ROW
+            cmp     #4
+            beq     @Exit
+            jmp     @RowLoop
 
 @Exit:
-        rts
+            rts
 
 ;********************************************
 ;* FIX16_DIV                                *
@@ -208,270 +208,269 @@ MAT4_MUL:
 
 FIX16_DIV:
 
-        ;------------------------------------
-        ; Determine result sign
-        ;------------------------------------
+            ;------------------------------------
+            ; Determine result sign
+            ;------------------------------------
 
-        lda #0
-        sta DIV_SIGN
+            lda     #0
+            sta     DIV_SIGN
 
-        ldy #3
-        lda (FIX16_A_PTR),y
-        and #$80
-        sta DIV_SIGN
+            ldy     #3
+            lda     (FIX16_A_PTR),y
+            and     #$80
+            sta     DIV_SIGN
 
-        lda (FIX16_B_PTR),y
-        and #$80
-        beq @SignReady
+            lda     (FIX16_B_PTR),y
+            and     #$80
+            beq     @SignReady
 
-        lda DIV_SIGN
-        eor #$80
-        sta DIV_SIGN
+            lda     DIV_SIGN
+            eor     #$80
+            sta     DIV_SIGN
 
 @SignReady:
 
-        ;------------------------------------
-        ; Copy absolute dividend into ZP
-        ;------------------------------------
+            ;------------------------------------
+            ; Copy absolute dividend into ZP
+            ;------------------------------------
 
-        ldy #0
+            ldy     #0
 @CopyDividend:
-        lda (FIX16_A_PTR),y
-        sta DIV_WORKSPACE,y
-        iny
-        cpy #4
-        bne @CopyDividend
+            lda     (FIX16_A_PTR),y
+            sta     DIV_WORKSPACE,y
+            iny
+            cpy     #4
+            bne     @CopyDividend
 
-        ; Is dividend negative?
-        lda DIV_WORKSPACE+3
-        bpl @DividendReady
+            ; Is dividend negative?
+            lda     DIV_WORKSPACE+3
+            bpl     @DividendReady
 
-        ; Two's complement
-        sec
-        lda #0
-        sbc DIV_WORKSPACE
-        sta DIV_WORKSPACE
-        lda #0
-        sbc DIV_WORKSPACE+1
-        sta DIV_WORKSPACE+1
-        lda #0
-        sbc DIV_WORKSPACE+2
-        sta DIV_WORKSPACE+2
-        lda #0
-        sbc DIV_WORKSPACE+3
-        sta DIV_WORKSPACE+3
+            ; Two's complement
+            sec
+            lda     #0
+            sbc     DIV_WORKSPACE
+            sta     DIV_WORKSPACE
+            lda     #0
+            sbc     DIV_WORKSPACE+1
+            sta     DIV_WORKSPACE+1
+            lda     #0
+            sbc     DIV_WORKSPACE+2
+            sta     DIV_WORKSPACE+2
+            lda     #0
+            sbc     DIV_WORKSPACE+3
+            sta     DIV_WORKSPACE+3
 
 @DividendReady:
 
-        ;------------------------------------
-        ; Copy absolute divisor into ZP
-        ;------------------------------------
+            ;------------------------------------
+            ; Copy absolute divisor into ZP
+            ;------------------------------------
 
-        ldy #0
+            ldy     #0
 @CopyDivisor:
-        lda (FIX16_B_PTR),y
-        sta DIV_WORKSPACE+4,y
-        iny
-        cpy #4
-        bne @CopyDivisor
+            lda     (FIX16_B_PTR),y
+            sta     DIV_WORKSPACE+4,y
+            iny
+            cpy     #4
+            bne     @CopyDivisor
 
-        ; Is divisor negative?
-        lda DIV_WORKSPACE+7
-        bpl @DivisorReady
+            ; Is divisor negative?
+            lda     DIV_WORKSPACE+7
+            bpl     @DivisorReady
 
-        ; Two's complement
-        sec
-        lda #0
-        sbc DIV_WORKSPACE+4
-        sta DIV_WORKSPACE+4
-        lda #0
-        sbc DIV_WORKSPACE+5
-        sta DIV_WORKSPACE+5
-        lda #0
-        sbc DIV_WORKSPACE+6
-        sta DIV_WORKSPACE+6
-        lda #0
-        sbc DIV_WORKSPACE+7
-        sta DIV_WORKSPACE+7
+            ; Two's complement
+            sec
+            lda     #0
+            sbc     DIV_WORKSPACE+4
+            sta     DIV_WORKSPACE+4
+            lda     #0
+            sbc     DIV_WORKSPACE+5
+            sta     DIV_WORKSPACE+5
+            lda     #0
+            sbc     DIV_WORKSPACE+6
+            sta     DIV_WORKSPACE+6
+            lda     #0
+            sbc     DIV_WORKSPACE+7
+            sta     DIV_WORKSPACE+7
 
 @DivisorReady:
 
-        ;------------------------------------
-        ; Initialize remainder and quotient
-        ;------------------------------------
+            ;------------------------------------
+            ; Initialize remainder and quotient
+            ;------------------------------------
 
-        lda #0
-        sta DIV_WORKSPACE+8
-        sta DIV_WORKSPACE+9
-        sta DIV_WORKSPACE+10
-        sta DIV_WORKSPACE+11
-        sta DIV_WORKSPACE+12
-        sta DIV_WORKSPACE+13
-        sta DIV_WORKSPACE+14
-        sta DIV_WORKSPACE+15
-        sta DIV_WORKSPACE+16
-        sta DIV_WORKSPACE+17
+            lda     #0
+            sta     DIV_WORKSPACE+8
+            sta     DIV_WORKSPACE+9
+            sta     DIV_WORKSPACE+10
+            sta     DIV_WORKSPACE+11
+            sta     DIV_WORKSPACE+12
+            sta     DIV_WORKSPACE+13
+            sta     DIV_WORKSPACE+14
+            sta     DIV_WORKSPACE+15
+            sta     DIV_WORKSPACE+16
+            sta     DIV_WORKSPACE+17
 
-        ;------------------------------------
-        ; Division by zero check
-        ;------------------------------------
+            ;------------------------------------
+            ; Division by zero check
+            ;------------------------------------
 
-        lda DIV_WORKSPACE+4
-        ora DIV_WORKSPACE+5
-        ora DIV_WORKSPACE+6
-        ora DIV_WORKSPACE+7
-        bne @continue
-        jmp @DivZero
-@continue
-        ;------------------------------------
-        ; Process 48 bits
-        ;------------------------------------
+            lda     DIV_WORKSPACE+4
+            ora     DIV_WORKSPACE+5
+            ora     DIV_WORKSPACE+6
+            ora     DIV_WORKSPACE+7
+            bne     @continue
+            jmp     @DivZero
+@continue:
+            ;------------------------------------
+            ; Process 48 bits
+            ;------------------------------------
 
-        ldx #48
+            ldx     #48
 
 @DivLoop:
 
-        ; Shift next dividend bit into carry
-        asl DIV_WORKSPACE
-        rol DIV_WORKSPACE+1
-        rol DIV_WORKSPACE+2
-        rol DIV_WORKSPACE+3
+            ; Shift next dividend bit into carry
+            asl     DIV_WORKSPACE
+            rol     DIV_WORKSPACE+1
+            rol     DIV_WORKSPACE+2
+            rol     DIV_WORKSPACE+3
 
-        ; Save incoming bit
-        lda #0
-        rol
-        sta DIV_WORKSPACE+17
+            ; Save incoming bit
+            lda     #0
+            rol
+            sta     DIV_WORKSPACE+17
 
-        ; Remainder = remainder * 2 + incoming bit
-        asl DIV_WORKSPACE+8
-        rol DIV_WORKSPACE+9
-        rol DIV_WORKSPACE+10
-        rol DIV_WORKSPACE+11
-        rol DIV_WORKSPACE+12
+            ; Remainder = remainder * 2 + incoming bit
+            asl     DIV_WORKSPACE+8
+            rol     DIV_WORKSPACE+9
+            rol     DIV_WORKSPACE+10
+            rol     DIV_WORKSPACE+11
+            rol     DIV_WORKSPACE+12
 
-        lda DIV_WORKSPACE+8
-        ora DIV_WORKSPACE+17
-        sta DIV_WORKSPACE+8
+            lda     DIV_WORKSPACE+8
+            ora     DIV_WORKSPACE+17
+            sta     DIV_WORKSPACE+8
 
-        ; Shift quotient left
-        asl DIV_WORKSPACE+13
-        rol DIV_WORKSPACE+14
-        rol DIV_WORKSPACE+15
-        rol DIV_WORKSPACE+16
+            ; Shift quotient left
+            asl     DIV_WORKSPACE+13
+            rol     DIV_WORKSPACE+14
+            rol     DIV_WORKSPACE+15
+            rol     DIV_WORKSPACE+16
 
-        ; Check remainder against divisor
-        lda DIV_WORKSPACE+12
-        bne @DivSubtract
+            ; Check remainder against divisor
+            lda     DIV_WORKSPACE+12
+            bne     @DivSubtract
 
-        lda DIV_WORKSPACE+11
-        cmp DIV_WORKSPACE+7
-        bcc @DivNext
-        bne @DivSubtract
+            lda     DIV_WORKSPACE+11
+            cmp     DIV_WORKSPACE+7
+            bcc     @DivNext
+            bne     @DivSubtract
 
-        lda DIV_WORKSPACE+10
-        cmp DIV_WORKSPACE+6
-        bcc @DivNext
-        bne @DivSubtract
+            lda     DIV_WORKSPACE+10
+            cmp     DIV_WORKSPACE+6
+            bcc     @DivNext
+            bne     @DivSubtract
 
-        lda DIV_WORKSPACE+9
-        cmp DIV_WORKSPACE+5
-        bcc @DivNext
-        bne @DivSubtract
+            lda     DIV_WORKSPACE+9
+            cmp     DIV_WORKSPACE+5
+            bcc     @DivNext
+            bne     @DivSubtract
 
-        lda DIV_WORKSPACE+8
-        cmp DIV_WORKSPACE+4
-        bcc @DivNext
+            lda     DIV_WORKSPACE+8
+            cmp     DIV_WORKSPACE+4
+            bcc     @DivNext
 
 @DivSubtract:
 
-        ; Remainder -= divisor
-        sec
-        lda DIV_WORKSPACE+8
-        sbc DIV_WORKSPACE+4
-        sta DIV_WORKSPACE+8
+            ; Remainder -= divisor
+            sec
+            lda     DIV_WORKSPACE+8
+            sbc     DIV_WORKSPACE+4
+            sta     DIV_WORKSPACE+8
 
-        lda DIV_WORKSPACE+9
-        sbc DIV_WORKSPACE+5
-        sta DIV_WORKSPACE+9
+            lda     DIV_WORKSPACE+9
+            sbc     DIV_WORKSPACE+5
+            sta     DIV_WORKSPACE+9
 
-        lda DIV_WORKSPACE+10
-        sbc DIV_WORKSPACE+6
-        sta DIV_WORKSPACE+10
+            lda     DIV_WORKSPACE+10
+            sbc     DIV_WORKSPACE+6
+            sta     DIV_WORKSPACE+10
 
-        lda DIV_WORKSPACE+11
-        sbc DIV_WORKSPACE+7
-        sta DIV_WORKSPACE+11
+            lda     DIV_WORKSPACE+11
+            sbc     DIV_WORKSPACE+7
+            sta     DIV_WORKSPACE+11
 
-        lda DIV_WORKSPACE+12
-        sbc #0
-        sta DIV_WORKSPACE+12
+            lda     DIV_WORKSPACE+12
+            sbc     #0
+            sta     DIV_WORKSPACE+12
 
-        ; Quotient bit = 1
-        lda DIV_WORKSPACE+13
-        ora #1
-        sta DIV_WORKSPACE+13
+            ; Quotient bit = 1
+            lda     DIV_WORKSPACE+13
+            ora     #1
+            sta     DIV_WORKSPACE+13
 
 @DivNext:
 
-        dex
-        beq @cont
-        jmp @DivLoop
-@cont
-        ;------------------------------------
-        ; Apply result sign
-        ;------------------------------------
+            dex
+            beq     @cont
+            jmp     @DivLoop
+@cont:
+            ;------------------------------------
+            ; Apply result sign
+            ;------------------------------------
 
-        lda DIV_SIGN
-        beq @CopyResult
+            lda     DIV_SIGN
+            beq     @CopyResult
 
-        ; Two's complement quotient
-        sec
-        lda #0
-        sbc DIV_WORKSPACE+13
-        sta DIV_WORKSPACE+13
+            ; Two's complement quotient
+            sec
+            lda     #0
+            sbc     DIV_WORKSPACE+13
+            sta     DIV_WORKSPACE+13
 
-        lda #0
-        sbc DIV_WORKSPACE+14
-        sta DIV_WORKSPACE+14
+            lda     #0
+            sbc     DIV_WORKSPACE+14
+            sta     DIV_WORKSPACE+14
 
-        lda #0
-        sbc DIV_WORKSPACE+15
-        sta DIV_WORKSPACE+15
+            lda     #0
+            sbc     DIV_WORKSPACE+15
+            sta     DIV_WORKSPACE+15
 
-        lda #0
-        sbc DIV_WORKSPACE+16
-        sta DIV_WORKSPACE+16
+            lda     #0
+            sbc     DIV_WORKSPACE+16
+            sta     DIV_WORKSPACE+16
 
 @CopyResult:
 
-        ;------------------------------------
-        ; Copy result to destination
-        ;------------------------------------
+            ;------------------------------------
+            ; Copy result to destination
+            ;------------------------------------
 
-        ldy #0
+            ldy     #0
 @CopyOutput:
-        lda DIV_WORKSPACE+13,y
-        sta (FIX16_RESULT_PTR),y
-        iny
-        cpy #4
-        bne @CopyOutput
+            lda     DIV_WORKSPACE+13,y
+            sta     (FIX16_RESULT_PTR),y
+            iny
+            cpy     #4
+            bne     @CopyOutput
 
-        rts
+            rts
 
 @DivZero:
 
-        ; Return zero for division by zero
-        ldy #0
-        lda #0
+            ; Return zero for division by zero
+            ldy     #0
+            lda     #0
 
 @ClearOutput:
-        sta (FIX16_RESULT_PTR),y
-        iny
-        cpy #4
-        bne @ClearOutput
+            sta     (FIX16_RESULT_PTR),y
+            iny
+            cpy     #4
+            bne     @ClearOutput
 
-        rts
-        
+            rts
 
 ;********************************************
 ;* FIX16_MUL
@@ -490,179 +489,179 @@ FIX16_DIV:
 ;********************************************
 
 FIX16_MUL:
-        ldx #0
-        lda #0
-        
-        ; Copy operand A to working storage
-        ldy #0
-        lda (FIX16_A_PTR),y
-        sta FIX16_WORK_A
-        iny
-        lda (FIX16_A_PTR),y
-        sta FIX16_WORK_A+1
-        iny
-        lda (FIX16_A_PTR),y
-        sta FIX16_WORK_A+2
-        iny
-        lda (FIX16_A_PTR),y
-        sta FIX16_WORK_A+3
+            ldx     #0
+            lda     #0
 
-        ; Copy operand B to working storage
-        ldy #0
-        lda (FIX16_B_PTR),y
-        sta FIX16_WORK_B
-        iny
-        lda (FIX16_B_PTR),y
-        sta FIX16_WORK_B+1
-        iny
-        lda (FIX16_B_PTR),y
-        sta FIX16_WORK_B+2
-        iny
-        lda (FIX16_B_PTR),y
-        sta FIX16_WORK_B+3
+            ; Copy operand A to working storage
+            ldy     #0
+            lda     (FIX16_A_PTR),y
+            sta     FIX16_WORK_A
+            iny
+            lda     (FIX16_A_PTR),y
+            sta     FIX16_WORK_A+1
+            iny
+            lda     (FIX16_A_PTR),y
+            sta     FIX16_WORK_A+2
+            iny
+            lda     (FIX16_A_PTR),y
+            sta     FIX16_WORK_A+3
 
-        ; Determine result sign
-        lda #0
-        sta FIX16_SIGN
+            ; Copy operand B to working storage
+            ldy     #0
+            lda     (FIX16_B_PTR),y
+            sta     FIX16_WORK_B
+            iny
+            lda     (FIX16_B_PTR),y
+            sta     FIX16_WORK_B+1
+            iny
+            lda     (FIX16_B_PTR),y
+            sta     FIX16_WORK_B+2
+            iny
+            lda     (FIX16_B_PTR),y
+            sta     FIX16_WORK_B+3
 
-        ; If A is negative, negate working A
-        lda FIX16_WORK_A+3
-        bpl @F16M_CheckB
+            ; Determine result sign
+            lda     #0
+            sta     FIX16_SIGN
 
-        inc FIX16_SIGN
+            ; If A is negative, negate working A
+            lda     FIX16_WORK_A+3
+            bpl     @F16M_CheckB
 
-        lda #0
-        sec
-        sbc FIX16_WORK_A
-        sta FIX16_WORK_A
-        lda #0
-        sbc FIX16_WORK_A+1
-        sta FIX16_WORK_A+1
-        lda #0
-        sbc FIX16_WORK_A+2
-        sta FIX16_WORK_A+2
-        lda #0
-        sbc FIX16_WORK_A+3
-        sta FIX16_WORK_A+3
+            inc     FIX16_SIGN
+
+            lda     #0
+            sec
+            sbc     FIX16_WORK_A
+            sta     FIX16_WORK_A
+            lda     #0
+            sbc     FIX16_WORK_A+1
+            sta     FIX16_WORK_A+1
+            lda     #0
+            sbc     FIX16_WORK_A+2
+            sta     FIX16_WORK_A+2
+            lda     #0
+            sbc     FIX16_WORK_A+3
+            sta     FIX16_WORK_A+3
 
 @F16M_CheckB:
 
-        ; If B is negative, negate working B
-        lda FIX16_WORK_B+3
-        bpl @F16M_Start
+            ; If B is negative, negate working B
+            lda     FIX16_WORK_B+3
+            bpl     @F16M_Start
 
-        lda FIX16_SIGN
-        eor #1
-        sta FIX16_SIGN
+            lda     FIX16_SIGN
+            eor     #1
+            sta     FIX16_SIGN
 
-        lda #0
-        sec
-        sbc FIX16_WORK_B
-        sta FIX16_WORK_B
-        lda #0
-        sbc FIX16_WORK_B+1
-        sta FIX16_WORK_B+1
-        lda #0
-        sbc FIX16_WORK_B+2
-        sta FIX16_WORK_B+2
-        lda #0
-        sbc FIX16_WORK_B+3
-        sta FIX16_WORK_B+3
+            lda     #0
+            sec
+            sbc     FIX16_WORK_B
+            sta     FIX16_WORK_B
+            lda     #0
+            sbc     FIX16_WORK_B+1
+            sta     FIX16_WORK_B+1
+            lda     #0
+            sbc     FIX16_WORK_B+2
+            sta     FIX16_WORK_B+2
+            lda     #0
+            sbc     FIX16_WORK_B+3
+            sta     FIX16_WORK_B+3
 
 @F16M_Start:
 
-        ; Clear product accumulator
-        lda #0
-        sta FIX16_WORK_RESULT
-        sta FIX16_WORK_RESULT+1
-        sta FIX16_WORK_RESULT+2
-        sta FIX16_WORK_RESULT+3
+            ; Clear product accumulator
+            lda     #0
+            sta     FIX16_WORK_RESULT
+            sta     FIX16_WORK_RESULT+1
+            sta     FIX16_WORK_RESULT+2
+            sta     FIX16_WORK_RESULT+3
 
-        ldx #32
+            ldx     #32
 
 @F16M_MulLoop:
 
-        ; Shift multiplier right.
-        ; Carry indicates whether to add A.
-        lda FIX16_WORK_B
-        lsr
-        bcc @F16M_NoAdd
+            ; Shift multiplier right.
+            ; Carry indicates whether to add A.
+            lda     FIX16_WORK_B
+            lsr
+            bcc     @F16M_NoAdd
 
-        clc
-        lda FIX16_WORK_RESULT
-        adc FIX16_WORK_A
-        sta FIX16_WORK_RESULT
-        lda FIX16_WORK_RESULT+1
-        adc FIX16_WORK_A+1
-        sta FIX16_WORK_RESULT+1
-        lda FIX16_WORK_RESULT+2
-        adc FIX16_WORK_A+2
-        sta FIX16_WORK_RESULT+2
-        lda FIX16_WORK_RESULT+3
-        adc FIX16_WORK_A+3
-        sta FIX16_WORK_RESULT+3
+            clc
+            lda     FIX16_WORK_RESULT
+            adc     FIX16_WORK_A
+            sta     FIX16_WORK_RESULT
+            lda     FIX16_WORK_RESULT+1
+            adc     FIX16_WORK_A+1
+            sta     FIX16_WORK_RESULT+1
+            lda     FIX16_WORK_RESULT+2
+            adc     FIX16_WORK_A+2
+            sta     FIX16_WORK_RESULT+2
+            lda     FIX16_WORK_RESULT+3
+            adc     FIX16_WORK_A+3
+            sta     FIX16_WORK_RESULT+3
 
 @F16M_NoAdd:
 
-        ; Shift combined 64-bit product/multiplier
-        lsr FIX16_WORK_RESULT+3
-        ror FIX16_WORK_RESULT+2
-        ror FIX16_WORK_RESULT+1
-        ror FIX16_WORK_RESULT
-        ror FIX16_WORK_B+3
-        ror FIX16_WORK_B+2
-        ror FIX16_WORK_B+1
-        ror FIX16_WORK_B
+            ; Shift combined 64-bit product/multiplier
+            lsr     FIX16_WORK_RESULT+3
+            ror     FIX16_WORK_RESULT+2
+            ror     FIX16_WORK_RESULT+1
+            ror     FIX16_WORK_RESULT
+            ror     FIX16_WORK_B+3
+            ror     FIX16_WORK_B+2
+            ror     FIX16_WORK_B+1
+            ror     FIX16_WORK_B
 
-        dex
-        bne @F16M_MulLoop
+            dex
+            bne     @F16M_MulLoop
 
-        ; Extract the 16.16 result
-        lda FIX16_WORK_RESULT+1
-        sta FIX16_WORK_RESULT+3
-        lda FIX16_WORK_RESULT
-        sta FIX16_WORK_RESULT+2
-        lda FIX16_WORK_B+3
-        sta FIX16_WORK_RESULT+1
-        lda FIX16_WORK_B+2
-        sta FIX16_WORK_RESULT
+            ; Extract the 16.16 result
+            lda     FIX16_WORK_RESULT+1
+            sta     FIX16_WORK_RESULT+3
+            lda     FIX16_WORK_RESULT
+            sta     FIX16_WORK_RESULT+2
+            lda     FIX16_WORK_B+3
+            sta     FIX16_WORK_RESULT+1
+            lda     FIX16_WORK_B+2
+            sta     FIX16_WORK_RESULT
 
-        ; Negate result if signs differed
-        lda FIX16_SIGN
-        beq @F16M_StoreResult
+            ; Negate result if signs differed
+            lda     FIX16_SIGN
+            beq     @F16M_StoreResult
 
-        lda #0
-        sec
-        sbc FIX16_WORK_RESULT
-        sta FIX16_WORK_RESULT
-        lda #0
-        sbc FIX16_WORK_RESULT+1
-        sta FIX16_WORK_RESULT+1
-        lda #0
-        sbc FIX16_WORK_RESULT+2
-        sta FIX16_WORK_RESULT+2
-        lda #0
-        sbc FIX16_WORK_RESULT+3
-        sta FIX16_WORK_RESULT+3
+            lda     #0
+            sec
+            sbc     FIX16_WORK_RESULT
+            sta     FIX16_WORK_RESULT
+            lda     #0
+            sbc     FIX16_WORK_RESULT+1
+            sta     FIX16_WORK_RESULT+1
+            lda     #0
+            sbc     FIX16_WORK_RESULT+2
+            sta     FIX16_WORK_RESULT+2
+            lda     #0
+            sbc     FIX16_WORK_RESULT+3
+            sta     FIX16_WORK_RESULT+3
 
 @F16M_StoreResult:
 
-        ; Copy result to caller's destination
-        ldy #0
-        lda FIX16_WORK_RESULT
-        sta (FIX16_RESULT_PTR),y
-        iny
-        lda FIX16_WORK_RESULT+1
-        sta (FIX16_RESULT_PTR),y
-        iny
-        lda FIX16_WORK_RESULT+2
-        sta (FIX16_RESULT_PTR),y
-        iny
-        lda FIX16_WORK_RESULT+3
-        sta (FIX16_RESULT_PTR),y
+            ; Copy result to caller's destination
+            ldy     #0
+            lda     FIX16_WORK_RESULT
+            sta     (FIX16_RESULT_PTR),y
+            iny
+            lda     FIX16_WORK_RESULT+1
+            sta     (FIX16_RESULT_PTR),y
+            iny
+            lda     FIX16_WORK_RESULT+2
+            sta     (FIX16_RESULT_PTR),y
+            iny
+            lda     FIX16_WORK_RESULT+3
+            sta     (FIX16_RESULT_PTR),y
 
-        rts
-        
+            rts
+
 ;********************************************
 ;* MAT3_VECTOR_MUL
 ;*
@@ -692,186 +691,186 @@ FIX16_MUL:
 
 MAT3_VECTOR_MUL:
 
-        ; Initialize matrix row pointer
-        lda MAT4_MATRIX_PTR
-        sta MAT_AROW
-        lda MAT4_MATRIX_PTR+1
-        sta MAT_AROW+1
+            ; Initialize matrix row pointer
+            lda     MAT4_MATRIX_PTR
+            sta     MAT_AROW
+            lda     MAT4_MATRIX_PTR+1
+            sta     MAT_AROW+1
 
-        ; Initialize output pointer
-        lda MAT4_VOUT_PTR
-        sta MAT_CPTR
-        lda MAT4_VOUT_PTR+1
-        sta MAT_CPTR+1
+            ; Initialize output pointer
+            lda     MAT4_VOUT_PTR
+            sta     MAT_CPTR
+            lda     MAT4_VOUT_PTR+1
+            sta     MAT_CPTR+1
 
-        lda #0
-        sta MAT_ROW
+            lda     #0
+            sta     MAT_ROW
 
 @M3V_RowLoop:
 
-        ; Matrix pointer = start of current row
-        lda MAT_AROW
-        sta MAT_APTR
-        lda MAT_AROW+1
-        sta MAT_APTR+1
+            ; Matrix pointer = start of current row
+            lda     MAT_AROW
+            sta     MAT_APTR
+            lda     MAT_AROW+1
+            sta     MAT_APTR+1
 
-        ; Input vector pointer = start of vector
-        lda MAT4_VIN_PTR
-        sta MAT_BPTR
-        lda MAT4_VIN_PTR+1
-        sta MAT_BPTR+1
+            ; Input vector pointer = start of vector
+            lda     MAT4_VIN_PTR
+            sta     MAT_BPTR
+            lda     MAT4_VIN_PTR+1
+            sta     MAT_BPTR+1
 
-        ; Clear 32-bit accumulator
-        lda #0
-        sta MAT_ACCUM
-        sta MAT_ACCUM+1
-        sta MAT_ACCUM+2
-        sta MAT_ACCUM+3
+            ; Clear 32-bit accumulator
+            lda     #0
+            sta     MAT_ACCUM
+            sta     MAT_ACCUM+1
+            sta     MAT_ACCUM+2
+            sta     MAT_ACCUM+3
 
-        lda #0
-        sta MAT_K
+            lda     #0
+            sta     MAT_K
 
 @M3V_InnerLoop:
 
-        ; Copy matrix element into operand A
-        ldy #0
-        lda (MAT_APTR),y
-        sta MAT_MUL_A
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+1
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+2
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+3
+            ; Copy matrix element into operand A
+            ldy     #0
+            lda     (MAT_APTR),y
+            sta     MAT_MUL_A
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_MUL_A+1
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_MUL_A+2
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_MUL_A+3
 
-        ; Copy vector element into operand B
-        ldy #0
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+1
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+2
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+3
+            ; Copy vector element into operand B
+            ldy     #0
+            lda     (MAT_BPTR),y
+            sta     MAT_MUL_B
+            iny
+            lda     (MAT_BPTR),y
+            sta     MAT_MUL_B+1
+            iny
+            lda     (MAT_BPTR),y
+            sta     MAT_MUL_B+2
+            iny
+            lda     (MAT_BPTR),y
+            sta     MAT_MUL_B+3
 
-        ; Multiply copied operands
-        CALL_FIX16_MUL MAT_MUL_A, MAT_MUL_B, MAT_PRODUCT
+            ; Multiply copied operands
+            CALL_FIX16_MUL MAT_MUL_A, MAT_MUL_B, MAT_PRODUCT
 
-        ; Accumulate product
-        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
+            ; Accumulate product
+            ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
 
-        ; Advance matrix pointer by 4 bytes
-        clc
-        lda MAT_APTR
-        adc #4
-        sta MAT_APTR
-        bcc @M3V_APtrReady
-        inc MAT_APTR+1
+            ; Advance matrix pointer by 4 bytes
+            clc
+            lda     MAT_APTR
+            adc     #4
+            sta     MAT_APTR
+            bcc     @M3V_APtrReady
+            inc     MAT_APTR+1
 
 @M3V_APtrReady:
 
-        ; Advance vector pointer by 4 bytes
-        clc
-        lda MAT_BPTR
-        adc #4
-        sta MAT_BPTR
-        bcc @M3V_BPtrReady
-        inc MAT_BPTR+1
+            ; Advance vector pointer by 4 bytes
+            clc
+            lda     MAT_BPTR
+            adc     #4
+            sta     MAT_BPTR
+            bcc     @M3V_BPtrReady
+            inc     MAT_BPTR+1
 
 @M3V_BPtrReady:
 
-        inc MAT_K
-        lda MAT_K
-        cmp #3
-        beq @M3V_InnerDone
-        jmp @M3V_InnerLoop
+            inc     MAT_K
+            lda     MAT_K
+            cmp     #3
+            beq     @M3V_InnerDone
+            jmp     @M3V_InnerLoop
 
 @M3V_InnerDone:
 
-        ; MAT_APTR now points to translation element
-        ; Copy translation into MAT_PRODUCT
-        ldy #0
-        lda (MAT_APTR),y
-        sta MAT_PRODUCT
-        iny
-        lda (MAT_APTR),y
-        sta MAT_PRODUCT+1
-        iny
-        lda (MAT_APTR),y
-        sta MAT_PRODUCT+2
-        iny
-        lda (MAT_APTR),y
-        sta MAT_PRODUCT+3
+            ; MAT_APTR now points to translation element
+            ; Copy translation into MAT_PRODUCT
+            ldy     #0
+            lda     (MAT_APTR),y
+            sta     MAT_PRODUCT
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_PRODUCT+1
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_PRODUCT+2
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_PRODUCT+3
 
-        ; Add translation to accumulated result
-        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
+            ; Add translation to accumulated result
+            ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
 
-        ; Store accumulated result in output vector
-        ldy #0
-        lda MAT_ACCUM
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+1
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+2
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+3
-        sta (MAT_CPTR),y
+            ; Store accumulated result in output vector
+            ldy     #0
+            lda     MAT_ACCUM
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+1
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+2
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+3
+            sta     (MAT_CPTR),y
 
-        ; Advance output pointer by 4 bytes
-        clc
-        lda MAT_CPTR
-        adc #4
-        sta MAT_CPTR
-        bcc @M3V_CPtrReady
-        inc MAT_CPTR+1
+            ; Advance output pointer by 4 bytes
+            clc
+            lda     MAT_CPTR
+            adc     #4
+            sta     MAT_CPTR
+            bcc     @M3V_CPtrReady
+            inc     MAT_CPTR+1
 
 @M3V_CPtrReady:
 
-        ; Advance matrix row by 16 bytes
-        clc
-        lda MAT_AROW
-        adc #16
-        sta MAT_AROW
-        bcc @M3V_ARowReady
-        inc MAT_AROW+1
+            ; Advance matrix row by 16 bytes
+            clc
+            lda     MAT_AROW
+            adc     #16
+            sta     MAT_AROW
+            bcc     @M3V_ARowReady
+            inc     MAT_AROW+1
 
 @M3V_ARowReady:
 
-        inc MAT_ROW
-        lda MAT_ROW
-        cmp #3
-        beq @M3V_Done
-        jmp @M3V_RowLoop
+            inc     MAT_ROW
+            lda     MAT_ROW
+            cmp     #3
+            beq     @M3V_Done
+            jmp     @M3V_RowLoop
 
 @M3V_Done:
 
-        ; Set output W = 1.0
-        ; 16.16 representation = $00010000
+            ; Set output W = 1.0
+            ; 16.16 representation = $00010000
 
-        ldy #0
-        lda #0
-        sta (MAT_CPTR),y
-        iny
-        sta (MAT_CPTR),y
-        iny
-        lda #1
-        sta (MAT_CPTR),y
-        iny
-        lda #0
-        sta (MAT_CPTR),y
+            ldy     #0
+            lda     #0
+            sta     (MAT_CPTR),y
+            iny
+            sta     (MAT_CPTR),y
+            iny
+            lda     #1
+            sta     (MAT_CPTR),y
+            iny
+            lda     #0
+            sta     (MAT_CPTR),y
 
-        rts
-        
+            rts
+
 ;********************************************
 ;* MAT4_VECTOR_MUL
 ;*
@@ -891,228 +890,228 @@ MAT3_VECTOR_MUL:
 
 MAT4_VECTOR_MUL:
 
-        ; Initialize matrix row pointer
-        lda MAT4_MATRIX_PTR
-        sta MAT_AROW
-        lda MAT4_MATRIX_PTR+1
-        sta MAT_AROW+1
+            ; Initialize matrix row pointer
+            lda     MAT4_MATRIX_PTR
+            sta     MAT_AROW
+            lda     MAT4_MATRIX_PTR+1
+            sta     MAT_AROW+1
 
-        ; Initialize output pointer
-        lda MAT4_VOUT_PTR
-        sta MAT_CPTR
-        lda MAT4_VOUT_PTR+1
-        sta MAT_CPTR+1
+            ; Initialize output pointer
+            lda     MAT4_VOUT_PTR
+            sta     MAT_CPTR
+            lda     MAT4_VOUT_PTR+1
+            sta     MAT_CPTR+1
 
-        lda #0
-        sta MAT_ROW
+            lda     #0
+            sta     MAT_ROW
 
 @M4V_RowLoop:
 
-        ; Matrix pointer = start of current row
-        lda MAT_AROW
-        sta MAT_APTR
-        lda MAT_AROW+1
-        sta MAT_APTR+1
+            ; Matrix pointer = start of current row
+            lda     MAT_AROW
+            sta     MAT_APTR
+            lda     MAT_AROW+1
+            sta     MAT_APTR+1
 
-        ; Input vector pointer = start of vector
-        lda MAT4_VIN_PTR
-        sta MAT_BPTR
-        lda MAT4_VIN_PTR+1
-        sta MAT_BPTR+1
+            ; Input vector pointer = start of vector
+            lda     MAT4_VIN_PTR
+            sta     MAT_BPTR
+            lda     MAT4_VIN_PTR+1
+            sta     MAT_BPTR+1
 
-        ; Clear 32-bit accumulator
-        lda #0
-        sta MAT_ACCUM
-        sta MAT_ACCUM+1
-        sta MAT_ACCUM+2
-        sta MAT_ACCUM+3
+            ; Clear 32-bit accumulator
+            lda     #0
+            sta     MAT_ACCUM
+            sta     MAT_ACCUM+1
+            sta     MAT_ACCUM+2
+            sta     MAT_ACCUM+3
 
-        lda #0
-        sta MAT_K
+            lda     #0
+            sta     MAT_K
 
 @M4V_InnerLoop:
 
-        ; Copy matrix element into operand A
-        ldy #0
-        lda (MAT_APTR),y
-        sta MAT_MUL_A
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+1
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+2
-        iny
-        lda (MAT_APTR),y
-        sta MAT_MUL_A+3
+            ; Copy matrix element into operand A
+            ldy     #0
+            lda     (MAT_APTR),y
+            sta     MAT_MUL_A
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_MUL_A+1
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_MUL_A+2
+            iny
+            lda     (MAT_APTR),y
+            sta     MAT_MUL_A+3
 
-        ; Copy vector element into operand B
-        ldy #0
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+1
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+2
-        iny
-        lda (MAT_BPTR),y
-        sta MAT_MUL_B+3
+            ; Copy vector element into operand B
+            ldy     #0
+            lda     (MAT_BPTR),y
+            sta     MAT_MUL_B
+            iny
+            lda     (MAT_BPTR),y
+            sta     MAT_MUL_B+1
+            iny
+            lda     (MAT_BPTR),y
+            sta     MAT_MUL_B+2
+            iny
+            lda     (MAT_BPTR),y
+            sta     MAT_MUL_B+3
 
-        ; Multiply copied operands
-        CALL_FIX16_MUL MAT_MUL_A, MAT_MUL_B, MAT_PRODUCT
+            ; Multiply copied operands
+            CALL_FIX16_MUL MAT_MUL_A, MAT_MUL_B, MAT_PRODUCT
 
-        ; Accumulate product
-        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
+            ; Accumulate product
+            ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
 
-        ; Advance matrix pointer by 4 bytes
-        clc
-        lda MAT_APTR
-        adc #4
-        sta MAT_APTR
-        bcc @M4V_APtrReady
-        inc MAT_APTR+1
+            ; Advance matrix pointer by 4 bytes
+            clc
+            lda     MAT_APTR
+            adc     #4
+            sta     MAT_APTR
+            bcc     @M4V_APtrReady
+            inc     MAT_APTR+1
 
 @M4V_APtrReady:
 
-        ; Advance vector pointer by 4 bytes
-        clc
-        lda MAT_BPTR
-        adc #4
-        sta MAT_BPTR
-        bcc @M4V_BPtrReady
-        inc MAT_BPTR+1
+            ; Advance vector pointer by 4 bytes
+            clc
+            lda     MAT_BPTR
+            adc     #4
+            sta     MAT_BPTR
+            bcc     @M4V_BPtrReady
+            inc     MAT_BPTR+1
 
 @M4V_BPtrReady:
 
-        inc MAT_K
-        lda MAT_K
-        cmp #4
-        beq @M4V_InnerDone
-        jmp @M4V_InnerLoop
+            inc     MAT_K
+            lda     MAT_K
+            cmp     #4
+            beq     @M4V_InnerDone
+            jmp     @M4V_InnerLoop
 
 @M4V_InnerDone:
 
-        ; Store accumulated result in output vector
-        ldy #0
-        lda MAT_ACCUM
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+1
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+2
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+3
-        sta (MAT_CPTR),y
+            ; Store accumulated result in output vector
+            ldy     #0
+            lda     MAT_ACCUM
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+1
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+2
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+3
+            sta     (MAT_CPTR),y
 
-        ; Advance output pointer by 4 bytes
-        clc
-        lda MAT_CPTR
-        adc #4
-        sta MAT_CPTR
-        bcc @M4V_CPtrReady
-        inc MAT_CPTR+1
+            ; Advance output pointer by 4 bytes
+            clc
+            lda     MAT_CPTR
+            adc     #4
+            sta     MAT_CPTR
+            bcc     @M4V_CPtrReady
+            inc     MAT_CPTR+1
 
 @M4V_CPtrReady:
 
-        ; Advance matrix row by 16 bytes
-        clc
-        lda MAT_AROW
-        adc #16
-        sta MAT_AROW
-        bcc @M4V_ARowReady
-        inc MAT_AROW+1
+            ; Advance matrix row by 16 bytes
+            clc
+            lda     MAT_AROW
+            adc     #16
+            sta     MAT_AROW
+            bcc     @M4V_ARowReady
+            inc     MAT_AROW+1
 
 @M4V_ARowReady:
 
-        inc MAT_ROW
-        lda MAT_ROW
-        cmp #4
-        beq @M4V_Done
-        jmp @M4V_RowLoop
+            inc     MAT_ROW
+            lda     MAT_ROW
+            cmp     #4
+            beq     @M4V_Done
+            jmp     @M4V_RowLoop
 
 @M4V_Done:
-        rts
+            rts
 
 BUILD_SCALING_MATRIX_X:
-        ; Set X scale (row 0, column 0)
-        lda SCALE_X
-        sta SCALING_MATRIX
-        lda SCALE_X + 1
-        sta SCALING_MATRIX + 1
-        lda SCALE_X + 2
-        sta SCALING_MATRIX + 2
-        lda SCALE_X + 3
-        sta SCALING_MATRIX + 3
-        rts
+            ; Set X scale (row 0, column 0)
+            lda     SCALE_X
+            sta     SCALING_MATRIX
+            lda     SCALE_X + 1
+            sta     SCALING_MATRIX + 1
+            lda     SCALE_X + 2
+            sta     SCALING_MATRIX + 2
+            lda     SCALE_X + 3
+            sta     SCALING_MATRIX + 3
+            rts
 
 BUILD_SCALING_MATRIX_Y:
-        ; Set Y scale (row 1, column 1)
-        lda SCALE_Y
-        sta SCALING_MATRIX + 20
-        lda SCALE_Y + 1
-        sta SCALING_MATRIX + 21
-        lda SCALE_Y + 2
-        sta SCALING_MATRIX + 22
-        lda SCALE_Y + 3
-        sta SCALING_MATRIX + 23
-        rts
-        
-BUILD_SCALING_MATRIX_Z
-        lda SCALE_Z
-        sta SCALING_MATRIX + 40
-        lda SCALE_Z + 1
-        sta SCALING_MATRIX + 41
-        lda SCALE_Z + 2
-        sta SCALING_MATRIX + 42
-        lda SCALE_Z + 3
-        sta SCALING_MATRIX + 43
-        rts
-            
-BUILD_SCALING_MATRIX_W
-        ; Set W = 1.0 (row 3, column 3)
-        lda #0
-        sta SCALING_MATRIX + 60
-        sta SCALING_MATRIX + 61
-        lda #1
-        sta SCALING_MATRIX + 62
-        lda #0
-        sta SCALING_MATRIX + 63
-        rts
-            
+            ; Set Y scale (row 1, column 1)
+            lda     SCALE_Y
+            sta     SCALING_MATRIX + 20
+            lda     SCALE_Y + 1
+            sta     SCALING_MATRIX + 21
+            lda     SCALE_Y + 2
+            sta     SCALING_MATRIX + 22
+            lda     SCALE_Y + 3
+            sta     SCALING_MATRIX + 23
+            rts
+
+BUILD_SCALING_MATRIX_Z:
+            lda     SCALE_Z
+            sta     SCALING_MATRIX + 40
+            lda     SCALE_Z + 1
+            sta     SCALING_MATRIX + 41
+            lda     SCALE_Z + 2
+            sta     SCALING_MATRIX + 42
+            lda     SCALE_Z + 3
+            sta     SCALING_MATRIX + 43
+            rts
+
+BUILD_SCALING_MATRIX_W:
+            ; Set W = 1.0 (row 3, column 3)
+            lda     #0
+            sta     SCALING_MATRIX + 60
+            sta     SCALING_MATRIX + 61
+            lda     #1
+            sta     SCALING_MATRIX + 62
+            lda     #0
+            sta     SCALING_MATRIX + 63
+            rts
+
 ;********************************************
 ;*
 ;* BUILD_SCALING_MATRIX
 ;*
 ;********************************************
 BUILD_SCALING_MATRIX:
-        jsr BUILD_SCALING_MATRIX_X
-        jsr BUILD_SCALING_MATRIX_Y
-        jsr BUILD_SCALING_MATRIX_Z
-        jsr BUILD_SCALING_MATRIX_W
-        rts
+            jsr     BUILD_SCALING_MATRIX_X
+            jsr     BUILD_SCALING_MATRIX_Y
+            jsr     BUILD_SCALING_MATRIX_Z
+            jsr     BUILD_SCALING_MATRIX_W
+            rts
 
 ;********************************************
 ;*
 ;* BUILD_TRANSLATION_MATRIX_W
 ;*
 ;********************************************
-BUILD_TRANSLATION_MATRIX_W
-        ; Row 0, column 0 = 1.0
-        lda #1
-        sta TRANSLATION_MATRIX + 2
+BUILD_TRANSLATION_MATRIX_W:
+            ; Row 0, column 0 = 1.0
+            lda     #1
+            sta     TRANSLATION_MATRIX + 2
 
-        ; Row 1, column 1 = 1.0
-        sta TRANSLATION_MATRIX + 22
+            ; Row 1, column 1 = 1.0
+            sta     TRANSLATION_MATRIX + 22
 
-        ; Row 2, column 2 = 1.0
-        sta TRANSLATION_MATRIX + 42
+            ; Row 2, column 2 = 1.0
+            sta     TRANSLATION_MATRIX + 42
 
-        ; Row 3, column 3 = 1.0
-        sta TRANSLATION_MATRIX + 62
+            ; Row 3, column 3 = 1.0
+            sta     TRANSLATION_MATRIX + 62
 
 ;********************************************
 ;*
@@ -1120,33 +1119,33 @@ BUILD_TRANSLATION_MATRIX_W
 ;*
 ;********************************************
 BUILD_TRANSLATION_MATRIX_X:
-        ; Translation X (row 0, column 3)
-        lda TRANS_X
-        sta TRANSLATION_MATRIX + 12
-        lda TRANS_X + 1
-        sta TRANSLATION_MATRIX + 13
-        lda TRANS_X + 2
-        sta TRANSLATION_MATRIX + 14
-        lda TRANS_X + 3
-        sta TRANSLATION_MATRIX + 15
-        rts
-        
+            ; Translation X (row 0, column 3)
+            lda     TRANS_X
+            sta     TRANSLATION_MATRIX + 12
+            lda     TRANS_X + 1
+            sta     TRANSLATION_MATRIX + 13
+            lda     TRANS_X + 2
+            sta     TRANSLATION_MATRIX + 14
+            lda     TRANS_X + 3
+            sta     TRANSLATION_MATRIX + 15
+            rts
+
 ;********************************************
 ;*
 ;* BUILD_TRANSLATION_MATRIX_Y
 ;*
 ;********************************************
 BUILD_TRANSLATION_MATRIX_Y:
-        ; Translation Y (row 1, column 3)
-        lda TRANS_Y
-        sta TRANSLATION_MATRIX + 28
-        lda TRANS_Y + 1
-        sta TRANSLATION_MATRIX + 29
-        lda TRANS_Y + 2
-        sta TRANSLATION_MATRIX + 30
-        lda TRANS_Y + 3
-        sta TRANSLATION_MATRIX + 31
-        rts
+            ; Translation Y (row 1, column 3)
+            lda     TRANS_Y
+            sta     TRANSLATION_MATRIX + 28
+            lda     TRANS_Y + 1
+            sta     TRANSLATION_MATRIX + 29
+            lda     TRANS_Y + 2
+            sta     TRANSLATION_MATRIX + 30
+            lda     TRANS_Y + 3
+            sta     TRANSLATION_MATRIX + 31
+            rts
 
 ;********************************************
 ;*
@@ -1154,53 +1153,51 @@ BUILD_TRANSLATION_MATRIX_Y:
 ;*
 ;********************************************
 BUILD_TRANSLATION_MATRIX_Z:
-        ; Translation Z (row 2, column 3)
-        lda TRANS_Z
-        sta TRANSLATION_MATRIX + 44
-        lda TRANS_Z + 1
-        sta TRANSLATION_MATRIX + 45
-        lda TRANS_Z + 2
-        sta TRANSLATION_MATRIX + 46
-        lda TRANS_Z + 3
-        sta TRANSLATION_MATRIX + 47
-        rts
-
+            ; Translation Z (row 2, column 3)
+            lda     TRANS_Z
+            sta     TRANSLATION_MATRIX + 44
+            lda     TRANS_Z + 1
+            sta     TRANSLATION_MATRIX + 45
+            lda     TRANS_Z + 2
+            sta     TRANSLATION_MATRIX + 46
+            lda     TRANS_Z + 3
+            sta     TRANSLATION_MATRIX + 47
+            rts
 
 ;********************************************
 ;*
 ;* BUILD_TRANSLATION_MATRIX
 ;*
 ;********************************************
- BUILD_TRANSLATION_MATRIX:
-        jsr BUILD_TRANSLATION_MATRIX_X
-        jsr BUILD_TRANSLATION_MATRIX_Y
-        jsr BUILD_TRANSLATION_MATRIX_Z
-        jmp BUILD_TRANSLATION_MATRIX_W
-        
-ROT_ZY_MATRIX:
-        .ds 64
-        
-BUILD_ROTATION_MATRIX:
-        ; Build X rotation
-        jsr ROTATION_X
-        
-        ; Build Y rotation
-        jsr ROTATION_Y
+            BUILD_TRANSLATION_MATRIX:
+            jsr     BUILD_TRANSLATION_MATRIX_X
+            jsr     BUILD_TRANSLATION_MATRIX_Y
+            jsr     BUILD_TRANSLATION_MATRIX_Z
+            jmp     BUILD_TRANSLATION_MATRIX_W
 
-        ; Build Z rotation
-        jsr ROTATION_Z
+ROT_ZY_MATRIX:
+            .ds     64
+
+BUILD_ROTATION_MATRIX:
+            ; Build X rotation
+            jsr     ROTATION_X
+
+            ; Build Y rotation
+            jsr     ROTATION_Y
+
+            ; Build Z rotation
+            jsr     ROTATION_Z
 
 BUILD_ROT_ZY_MATRIX:
-        ; Calculate RZ * RY
-        CALL_MAT3_MUL ROT_Z_MATRIX, ROT_Y_MATRIX, ROT_ZY_MATRIX
-        rts
+            ; Calculate RZ * RY
+            CALL_MAT3_MUL ROT_Z_MATRIX, ROT_Y_MATRIX, ROT_ZY_MATRIX
+            rts
 
 BUILD_ROTATION_MATRIX_X:
-        ; Calculate (RZ * RY) * RX
-        CALL_MAT3_MUL ROT_ZY_MATRIX, ROT_X_MATRIX, ROTATION_MATRIX
-        rts
-        
-        
+            ; Calculate (RZ * RY) * RX
+            CALL_MAT3_MUL ROT_ZY_MATRIX, ROT_X_MATRIX, ROTATION_MATRIX
+            rts
+
 ;********************************************
 ;* MAT3_MUL
 ;*
@@ -1222,210 +1219,210 @@ BUILD_ROTATION_MATRIX_X:
 ;********************************************
 MAT3_MUL:
 
-        ;------------------------------------
-        ; Initialize output matrix to zero
-        ;------------------------------------
+            ;------------------------------------
+            ; Initialize output matrix to zero
+            ;------------------------------------
 
-        lda MAT4_C_PTR
-        sta MAT_CPTR
-        lda MAT4_C_PTR+1
-        sta MAT_CPTR+1
+            lda     MAT4_C_PTR
+            sta     MAT_CPTR
+            lda     MAT4_C_PTR+1
+            sta     MAT_CPTR+1
 
-        ; Set bottom-right element to 1.0
-        lda #0
-        ldy #60
-        sta (MAT_CPTR),y
-        iny
-        sta (MAT_CPTR),y
-        iny
-        lda #1
-        sta (MAT_CPTR),y
-        iny
-        lda #0
-        sta (MAT_CPTR),y
+            ; Set bottom-right element to 1.0
+            lda     #0
+            ldy     #60
+            sta     (MAT_CPTR),y
+            iny
+            sta     (MAT_CPTR),y
+            iny
+            lda     #1
+            sta     (MAT_CPTR),y
+            iny
+            lda     #0
+            sta     (MAT_CPTR),y
 
-        ;------------------------------------
-        ; Initialize matrix pointers
-        ;------------------------------------
+            ;------------------------------------
+            ; Initialize matrix pointers
+            ;------------------------------------
 
-        lda MAT4_A_PTR
-        sta MAT_AROW
-        lda MAT4_A_PTR+1
-        sta MAT_AROW+1
+            lda     MAT4_A_PTR
+            sta     MAT_AROW
+            lda     MAT4_A_PTR+1
+            sta     MAT_AROW+1
 
-        lda MAT4_B_PTR
-        sta MAT_BCOL
-        lda MAT4_B_PTR+1
-        sta MAT_BCOL+1
+            lda     MAT4_B_PTR
+            sta     MAT_BCOL
+            lda     MAT4_B_PTR+1
+            sta     MAT_BCOL+1
 
-        lda MAT4_C_PTR
-        sta MAT_CPTR
-        lda MAT4_C_PTR+1
-        sta MAT_CPTR+1
+            lda     MAT4_C_PTR
+            sta     MAT_CPTR
+            lda     MAT4_C_PTR+1
+            sta     MAT_CPTR+1
 
-        lda #0
-        sta MAT_ROW
+            lda     #0
+            sta     MAT_ROW
 
 @RowLoop:
 
-        lda #0
-        sta MAT_COL
+            lda     #0
+            sta     MAT_COL
 
 @ColLoop:
 
-        ; A pointer starts at current row
-        lda MAT_AROW
-        sta MAT_APTR
-        lda MAT_AROW+1
-        sta MAT_APTR+1
+            ; A pointer starts at current row
+            lda     MAT_AROW
+            sta     MAT_APTR
+            lda     MAT_AROW+1
+            sta     MAT_APTR+1
 
-        ; B pointer starts at current column
-        lda MAT_BCOL
-        sta MAT_BPTR
-        lda MAT_BCOL+1
-        sta MAT_BPTR+1
+            ; B pointer starts at current column
+            lda     MAT_BCOL
+            sta     MAT_BPTR
+            lda     MAT_BCOL+1
+            sta     MAT_BPTR+1
 
-        ; Clear 32-bit accumulator
-        lda #0
-        sta MAT_ACCUM
-        sta MAT_ACCUM+1
-        sta MAT_ACCUM+2
-        sta MAT_ACCUM+3
+            ; Clear 32-bit accumulator
+            lda     #0
+            sta     MAT_ACCUM
+            sta     MAT_ACCUM+1
+            sta     MAT_ACCUM+2
+            sta     MAT_ACCUM+3
 
-        lda #0
-        sta MAT_K
+            lda     #0
+            sta     MAT_K
 
 @InnerLoop:
 
-        ; Set FIX16 operand A pointer
-        lda MAT_APTR
-        sta FIX16_A_PTR
-        lda MAT_APTR+1
-        sta FIX16_A_PTR+1
+            ; Set FIX16 operand A pointer
+            lda     MAT_APTR
+            sta     FIX16_A_PTR
+            lda     MAT_APTR+1
+            sta     FIX16_A_PTR+1
 
-        ; Set FIX16 operand B pointer
-        lda MAT_BPTR
-        sta FIX16_B_PTR
-        lda MAT_BPTR+1
-        sta FIX16_B_PTR+1
+            ; Set FIX16 operand B pointer
+            lda     MAT_BPTR
+            sta     FIX16_B_PTR
+            lda     MAT_BPTR+1
+            sta     FIX16_B_PTR+1
 
-        ; Product destination
-        lda #<MAT_PRODUCT
-        sta FIX16_RESULT_PTR
-        lda #>MAT_PRODUCT
-        sta FIX16_RESULT_PTR+1
+            ; Product destination
+            lda     #<MAT_PRODUCT
+            sta     FIX16_RESULT_PTR
+            lda     #>MAT_PRODUCT
+            sta     FIX16_RESULT_PTR+1
 
-        ; Product = A[row][k] * B[k][col]
-        jsr FIX16_MUL
+            ; Product = A[row][k] * B[k][col]
+            jsr     FIX16_MUL
 
-        ; Accumulate product
-        ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
+            ; Accumulate product
+            ADD_FIX16 MAT_ACCUM, MAT_PRODUCT, MAT_ACCUM
 
-        ; A advances by 4 bytes
-        clc
-        lda MAT_APTR
-        adc #4
-        sta MAT_APTR
-        bcc @APtrReady
-        inc MAT_APTR+1
+            ; A advances by 4 bytes
+            clc
+            lda     MAT_APTR
+            adc     #4
+            sta     MAT_APTR
+            bcc     @APtrReady
+            inc     MAT_APTR+1
 
 @APtrReady:
 
-        ; B advances by 16 bytes
-        clc
-        lda MAT_BPTR
-        adc #16
-        sta MAT_BPTR
-        bcc @BPtrReady
-        inc MAT_BPTR+1
+            ; B advances by 16 bytes
+            clc
+            lda     MAT_BPTR
+            adc     #16
+            sta     MAT_BPTR
+            bcc     @BPtrReady
+            inc     MAT_BPTR+1
 
 @BPtrReady:
 
-        inc MAT_K
-        lda MAT_K
-        cmp #3
-        beq @InnerDone
-        jmp @InnerLoop
+            inc     MAT_K
+            lda     MAT_K
+            cmp     #3
+            beq     @InnerDone
+            jmp     @InnerLoop
 
 @InnerDone:
 
-        ; Store C[row][col]
-        ldy #0
-        lda MAT_ACCUM
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+1
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+2
-        sta (MAT_CPTR),y
-        iny
-        lda MAT_ACCUM+3
-        sta (MAT_CPTR),y
+            ; Store C[row][col]
+            ldy     #0
+            lda     MAT_ACCUM
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+1
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+2
+            sta     (MAT_CPTR),y
+            iny
+            lda     MAT_ACCUM+3
+            sta     (MAT_CPTR),y
 
-        ; C advances by 4 bytes
-        clc
-        lda MAT_CPTR
-        adc #4
-        sta MAT_CPTR
-        bcc @CPtrReady
-        inc MAT_CPTR+1
+            ; C advances by 4 bytes
+            clc
+            lda     MAT_CPTR
+            adc     #4
+            sta     MAT_CPTR
+            bcc     @CPtrReady
+            inc     MAT_CPTR+1
 
 @CPtrReady:
 
-        ; B column advances by 4 bytes
-        clc
-        lda MAT_BCOL
-        adc #4
-        sta MAT_BCOL
-        bcc @BColReady
-        inc MAT_BCOL+1
+            ; B column advances by 4 bytes
+            clc
+            lda     MAT_BCOL
+            adc     #4
+            sta     MAT_BCOL
+            bcc     @BColReady
+            inc     MAT_BCOL+1
 
 @BColReady:
 
-        inc MAT_COL
-        lda MAT_COL
-        cmp #3
-        beq @ColDone
-        jmp @ColLoop
+            inc     MAT_COL
+            lda     MAT_COL
+            cmp     #3
+            beq     @ColDone
+            jmp     @ColLoop
 
 @ColDone:
 
-        ; Skip fourth column in output
-        clc
-        lda MAT_CPTR
-        adc #4
-        sta MAT_CPTR
-        bcc @CPtrNextRow
-        inc MAT_CPTR+1
+            ; Skip fourth column in output
+            clc
+            lda     MAT_CPTR
+            adc     #4
+            sta     MAT_CPTR
+            bcc     @CPtrNextRow
+            inc     MAT_CPTR+1
 
 @CPtrNextRow:
 
-        ; A advances to next row
-        clc
-        lda MAT_AROW
-        adc #16
-        sta MAT_AROW
-        bcc @ARowReady
-        inc MAT_AROW+1
+            ; A advances to next row
+            clc
+            lda     MAT_AROW
+            adc     #16
+            sta     MAT_AROW
+            bcc     @ARowReady
+            inc     MAT_AROW+1
 
 @ARowReady:
 
-        ; Reset B column to beginning of B
-        lda MAT4_B_PTR
-        sta MAT_BCOL
-        lda MAT4_B_PTR+1
-        sta MAT_BCOL+1
+            ; Reset B column to beginning of B
+            lda     MAT4_B_PTR
+            sta     MAT_BCOL
+            lda     MAT4_B_PTR+1
+            sta     MAT_BCOL+1
 
-        inc MAT_ROW
-        lda MAT_ROW
-        cmp #3
-        beq @Exit
-        jmp @RowLoop
+            inc     MAT_ROW
+            lda     MAT_ROW
+            cmp     #3
+            beq     @Exit
+            jmp     @RowLoop
 
 @Exit:
-        rts
- 
+            rts
+
 ;********************************************
 ;* STORE_FIX16
 ;*
@@ -1433,17 +1430,17 @@ MAT3_MUL:
 ;* pointed to by MAT4_VOUT_PTR + Y.
 ;********************************************
 
-        .macro STORE_FIX16
-        lda SCREEN_TEMP_A
-        sta (MAT4_VOUT_PTR),y
-        iny
-        lda SCREEN_TEMP_A+1
-        sta (MAT4_VOUT_PTR),y
-        iny
-        lda SCREEN_TEMP_A+2
-        sta (MAT4_VOUT_PTR),y
-        iny
-        lda SCREEN_TEMP_A+3
-        sta (MAT4_VOUT_PTR),y
-        .endm
-        
+            .macro  STORE_FIX16
+            lda     SCREEN_TEMP_A
+            sta     (MAT4_VOUT_PTR),y
+            iny
+            lda     SCREEN_TEMP_A+1
+            sta     (MAT4_VOUT_PTR),y
+            iny
+            lda     SCREEN_TEMP_A+2
+            sta     (MAT4_VOUT_PTR),y
+            iny
+            lda     SCREEN_TEMP_A+3
+            sta     (MAT4_VOUT_PTR),y
+            .endm
+
