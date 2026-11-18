@@ -22,9 +22,7 @@ DisplayPage
         lda @Char
         sta @Row
         jsr @GetNextByte
-        lda @Char
-        sta @Col
-
+        ldy @Char
         ldx @Row
         ldy @Col
         clc
@@ -38,10 +36,8 @@ DisplayPage
 
 ; NextRow
         inc @Row
-        lda #0
-        sta @Col
         ldx @Row
-        ldy @Col
+        ldy #$00
         clc
         jsr PLOT
 
@@ -83,6 +79,5 @@ PrintChar
 
 @Char        .ds 1
 @Row         .ds 1
-@Col         .ds 1
 
 @TempPrint   .ds 10
