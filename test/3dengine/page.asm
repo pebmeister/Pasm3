@@ -57,16 +57,14 @@ DisplayPage
         cmp #PRSTRING
         bne @Bad_Cmd
 
+        lda TXPTR
+        ldy TXPTR + 1
+        jsr SAFE_STROUT
+@Char_Loop
         jsr GetNextByte
         lda Char
-        sta TempPrint
-        jsr GetNextByte
-        lda Char
-        sta TempPrint + 1
-        
-        lda     TempPrint
-        ldy     TempPrint + 1
-        jsr     SAFE_STROUT
+        bne @Char_Lopp
+  
         jmp @CmdLoop
 
 @Bad_Cmd
