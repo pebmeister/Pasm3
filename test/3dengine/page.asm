@@ -144,26 +144,7 @@ DisplayPage:
             jmp     @Check_Ptr_VRT_Array
 
 @Print_Vert_Array:
-; Print Vert Array
-            ; get the count
-            jsr     @GetByteFromPtr
-            lda     @Byte
-            sta     @VertCount
-
-            ; column for x
-            jsr     @GetNextByte
-            lda     @Char
-            sta     @VertCol_0
-
-            ; column for y
-            jsr     @GetNextByte
-            lda     @Char
-            sta     @VertCol_1
-
-            ; column for z
-            jsr     @GetNextByte
-            lda     @Char
-            sta     @VertCol_2
+            jsr     @Get_Vert_Params
 
             ; get the Vert ptr
             jsr     @GetPtr
@@ -248,25 +229,7 @@ DisplayPage:
             jmp     @Bad_Cmd
 
 @Print_Vert_Ptr_Array:
-            ; get the count
-            jsr     @GetByteFromPtr
-            lda     @Byte
-            sta     @VertCount
-
-            ; column for x
-            jsr     @GetNextByte
-            lda     @Char
-            sta     @VertCol_0
-
-            ; column for y
-            jsr     @GetNextByte
-            lda     @Char
-            sta     @VertCol_1
-
-            ; column for z
-            jsr     @GetNextByte
-            lda     @Char
-            sta     @VertCol_2
+            jsr     @Get_Vert_Params
 
             ; get the Vert ptr
             jsr     @GetPtr
@@ -337,6 +300,28 @@ DisplayPage:
             INC16   LOC
             lda     (LOC),y
             sta     @Word + 1
+            rts
+            
+@Get_Vert_Params
+            ; get the count
+            jsr     @GetByteFromPtr
+            lda     @Byte
+            sta     @VertCount
+
+            ; column for x
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_0
+
+            ; column for y
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_1
+
+            ; column for z
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_2
             rts
 
 @Char:
