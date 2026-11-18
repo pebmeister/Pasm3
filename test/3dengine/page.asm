@@ -51,7 +51,7 @@ DisplayPage
         ldy TXPTR + 1
         jsr SAFE_STROUT
 @Char_Loop
-        jsr GetNextByte
+        jsr @GetNextByte
         lda @Char
         bne @Char_Loop
   
@@ -61,14 +61,14 @@ DisplayPage
 @Done
         rts
 
-GetNextByte
+@GetNextByte
         ldy #0
         lda (TXPTR),y
         sta @Char
         INC16 TXPTR
         rts
 
-PrintChar
+@PrintChar
         lda @Char
         sta TEMP16
         lda #0
