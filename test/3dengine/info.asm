@@ -1,7 +1,3 @@
-            ROT_COL = 3
-            SCALE_COL = 8
-            TRANS_COL = 18
-            MISC_COL = 16
 
             ; ************************************
             ;
@@ -9,6 +5,11 @@
             ;
             ; ************************************
 DrawInfo:
+            ROT_COL = 3
+            SCALE_COL = 8
+            TRANS_COL = 18
+            MISC_COL = 16
+
             lda     #COLOR_BLUE
             sta     Border
             sta     SCREENC

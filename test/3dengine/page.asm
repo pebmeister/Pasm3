@@ -61,6 +61,8 @@ DisplayPage:
             lda     TXPTR
             ldy     TXPTR + 1
             jsr     SAFE_STROUT
+            
+            ; advance TXPTR past terminating null
 @Char_Loop:
             jsr     @GetNextByte
             lda     @Char
@@ -88,10 +90,7 @@ DisplayPage:
 
 ; Print Int16
             jsr     @GetWordFromPtr
-            lda     @Word
-            sta     TEMP16
-            lda     @Word + 1
-            sta     TEMP16 + 1
+            MOVE16  @Word, TEMP16
             jsr     PRINT_INT16
 
             jmp     @CmdLoop
@@ -102,10 +101,7 @@ DisplayPage:
 
 ; Print Fix16
             jsr     @GetPtr
-            lda     @Ptr
-            sta     FIXPTR
-            lda     @Ptr + 1
-            sta     FIXPTR + 1
+            MOVE16  @Ptr, FIXPTR
             jsr     PRINT_FIX16
 
             jmp     @CmdLoop
@@ -130,10 +126,7 @@ DisplayPage:
 
 ; Print Int16_Hex
             jsr     @GetWordFromPtr
-            lda     @Word
-            sta     TEMP16
-            lda     @Word + 1
-            sta     TEMP16 + 1
+            MOVE16  @Word, TEMP16
             jsr     PRINT_INT16_HEX
 
             jmp     @CmdLoop
@@ -148,10 +141,7 @@ DisplayPage:
 
             ; get the Vert ptr
             jsr     @GetPtr
-            lda     @Ptr
-            sta     @VERT_PTR
-            lda     @Ptr + 1
-            sta     @VERT_PTR + 1
+            MOVE16  @Ptr, @VERT_PTR
 
 @PrintVertex:
             ; Initialize counters
@@ -174,10 +164,7 @@ DisplayPage:
             clc
             jsr     PLOT
 
-            lda     @VERT_PTR
-            sta     FIXPTR
-            lda     @VERT_PTR + 1
-            sta     FIXPTR + 1
+            MOVE16  @VERT_PTR, FIXPTR
             jsr     PRINT_FIX16
 
             ADD16I  @VERT_PTR, 4, @VERT_PTR
@@ -185,15 +172,12 @@ DisplayPage:
             ;------------------------------------
             ; Y coordinate - VertCol_1
             ;------------------------------------
-            ldx     @ROW
+            ldx     @Row
             ldy     @VertCol_1
             clc
             jsr     PLOT
 
-            lda     @VERT_PTR
-            sta     FIXPTR
-            lda     @VERT_PTR + 1
-            sta     FIXPTR + 1
+            MOVE16  @VERT_PTR, FIXPTR
             jsr     PRINT_FIX16
 
             ADD16I  @VERT_PTR, 4, @VERT_PTR
@@ -201,22 +185,19 @@ DisplayPage:
             ;------------------------------------
             ; Z coordinate - VertCol_2
             ;------------------------------------
-            ldx     @ROW
+            ldx     @Row
             ldy     @VertCol_2
             clc
             jsr     PLOT
 
-            lda     @VERT_PTR
-            sta     FIXPTR
-            lda     @VERT_PTR + 1
-            sta     FIXPTR + 1
+            MOVE16  @VERT_PTR, FIXPTR
             jsr     PRINT_FIX16
 
             ADD16I  @VERT_PTR, 8, @VERT_PTR
 
             ; Advance counters
             inc     @INDEX
-            inc     @ROW
+            inc     @Row
 
             jmp     @VertLoop
 
@@ -233,17 +214,15 @@ DisplayPage:
 
             ; get the Vert ptr
             jsr     @GetPtr
-            lda     @Ptr
-            sta     LOC
-            lda     @Ptr + 1
-            sta     LOC + 1
-            lda     @Ptr
+            MOVE16  @Ptr, LOC
+
             ldy     #0
             lda     (LOC),y
             sta     @VERT_PTR
             INC16   LOC
             lda     (LOC),y
             sta     @VERT_PTR + 1
+            
             jmp     @PrintVertex
 
 @Bad_Cmd:
@@ -257,14 +236,6 @@ DisplayPage:
             INC16   TXPTR
             rts
 
-@PrintChar:
-            lda     @Char
-            sta     TEMP16
-            lda     #0
-            sta     TEMP16 + 1
-            jsr     PRINT_INT16_HEX
-            rts
-
 @GetPtr:
             jsr     @GetNextByte
             lda     @Char
@@ -275,23 +246,22 @@ DisplayPage:
             rts
 
 @GetByteFromPtr:
-            jsr     @GetNextByte
-            lda     @Char
+            jsr     @GetPtr
+            lda     @Ptr
             sta     LOC
-            jsr     @GetNextByte
-            lda     @Char
+            lda     @Ptr + 1
             sta     LOC + 1
+
             ldy     #0
             lda     (LOC),y
             sta     @Byte
             rts
 
 @GetWordFromPtr:
-            jsr     @GetNextByte
-            lda     @Char
+            jsr     @GetPtr
+            lda     @Ptr
             sta     LOC
-            jsr     @GetNextByte
-            lda     @Char
+            lda     @Ptr + 1
             sta     LOC + 1
 
             ldy     #0
@@ -328,12 +298,10 @@ DisplayPage:
             .ds     1
 @Word:
             .ds     2
-
 @Ptr:
             .ds     2
 @Byte:
             .ds     1
-
 @Row:
             .ds     1
 @VertCount:
