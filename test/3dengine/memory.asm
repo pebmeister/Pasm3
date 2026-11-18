@@ -35,7 +35,6 @@ ROT_Z_MATRIX:
             .ds     64
 ROTATION_MATRIX:
             .ds     64
-
 SCALING_MATRIX:
             .ds     64
 TRANSLATION_MATRIX:
@@ -109,28 +108,11 @@ ROT_COSINE:
 ROT_NEG_SINE:
             .word   $0000, $0000
 
-; Input vector: (1.0, 0.0, 0.0, 1.0)
-VEC_IN:
-            .word   $0000, $0001
-            .word   $0000, $0000
-            .word   $0000, $0000
-            .word   $0000, $0001
-
-; Output vector
-VEC_OUT:
-            .word   $0000, $0000
-            .word   $0000, $0000
-            .word   $0000, $0000
-            .word   $0000, $0000
-
 ; Intermediate rotation matrices
 MAT_ROT_X:
             .ds     64
 MAT_ROT_XY:
             .ds     64
-
-CURRENT_VERTEX_PTR:
-            .ds     2
 
 ;********************************************
 ;* Place pointers in zero page.
@@ -283,9 +265,6 @@ DISPLAY_VECTORS:
 ;********************************************
 WORLD_MATRIX:
             .ds     64
-MAT_TEMP:
-            .ds     64
-
 ROT_SCALE_MATRIX:
             .ds     64
 MODEL_MATRIX:
@@ -363,4 +342,3 @@ MODEL_NUM_EDGES:
             .ds     1
 CUR_MODEL:
             .ds     1
-

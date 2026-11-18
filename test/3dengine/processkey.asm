@@ -143,9 +143,18 @@ ProcessKey:
             ; =======================================================
 @Check_Debug:
             cmp     #KEY_SHIFT_I
-            bne     @Check_Reset
+            bne     @Check_Cull_Debug
             jmp     Debug
 
+
+            ; =======================================================
+            ; CullDebug
+            ; =======================================================
+@Check_Cull_Debug:
+            cmp     #KEY_T
+            bne     @Check_Reset
+            jmp     CullDebug
+            
             ; =======================================================
             ; Reset
             ; =======================================================
@@ -325,6 +334,17 @@ Debug:
             sta     Info@Border_Color
             jsr     SwitchToText
             jsr     DrawDebugInfo
+            jmp     Info@Loop
+
+
+            ; *************************************************************    
+            ; CullDebugDebug
+            ; *************************************************************            
+CullDebug:
+            lda     Border
+            sta     Info@Border_Color
+            jsr     SwitchToText
+            jsr     DrawCullInfo
             jmp     Info@Loop
 
             ; *************************************************************    

@@ -149,3 +149,60 @@ DrawDebugInfo:
             .word   WORLD_VERTICES
 
             .byte   ENDPAGE
+
+DrawCullInfo:
+            lda     #COLOR_YELLOW
+            sta     Border
+            sta     SCREENC
+
+            lda     #<@PG_CULL_DEBUG
+            sta     TXPTR
+            lda     #>@PG_CULL_DEBUG
+            sta     TXPTR + 1
+            jsr     DisplayPage
+            rts
+
+@PG_CULL_DEBUG:
+
+            .byte   STRING, 147, 0
+            .byte   SETPOS, 0, 0
+            .byte   STRING, KEY_BLUE, "FACE VISABLE", 0
+
+            .byte   SETPOS, 1, 0
+            .byte   STRING, KEY_BLACK, "0) ", 0
+            .byte   STRING, KEY_BLUE, 0
+            .byte   INT8
+            .word CUBE_VISIBLE + 0
+
+ 
+            .byte   SETPOS, 2, 0
+            .byte   STRING, KEY_BLACK, "1) ", 0
+            .byte   STRING, KEY_BLUE, 0
+            .byte   INT8
+            .word   CUBE_VISIBLE + 1
+            
+            .byte   SETPOS, 3, 0
+            .byte   STRING, KEY_BLACK, "2) ", 0
+            .byte   STRING, KEY_BLUE, 0
+            .byte   INT8
+            .word   CUBE_VISIBLE + 2
+
+            .byte   SETPOS, 4, 0
+            .byte   STRING, KEY_BLACK, "3) ", 0
+            .byte   STRING, KEY_BLUE, 0
+            .byte   INT8
+            .word   CUBE_VISIBLE + 3
+
+            .byte   SETPOS, 5, 0
+            .byte   STRING, KEY_BLACK, "4) ", 0
+            .byte   STRING, KEY_BLUE, 0
+            .byte   INT8,
+            .word   CUBE_VISIBLE + 4
+
+            .byte   SETPOS, 6, 0
+            .byte   STRING, KEY_BLACK, "5) ", 0
+            .byte   STRING, KEY_BLUE, 0
+            .byte   INT8
+            .word   CUBE_VISIBLE + 5
+
+            .byte   ENDPAGE

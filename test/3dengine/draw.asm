@@ -4,6 +4,9 @@ Draw:
             CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX
 
             jsr     CreateProjection
+
+            jsr     TestFaces
+
             jsr     HGRCls
             jmp     DRAW_MESH_EDGES
 
@@ -57,7 +60,11 @@ CreateProjection:
             ; jsr DIVIDE_CLIP_VERTICES_XY
 
             ; set to screen
-            jmp     CONVERT_NDC_TO_SCREEN
+            jsr     CONVERT_NDC_TO_SCREEN
+            
+            
+            
+            rts
 
 ; ============================================
 ; DRAW_MESH_EDGES
@@ -137,7 +144,23 @@ DRAW_MESH_EDGES:
 
             rts
 
-            ; ============================================
+TestFaces:
+        lda #0
+        sta FACE_INDEX
+
+@FaceLoop        
+        jsr TEST_FACE
+
+        inc FACE_INDEX
+        lda FACE_INDEX
+        cmp #6
+        bne @FaceLoop
+
+        ; stop here for testing
+        rts
+        
+
+; ============================================
 ; CLAMP_LINE_COORDS
 ; Clamps X0, X1 to screen range 0-319 ($013F)
 ; Clamps Y0, Y1 to screen range 0-199 ($C7)
