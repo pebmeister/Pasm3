@@ -1,82 +1,365 @@
-SETPOS     = 1
-NEXTROW    = 2
-PRSTRING   = 3
+            SETPOS  = 1
+            NEXTROW = 2
+            STRING  = 3
+            INT8    = 4
+            INT16   = 5
+            FIX16   = 6
+            INT8_I  = 7
+            INT16_HEX = 8
+            VRT_ARRAY = 9
+            VRT_PTR_ARRAY = 10
 
-ENDPAGE     = $FF
+            ENDPAGE = $ff
 
-DisplayPage
+DisplayPage:
 
-@CmdLoop
-        jsr @GetNextByte
-        lda @Char
-        
-        ; check for done first
-        cmp #ENDPAGE
-        beq @Done
+@CmdLoop:
+            jsr     @GetNextByte
+            lda     @Char
 
-        cmp #SETPOS
-        bne @Check_NextRow
+            ; check for done first
+            cmp     #ENDPAGE
+            bne     @Cmd_Continue
+
+            jmp     @Done
+
+@Cmd_Continue:
+            cmp     #SETPOS
+            bne     @Check_NextRow
 
 ; SetPos
-        jsr @GetNextByte
-        lda @Char
-        sta @Row
-        jsr @GetNextByte
-        ldy @Char
-        ldx @Row
-        clc
-        jsr PLOT
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @Row
 
-        jmp @CmdLoop
+            jsr     @GetNextByte
+            ldy     @Char
+            ldx     @Row
+            clc
+            jsr     PLOT
 
-@Check_NextRow
-        cmp #NEXTROW
-        bne @Check_PrintString
+            jmp     @CmdLoop
+
+@Check_NextRow:
+            cmp     #NEXTROW
+            bne     @Check_String
 
 ; NextRow
-        inc @Row
-        ldx @Row
-        ldy #$00
-        clc
-        jsr PLOT
+            inc     @Row
+            ldx     @Row
+            ldy     #$00
+            clc
+            jsr     PLOT
 
-        jmp @CmdLoop
+            jmp     @CmdLoop
 
-@Check_PrintString
-        cmp #NEXTROW
-        bne @Bad_Cmd
+@Check_String:
+            cmp     #STRING
+            bne     @Check_Int8
 
-; PrintString
-        lda TXPTR
-        ldy TXPTR + 1
-        jsr SAFE_STROUT
-@Char_Loop
-        jsr @GetNextByte
-        lda @Char
-        bne @Char_Loop
-  
-        jmp @CmdLoop
+; Print String
+            lda     TXPTR
+            ldy     TXPTR + 1
+            jsr     SAFE_STROUT
+@Char_Loop:
+            jsr     @GetNextByte
+            lda     @Char
+            bne     @Char_Loop
 
-@Bad_Cmd
-@Done
-        rts
+            jmp     @CmdLoop
 
-@GetNextByte
-        ldy #0
-        lda (TXPTR),y
-        sta @Char
-        INC16 TXPTR
-        rts
+@Check_Int8:
+            cmp     #INT8
+            bne     @Check_Int16
 
-@PrintChar
-        lda @Char
-        sta TEMP16
-        lda #0
-        sta TEMP16 + 1
-        jsr PRINT_INT16_HEX
-        rts
+; Print Int8
+            jsr     @GetByteFromPtr
+            lda     @Byte
+            sta     TEMP16
+            lda     #0
+            sta     TEMP16 + 1
+            jsr     PRINT_INT16
 
-@Char        .ds 1
-@Row         .ds 1
+            jmp     @CmdLoop
 
-@TempPrint   .ds 10
+@Check_Int16:
+            cmp     #INT16
+            bne     @Check_Fix16
+
+; Print Int16
+            jsr     @GetWordFromPtr
+            lda     @Word
+            sta     TEMP16
+            lda     @Word + 1
+            sta     TEMP16 + 1
+            jsr     PRINT_INT16
+
+            jmp     @CmdLoop
+
+@Check_Fix16:
+            cmp     #FIX16
+            bne     @Check_Int8_I
+
+; Print Fix16
+            jsr     @GetPtr
+            lda     @Ptr
+            sta     FIXPTR
+            lda     @Ptr + 1
+            sta     FIXPTR + 1
+            jsr     PRINT_FIX16
+
+            jmp     @CmdLoop
+
+@Check_Int8_I:
+            cmp     #INT8_I
+            bne     @Check_Int16_Hex
+
+; Print Int8 immediate (not a var)
+            jsr     @GetNextByte
+            lda     @Char
+            sta     TEMP16
+            lda     #0
+            sta     TEMP16 + 1
+            jsr     PRINT_INT16
+
+            jmp     @CmdLoop
+
+@Check_Int16_Hex:
+            cmp     #INT16_HEX
+            bne     @Check_VRT_Array
+
+; Print Int16_Hex
+            jsr     @GetWordFromPtr
+            lda     @Word
+            sta     TEMP16
+            lda     @Word + 1
+            sta     TEMP16 + 1
+            jsr     PRINT_INT16_HEX
+
+            jmp     @CmdLoop
+
+@Check_VRT_Array:
+            cmp     #VRT_ARRAY
+            beq     @Print_Vert_Array
+            jmp     @Check_Ptr_VRT_Array
+
+@Print_Vert_Array:
+; Print Vert Array
+            ; get the count
+            jsr     @GetByteFromPtr
+            lda     @Byte
+            sta     @VertCount
+
+            ; column for x
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_0
+
+            ; column for y
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_1
+
+            ; column for z
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_2
+
+            ; get the Vert ptr
+            jsr     @GetPtr
+            lda     @Ptr
+            sta     @VERT_PTR
+            lda     @Ptr + 1
+            sta     @VERT_PTR + 1
+
+@PrintVertex:
+            ; Initialize counters
+            lda     #0
+            sta     @INDEX
+
+@VertLoop:
+            ; Have we printed all vertices?
+            lda     @INDEX
+            cmp     @VertCount
+            bcc     @Vert_Continue
+            jmp     @Vert_Done
+
+@Vert_Continue:
+            ;------------------------------------
+            ; X coordinate - column VertCol_0
+            ;------------------------------------
+            ldx     @Row
+            ldy     @VertCol_0
+            clc
+            jsr     PLOT
+
+            lda     @VERT_PTR
+            sta     FIXPTR
+            lda     @VERT_PTR + 1
+            sta     FIXPTR + 1
+            jsr     PRINT_FIX16
+
+            ADD16I  @VERT_PTR, 4, @VERT_PTR
+
+            ;------------------------------------
+            ; Y coordinate - VertCol_1
+            ;------------------------------------
+            ldx     @ROW
+            ldy     @VertCol_1
+            clc
+            jsr     PLOT
+
+            lda     @VERT_PTR
+            sta     FIXPTR
+            lda     @VERT_PTR + 1
+            sta     FIXPTR + 1
+            jsr     PRINT_FIX16
+
+            ADD16I  @VERT_PTR, 4, @VERT_PTR
+
+            ;------------------------------------
+            ; Z coordinate - VertCol_2
+            ;------------------------------------
+            ldx     @ROW
+            ldy     @VertCol_2
+            clc
+            jsr     PLOT
+
+            lda     @VERT_PTR
+            sta     FIXPTR
+            lda     @VERT_PTR + 1
+            sta     FIXPTR + 1
+            jsr     PRINT_FIX16
+
+            ADD16I  @VERT_PTR, 8, @VERT_PTR
+
+            ; Advance counters
+            inc     @INDEX
+            inc     @ROW
+
+            jmp     @VertLoop
+
+@Vert_Done:
+            jmp     @CmdLoop
+
+@Check_Ptr_VRT_Array:
+            cmp     #VRT_PTR_ARRAY
+            beq     @Print_Vert_Ptr_Array
+            jmp     @Bad_Cmd
+
+@Print_Vert_Ptr_Array:
+            ; get the count
+            jsr     @GetByteFromPtr
+            lda     @Byte
+            sta     @VertCount
+
+            ; column for x
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_0
+
+            ; column for y
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_1
+
+            ; column for z
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_2
+
+            ; get the Vert ptr
+            jsr     @GetPtr
+            lda     @Ptr
+            sta     LOC
+            lda     @Ptr + 1
+            sta     LOC + 1
+            lda     @Ptr
+            ldy     #0
+            lda     (LOC),y
+            sta     @VERT_PTR
+            INC16   LOC
+            lda     (LOC),y
+            sta     @VERT_PTR + 1
+            jmp     @PrintVertex
+
+@Bad_Cmd:
+@Done:
+            rts
+
+@GetNextByte:
+            ldy     #0
+            lda     (TXPTR),y
+            sta     @Char
+            INC16   TXPTR
+            rts
+
+@PrintChar:
+            lda     @Char
+            sta     TEMP16
+            lda     #0
+            sta     TEMP16 + 1
+            jsr     PRINT_INT16_HEX
+            rts
+
+@GetPtr:
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @Ptr
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @Ptr + 1
+            rts
+
+@GetByteFromPtr:
+            jsr     @GetNextByte
+            lda     @Char
+            sta     LOC
+            jsr     @GetNextByte
+            lda     @Char
+            sta     LOC + 1
+            ldy     #0
+            lda     (LOC),y
+            sta     @Byte
+            rts
+
+@GetWordFromPtr:
+            jsr     @GetNextByte
+            lda     @Char
+            sta     LOC
+            jsr     @GetNextByte
+            lda     @Char
+            sta     LOC + 1
+
+            ldy     #0
+            lda     (LOC),y
+            sta     @Word
+            INC16   LOC
+            lda     (LOC),y
+            sta     @Word + 1
+            rts
+
+@Char:
+            .ds     1
+@Word:
+            .ds     2
+
+@Ptr:
+            .ds     2
+@Byte:
+            .ds     1
+
+@Row:
+            .ds     1
+@VertCount:
+            .ds     1
+@VertCol_0:
+            .ds     1
+@VertCol_1:
+            .ds     1
+@VertCol_2:
+            .ds     1
+@VERT_PTR:
+            .ds     2
+@INDEX:
+            .ds     1

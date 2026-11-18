@@ -167,7 +167,11 @@ int main(int argc, char* argv[])
             }
             
             /// Offset entry breakpoint past cartridge header if targeting CRT format.
-            auto load_address = options.cart ? assembler.load_address + 9 : assembler.load_address;
+            /// Offset = $80D if basic header
+            auto load_address = assembler.load_address;
+            if (options.cart) load_address = assembler.load_address + 9;
+            if (options.basic_hdr) load_address = 0x080D;
+            
             out << std::format("break {:04X}\n", load_address);
             out.close();  
             std::cout << std::format("Created {}\n", name);

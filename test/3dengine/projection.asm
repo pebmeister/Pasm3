@@ -196,7 +196,6 @@ PROJECTION_MATRIX:
             .word   $0000, $0001        ;  1.0
             .word   $0000, $0000        ;  0
 
-
 PROJECT_WORLD_VERTICES:
 
             ; Projection matrix

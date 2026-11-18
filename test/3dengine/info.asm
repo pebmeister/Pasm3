@@ -13,552 +13,138 @@ DrawInfo:
             sta     Border
             sta     SCREENC
 
-
-
-            lda     #<@PG_PROG
+            lda     #<@PG_INFO
             sta     TXPTR
-            lda     #>@PG_PROG
+            lda     #>@PG_INFO
             sta     TXPTR + 1
             jsr     DisplayPage
-            
             rts
-            
+@PG_INFO:
+            .byte   STRING, 147, 0
+            .byte   SETPOS, 0, 0
+            .byte   STRING, KEY_WHITE, "   ROT  SCALE     TRANSLATE", 0
 
-@PG_PROG
-            .byte SETPOS, 0, 0
-            .byte PR_STRING, KEY_WHITE, "   ROT  SCALE     TRANSLATE",0
-            .byte ENDPAGE
-            
-            
-            ldx     #0
-            ldy     #0
-            clc
-            jsr     PLOT
-            lda     #<@BNR_COLOR
-            ldy     #>@BNR_COLOR
-            jsr     SAFE_STROUT
-            lda     #<@BANNER
-            ldy     #>@BANNER
-            jsr     SAFE_STROUT
+            ; X Data 
+            .byte   SETPOS, 2, 0
+            .byte   STRING, KEY_LT_GRAY, "X", 0
+            .byte   SETPOS, 2, ROT_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   INT8
+            .word   ROT_X_ANGLE
+            .byte   SETPOS, 2, SCALE_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   FIX16
+            .word   SCALE_X
+            .byte   SETPOS, 2, TRANS_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   FIX16
+            .word   TRANS_X
 
-            lda     #2
-            sta     @ROW
+            ; Y Data
+            .byte   SETPOS, 3, 0
+            .byte   STRING, KEY_LT_GRAY, "Y", 0
+            .byte   SETPOS, 3, ROT_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   INT8
+            .word   ROT_Y_ANGLE
+            .byte   SETPOS, 3, SCALE_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   FIX16
+            .word   SCALE_Y
+            .byte   SETPOS, 3, TRANS_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   FIX16
+            .word   TRANS_Y
 
-            ; ************************************
-            ;   X
-            ; ************************************
+            ; Z Data
+            .byte   SETPOS, 4, 0
+            .byte   STRING, KEY_LT_GRAY, "Z", 0
+            .byte   SETPOS, 4, ROT_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   INT8
+            .word   ROT_Z_ANGLE
+            .byte   SETPOS, 4, SCALE_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   FIX16
+            .word   SCALE_Z
+            .byte   SETPOS, 4, TRANS_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   FIX16
+            .word   TRANS_Z
 
-            ; label
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
+            ; Misc
+            .byte   SETPOS, 6, 0
+            .byte   STRING, KEY_LT_GRAY, "ROT    DELTA   ",0
+            .byte   SETPOS, 6, MISC_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   INT8_I, ROT_DELTA
 
-            lda     #<@LBL_COLOR
-            ldy     #>@LBL_COLOR
-            jsr     SAFE_STROUT
-            lda     #<@X_MSG
-            ldy     #>@X_MSG
-            jsr     SAFE_STROUT
+            .byte   SETPOS, 7, 0
+            .byte   STRING, KEY_LT_GRAY, "SCALE  DELTA ",0
+            .byte   SETPOS, 7, MISC_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   FIX16
+            .word   SCALE_INCREMENT
 
-            ;  Rotation
-            ldx     @ROW
-            ldy     #ROT_COL
-            clc
-            jsr     PLOT
+            .byte   SETPOS, 8, 0
+            .byte   STRING, KEY_LT_GRAY, "TRANS  DELTA ",0
+            .byte   SETPOS, 8, MISC_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   FIX16
+            .word   TRANS_INCREMENT
 
-            lda     #<@ROT_COLOR
-            ldy     #>@ROT_COLOR
-            jsr     SAFE_STROUT
-            lda     ROT_X_ANGLE
-            sta     TEMP16
-            lda     #0
-            sta     TEMP16 + 1
-            jsr     PRINT_INT16
+            .byte   SETPOS, 10, 0
+            .byte   STRING, KEY_LT_GRAY, "BITMAPBASE",0
+            .byte   SETPOS, 10, MISC_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   INT16_HEX
+            .word   BITMAPBASE
 
-            ; Scale
-            ldx     @ROW
-            ldy     #SCALE_COL
-            clc
-            jsr     PLOT
+            .byte   SETPOS, 11, 0
+            .byte   STRING, KEY_LT_GRAY, "COLORBASE",0
+            .byte   SETPOS, 11, MISC_COL
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   INT16_HEX
+            .word   COLORBASE
 
-            lda     #<@SCALE_COLOR
-            ldy     #>@SCALE_COLOR
-            jsr     SAFE_STROUT
-
-            lda     #<SCALE_X
-            sta     FIXPTR
-            lda     #>SCALE_X
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; Translate
-            ldx     @ROW
-            ldy     #TRANS_COL
-            clc
-            jsr     PLOT
-
-            lda     #<@TRANS_COLOR
-            ldy     #>@TRANS_COLOR
-            jsr     SAFE_STROUT
-            lda     #<TRANS_X
-            sta     FIXPTR
-            lda     #>TRANS_X
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; ************************************
-            ;   Y
-            ; ************************************
-            inc     @ROW
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-
-            lda     #<@LBL_COLOR
-            ldy     #>@LBL_COLOR
-            jsr     SAFE_STROUT
-            lda     #<@Y_MSG
-            ldy     #>@Y_MSG
-            jsr     SAFE_STROUT
-
-            ;  Rotation
-            ldx     @ROW
-            ldy     #ROT_COL
-            clc
-            jsr     PLOT
-
-            lda     #<@ROT_COLOR
-            ldy     #>@ROT_COLOR
-            jsr     SAFE_STROUT
-            lda     ROT_Y_ANGLE
-            sta     TEMP16
-            lda     #0
-            sta     TEMP16 + 1
-            jsr     PRINT_INT16
-
-            ; Scale
-            ldx     @ROW
-            ldy     #SCALE_COL
-            clc
-            jsr     PLOT
-
-            lda     #<@SCALE_COLOR
-            ldy     #>@SCALE_COLOR
-            jsr     SAFE_STROUT
-            lda     #<SCALE_Y
-            sta     FIXPTR
-            lda     #>SCALE_Y
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; Translate
-            ldx     @ROW
-            ldy     #TRANS_COL
-            clc
-            jsr     PLOT
-
-            lda     #<@TRANS_COLOR
-            ldy     #>@TRANS_COLOR
-            jsr     SAFE_STROUT
-            lda     #<TRANS_Y
-            sta     FIXPTR
-            lda     #>TRANS_Y
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; ************************************
-            ;   Z
-            ; ************************************
-            inc     @ROW
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-
-            lda     #<@LBL_COLOR
-            ldy     #>@LBL_COLOR
-            jsr     SAFE_STROUT
-            lda     #<@Z_MSG
-            ldy     #>@Z_MSG
-            jsr     SAFE_STROUT
-
-            ;  Rotation
-            ldx     @ROW
-            ldy     #ROT_COL
-            clc
-            jsr     PLOT
-
-            lda     #<@ROT_COLOR
-            ldy     #>@ROT_COLOR
-            jsr     SAFE_STROUT
-            lda     ROT_Z_ANGLE
-            sta     TEMP16
-            lda     #0
-            sta     TEMP16 + 1
-            jsr     PRINT_INT16
-
-            ; Scale
-            ldx     @ROW
-            ldy     #SCALE_COL
-            clc
-            jsr     PLOT
-
-            lda     #<@SCALE_COLOR
-            ldy     #>@SCALE_COLOR
-            jsr     SAFE_STROUT
-            lda     #<SCALE_Z
-            sta     FIXPTR
-            lda     #>SCALE_Z
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; Translate
-            ldx     @ROW
-            ldy     #TRANS_COL
-            clc
-            jsr     PLOT
-
-            lda     #<@TRANS_COLOR
-            ldy     #>@TRANS_COLOR
-            jsr     SAFE_STROUT
-            lda     #<TRANS_Z
-            sta     FIXPTR
-            lda     #>TRANS_Z
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; ************************************
-            ;   MISC
-            ; ************************************
-            inc     @ROW
-            inc     @ROW
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-            lda     #<@LBL_COLOR
-            ldy     #>@LBL_COLOR
-            jsr     SAFE_STROUT
-
-            lda     #<@ROT_DELTA_MSG
-            ldy     #>@ROT_DELTA_MSG
-            jsr     SAFE_STROUT
-
-            ldx     @ROW
-            ldy     #MISC_COL
-            clc
-            jsr     PLOT
-
-            lda     #<@ROT_DELTA_COLOR
-            ldy     #>@ROT_DELTA_COLOR
-            jsr     SAFE_STROUT
-            lda     #<ROT_DELTA
-            sta     TEMP16
-            lda     #0
-            sta     TEMP16 + 1
-            jsr     PRINT_INT16
-
-            inc     @ROW
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-            lda     #<@LBL_COLOR
-            ldy     #>@LBL_COLOR
-            jsr     SAFE_STROUT
-
-            lda     #<@SCALE_DELTA_MSG
-            ldy     #>@SCALE_DELTA_MSG
-            jsr     SAFE_STROUT
-
-            ldx     @ROW
-            ldy     #MISC_COL
-            clc
-            jsr     PLOT
-            lda     #<@SCALE_DELTA_COLOR
-            ldy     #>@SCALE_DELTA_COLOR
-            jsr     SAFE_STROUT
-            lda     #<SCALE_INCREMENT
-            sta     FIXPTR
-            lda     #>SCALE_INCREMENT
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            inc     @ROW
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-            lda     #<@LBL_COLOR
-            ldy     #>@LBL_COLOR
-            jsr     SAFE_STROUT
-
-            lda     #<@TRANS_DELTA_MSG
-            ldy     #>@TRANS_DELTA_MSG
-            jsr     SAFE_STROUT
-
-            ldx     @ROW
-            ldy     #MISC_COL
-            clc
-            jsr     PLOT
-            lda     #<@TRAN_DELTA_COLOR
-            ldy     #>@TRAN_DELTA_COLOR
-            jsr     SAFE_STROUT
-            lda     #<TRANS_INCREMENT
-            sta     FIXPTR
-            lda     #>TRANS_INCREMENT
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            inc     @ROW
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-            lda     #<@LBL_COLOR
-            ldy     #>@LBL_COLOR
-            jsr     SAFE_STROUT
-
-            lda     #<@BITMAP_MSG
-            ldy     #>@BITMAP_MSG
-            jsr     SAFE_STROUT
-
-            ldx     @ROW
-            ldy     #MISC_COL
-            clc
-            jsr     PLOT
-            lda     #<@BITMAP_BASE_COLOR
-            ldy     #>@BITMAP_BASE_COLOR
-            jsr     SAFE_STROUT
-            lda     BITMAPBASE
-            sta     TEMP16
-            lda     BITMAPBASE + 1
-            sta     TEMP16 + 1
-            jsr     PRINT_INT16_HEX
-
-            inc     @ROW
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-            lda     #<@LBL_COLOR
-            ldy     #>@LBL_COLOR
-            jsr     SAFE_STROUT
-
-            lda     #<@COLOR_MSG
-            ldy     #>@COLOR_MSG
-            jsr     SAFE_STROUT
-
-            ldx     @ROW
-            ldy     #MISC_COL
-            clc
-            jsr     PLOT
-            lda     #<@COLOR_BASE_COLOR
-            ldy     #>@COLOR_BASE_COLOR
-            jsr     SAFE_STROUT
-            lda     COLORBASE
-            sta     TEMP16
-            lda     COLORBASE + 1
-            sta     TEMP16 + 1
-            jsr     PRINT_INT16_HEX
-            rts
-
-;                               0123456789012345678901234567890123456789
-@BANNER:
-            .byte   "   ROT  SCALE     TRANSLATE",0
-@X_MSG:
-            .byte   "X",0
-@Y_MSG:
-            .byte   "Y",0
-@Z_MSG:
-            .byte   "Z",0
-@ROT_DELTA_MSG:
-            .byte   "ROT    DELTA   ",0
-@SCALE_DELTA_MSG:
-            .byte   "SCALE  DELTA ",0
-@TRANS_DELTA_MSG:
-            .byte   "TRANS  DELTA ",0
-@BITMAP_MSG:
-            .byte   "BITMAPBASE",0
-@COLOR_MSG:
-            .byte   "COLORBASE",0
-@BNR_COLOR:
-            .byte   KEY_WHITE, 0
-@LBL_COLOR:
-            .byte   KEY_LT_GRAY, 0
-@ROT_COLOR:
-            .byte   KEY_YELLOW, 0
-@SCALE_COLOR:
-            .byte   KEY_YELLOW, 0
-@TRANS_COLOR:
-            .byte   KEY_YELLOW, 0
-@ROT_DELTA_COLOR:
-            .byte   KEY_YELLOW, 0
-@TRAN_DELTA_COLOR:
-            .byte   KEY_YELLOW, 0
-@SCALE_DELTA_COLOR:
-            .byte   KEY_YELLOW, 0
-@BITMAP_BASE_COLOR:
-            .byte   KEY_YELLOW, 0
-@COLOR_BASE_COLOR:
-            .byte   KEY_YELLOW, 0
-@ROW:
-            .byte   0
+            .byte   ENDPAGE
 
 DrawDebugInfo:
-
             lda     #COLOR_RED
             sta     Border
             sta     SCREENC
 
-            lda     MODEL_VERTICES_PTR
-            sta     @VERT_PTR
-            lda     MODEL_VERTICES_PTR + 1
-            sta     @VERT_PTR + 1
-
-            ; Print header at row 0
-            ldx     #0                  ; Row
-            ldy     #0                  ; Col
-            sec
-            jsr     PLOT
-
-            lda     #<@DGB_HDR
-            ldy     #>@DGB_HDR
-            jsr     SAFE_STROUT
-
-            lda     #1                  ; First data row (row 0 is header)
-            sta     @ROW
-            jsr     @PrintVertex
-
-            lda     #<WORLD_VERTICES
-            sta     @VERT_PTR
-            lda     #>WORLD_VERTICES
-            sta     @VERT_PTR + 1
-
-            inc     @ROW
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-
-            lda     #<@WORLD_HDR
-            ldy     #>@WORLD_HDR
-            jsr     SAFE_STROUT
-
-            lda     MODEL_VERTICES_PTR
-            sta     TEMP16
-            lda     MODEL_VERTICES_PTR + 1
-            sta     TEMP16 + 1
-            jsr     PRINT_INT16_HEX
-
-            inc     @ROW
-            inc     @ROW
-            jsr     @PrintVertex
-
+            lda     #<@PG_DEBUG
+            sta     TXPTR
+            lda     #>@PG_DEBUG
+            sta     TXPTR + 1
+            jsr     DisplayPage
             rts
 
-@PrintVertex:
-            ; Initialize counters
-            lda     #0
-            sta     @INDEX
+@PG_DEBUG:
+            .byte   STRING, 147, 0
+            .byte   SETPOS, 0, 0
+            .byte   STRING, KEY_WHITE, "ORGINAL VERTICES", 0
+            .byte   SETPOS, 1, 0
+            .byte   STRING, KEY_LT_GRAY, "X            Y            Z", 0
+            .byte   SETPOS, 3, 0
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   VRT_PTR_ARRAY
+            .word   MODEL_VERTEX_COUNT
+            .byte   0, 13, 26
+            .word   MODEL_VERTICES_PTR
 
-@VertLoop:
-            ; Have we printed all vertices?
-            lda     @INDEX
-            cmp     MODEL_VERTEX_COUNT
-            bcs     @Done
+            .byte   NEXTROW
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "WORLD VERTICES", 0
+            .byte   NEXTROW
+            .byte   STRING, KEY_LT_GRAY, "X            Y            Z", 0
+            .byte   NEXTROW
+            .byte   NEXTROW
+            .byte   STRING, KEY_YELLOW, 0
+            .byte   VRT_ARRAY
+            .word   MODEL_VERTEX_COUNT
+            .byte   0, 13, 26
+            .word   WORLD_VERTICES
 
-            ;------------------------------------
-            ; X coordinate - column 0
-            ;------------------------------------
-            ldx     @ROW
-            ldy     #0
-            clc
-            jsr     PLOT
-
-            lda     @VERT_PTR
-            sta     FIXPTR
-            lda     @VERT_PTR + 1
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; Advance pointer to Y (+4)
-            clc
-            lda     @VERT_PTR
-            adc     #4
-            sta     @VERT_PTR
-            bcc     @NoCarryY
-            inc     @VERT_PTR + 1
-@NoCarryY:
-
-            ;------------------------------------
-            ; Y coordinate - column 13
-            ;------------------------------------
-            ldx     @ROW
-            ldy     #13
-            clc
-            jsr     PLOT
-
-            lda     @VERT_PTR
-            sta     FIXPTR
-            lda     @VERT_PTR + 1
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; Advance pointer to Z (+4)
-            clc
-            lda     @VERT_PTR
-            adc     #4
-            sta     @VERT_PTR
-            bcc     @NoCarryZ
-            inc     @VERT_PTR + 1
-@NoCarryZ:
-
-            ;------------------------------------
-            ; Z coordinate - column 26
-            ;------------------------------------
-            ldx     @ROW
-            ldy     #26
-            clc
-            jsr     PLOT
-
-            lda     @VERT_PTR
-            sta     FIXPTR
-            lda     @VERT_PTR + 1
-            sta     FIXPTR + 1
-            jsr     PRINT_FIX16
-
-            ; Advance pointer past W to next vertex (+8)
-            clc
-            lda     @VERT_PTR
-            adc     #8
-            sta     @VERT_PTR
-            bcc     @NoCarryNext
-            inc     @VERT_PTR + 1
-@NoCarryNext:
-
-            ; Advance counters
-            inc     @INDEX
-            inc     @ROW
-
-            jmp     @VertLoop
-
-@Done:
-            rts
-
-;--------------------------------------------
-; Debug workspace
-;--------------------------------------------
-@VERT_PTR:
-            .ds     2
-@INDEX:
-            .ds     1
-@ROW:
-            .ds     1
-
-@WORLD_HDR:
-            .byte   KEY_YELLOW, "WORLD VERTICES  ", KEY_WHITE, 0
-@DGB_HDR:
-            .byte   KEY_WHITE, "X            Y            Z", 0
+            .byte   ENDPAGE

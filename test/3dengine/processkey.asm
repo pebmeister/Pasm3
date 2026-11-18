@@ -75,12 +75,12 @@ ProcessKey:
             cmp     #KEY_SEMICOLAN      ; Scale_ALL_Inc
             bne     @Check_Scale_All_Dec
             jmp     Scale_All_Inc
-            
+
 @Check_Scale_All_Dec:
             cmp     #KEY_COLON          ; Scale_ALL_Dec
             bne     @Check_Trans_Z_Inc
             jmp     Scale_All_Dec
-            
+
             ; =======================================================
             ; Check Set Translation
             ; =======================================================
@@ -239,23 +239,22 @@ Scale_X_Inc:
 Scale_X_Dec:
             ADD_FIX16 SCALE_X, SCALE_DECREMENT, SCALE_X
             jmp     BUILD_SCALING_MATRIX_X
-            
-            
+
             ; *************************************************************    
             ; Scale_All_Inc
             ; *************************************************************            
 Scale_All_Inc:
-            jsr Scale_Z_Inc
-            jsr Scale_Y_Inc
-            jmp Scale_X_Inc
+            jsr     Scale_Z_Inc
+            jsr     Scale_Y_Inc
+            jmp     Scale_X_Inc
 
             ; *************************************************************    
             ; Scale_All_Dec
             ; *************************************************************            
 Scale_All_Dec:
-            jsr Scale_Z_Dec
-            jsr Scale_Y_Dec
-            jmp Scale_X_Dec
+            jsr     Scale_Z_Dec
+            jsr     Scale_Y_Dec
+            jmp     Scale_X_Dec
 
             ; *************************************************************    
             ; Trans_Z_Inc
@@ -348,8 +347,6 @@ Info:
 
 @Border_Color:
             .ds     1
-
-
 
             ; *************************************************************    
             ; Load_Pyramid

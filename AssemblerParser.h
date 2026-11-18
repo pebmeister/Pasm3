@@ -376,6 +376,7 @@ public:
                         elems.push_back(std::make_unique<NumberExpr>(static_cast<uint8_t>(by)));
                     }
                     statements.push_back(std::make_unique<DataStatement>(dir_tok.file, dir_tok.line, DataWidth::Byte, std::move(elems)));
+                    options.basic_hdr = true;
                 }
                 
                 // --- .byte, .db, .text, .word ---
