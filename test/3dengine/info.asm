@@ -25,9 +25,7 @@ DrawInfo:
             
 
 @PG_PROG
-            .byte SETROW, 0
-            .byte SETCOL, 0
-            .byte UPDATEPOS            
+            .byte SETPOS, 0, 0
             .byte PR_STRING, "   ROT  SCALE     TRANSLATE",0
             .byte ENDPAGE
             
