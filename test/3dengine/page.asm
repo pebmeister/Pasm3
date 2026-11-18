@@ -24,7 +24,6 @@ DisplayPage
         jsr @GetNextByte
         ldy @Char
         ldx @Row
-        ldy @Col
         clc
         jsr PLOT
 
