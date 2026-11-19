@@ -699,9 +699,9 @@ CONVERT_NDC_TO_SCREEN:
             lda     #>SCREEN_TEMP_RESULT
             sta     FIX16_RESULT_PTR+1
 
-            jsr     SCREEN_MUL160
+;            jsr     SCREEN_MUL160
 
-;        jsr FIX16_MUL
+            jsr FIX16_MUL
 
             ; Store integer X
             ldy     #0

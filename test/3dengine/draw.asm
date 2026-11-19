@@ -52,6 +52,7 @@ CreateProjection:
             ; jmp @Done_Transform
 
 @Done_Transform:
+            
             ; Perspective projection
             jsr     PROJECT_WORLD_VERTICES
 

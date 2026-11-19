@@ -2,17 +2,22 @@
             NEXTROW = 2
             STRING  = 3
             INT8    = 4
-            INT16   = 5
-            FIX16   = 6
-            INT8_I  = 7
-            INT16_HEX = 8
-            VRT_ARRAY = 9
-            VRT_PTR_ARRAY = 10
-
+            INT8_HEX = 5
+            INT16   = 6
+            FIX16   = 7
+            INT8_I  = 8
+            INT16_HEX = 9
+            VRT_ARRAY = 10
+            VRT_PTR_ARRAY = 11
+            BRD_C   = 12
+            SCR_C   = 13
+            TAB     = 14
+            SPC     = 15
+            CLS     = 16
+            
             ENDPAGE = $ff
 
 DisplayPage:
-
 @CmdLoop:
             jsr     @GetNextByte
             lda     @Char
@@ -72,7 +77,7 @@ DisplayPage:
 
 @Check_Int8:
             cmp     #INT8
-            bne     @Check_Int16
+            bne     @Check_Int8Hex
 
 ; Print Int8
             jsr     @GetByteFromPtr
@@ -83,6 +88,19 @@ DisplayPage:
             jsr     PRINT_INT16
 
             jmp     @CmdLoop
+
+@Check_Int8Hex:
+            cmp     #INT8_HEX
+            bne     @Check_Int16
+
+; Print Int8_Hex
+            jsr     @GetByteFromPtr
+            lda     @Byte
+            sta     TMP
+            jsr     PRINT8_HEX
+
+            jmp     @CmdLoop
+
 
 @Check_Int16:
             cmp     #INT16
@@ -193,7 +211,20 @@ DisplayPage:
             MOVE16  @VERT_PTR, FIXPTR
             jsr     PRINT_FIX16
 
-            ADD16I  @VERT_PTR, 8, @VERT_PTR
+            ADD16I  @VERT_PTR, 4, @VERT_PTR
+
+            ;------------------------------------
+            ; W coordinate - VertCol_3
+            ;------------------------------------
+            ldx     @Row
+            ldy     @VertCol_3
+            clc
+            jsr     PLOT
+
+            MOVE16  @VERT_PTR, FIXPTR
+            jsr     PRINT_FIX16
+
+            ADD16I  @VERT_PTR, 4, @VERT_PTR
 
             ; Advance counters
             inc     @INDEX
@@ -207,7 +238,7 @@ DisplayPage:
 @Check_Ptr_VRT_Array:
             cmp     #VRT_PTR_ARRAY
             beq     @Print_Vert_Ptr_Array
-            jmp     @Bad_Cmd
+            jmp     @Check_BrdC
 
 @Print_Vert_Ptr_Array:
             jsr     @Get_Vert_Params
@@ -224,6 +255,68 @@ DisplayPage:
             sta     @VERT_PTR + 1
             
             jmp     @PrintVertex
+
+@Check_BrdC:
+            cmp     #BRD_C
+            beq     @Print_BrdC
+            jmp     @Check_SrcC
+
+@Print_BrdC:
+            jsr     @GetNextByte
+            lda     @Char
+            sta     Border
+
+            jmp     @CmdLoop
+
+@Check_SrcC:
+            cmp     #SCR_C
+            beq     @Print_SrcC
+            jmp     @Check_Tab
+
+@Print_SrcC:
+            jsr     @GetNextByte
+            lda     @Char
+            sta     SCREENC
+
+            jmp     @CmdLoop
+@Check_Tab:
+            cmp     #TAB
+            bne     @Check_Spc
+            jmp     @Print_Tab
+
+@Print_Tab:
+            jsr     @GetNextByte
+            ldy     @Char
+            ldx     @Row
+            clc
+            jsr     PLOT
+            
+            jmp     @CmdLoop
+
+@Check_Spc:
+            cmp     #SPC
+            bne     @Check_Cls
+            jmp     @Print_Spc
+
+@Print_Spc:
+            jsr     PRINT_SP
+            
+            jmp     @CmdLoop
+
+@Check_Cls:
+            cmp     #CLS
+            bne     @Bad_Cmd
+            jmp     @Print_Cls
+
+@Print_Cls:
+            jsr     CLEARSCREEN
+            ldy     #0
+            ldx     #0
+            stx     @Row
+            clc
+            jsr     PLOT
+            
+            jmp     @CmdLoop
 
 @Bad_Cmd:
 @Done:
@@ -292,6 +385,11 @@ DisplayPage:
             jsr     @GetNextByte
             lda     @Char
             sta     @VertCol_2
+
+            ; column for w
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @VertCol_3
             rts
 
 @Char:
@@ -311,6 +409,8 @@ DisplayPage:
 @VertCol_1:
             .ds     1
 @VertCol_2:
+            .ds     1
+@VertCol_3:
             .ds     1
 @VERT_PTR:
             .ds     2

@@ -125,15 +125,35 @@ TEST_FACE
         sta FACE_CROSS+3
 
         ;------------------------------------
-        ; CROSS < 0 = visible
+        ; TEMP FOR DEBUGGING
         ;------------------------------------
-        lda FACE_CROSS+3
-        bmi @Visible
+        ; Save CROSS for this face
+        lda FACE_INDEX
+        asl
+        asl
+        tay
 
-        lda #0
-        ldy FACE_INDEX
-        sta CUBE_VISIBLE,y
-        rts
+        lda FACE_CROSS
+        sta FACE_CROSS_RESULTS,y
+        iny
+        lda FACE_CROSS+1
+        sta FACE_CROSS_RESULTS,y
+        iny
+        lda FACE_CROSS+2
+        sta FACE_CROSS_RESULTS,y
+        iny
+        lda FACE_CROSS+3
+        sta FACE_CROSS_RESULTS,y
+        
+        ; CROSS > 0 = visible
+        lda FACE_CROSS+3
+        bmi @Hidden
+
+        ; Zero-area faces are also hidden
+        ora FACE_CROSS+2
+        ora FACE_CROSS+1
+        ora FACE_CROSS
+        beq @Hidden
 
 @Visible
         lda #1
@@ -141,6 +161,12 @@ TEST_FACE
         sta CUBE_VISIBLE,y
         rts
 
+@Hidden
+        lda #0
+        ldy FACE_INDEX
+        sta CUBE_VISIBLE,y
+        rts
+        
         ;------------------------------------
         ; Load screen vertex
         ; Input: FACE_VERTEX_INDEX
@@ -228,3 +254,4 @@ FACE_PRODUCT_A      .ds 4
 FACE_PRODUCT_B      .ds 4
 FACE_CROSS          .ds 4
 FACE_TABLE_OFFSET   .byte 0
+FACE_CROSS_RESULTS  .ds 24
