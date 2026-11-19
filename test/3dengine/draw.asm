@@ -1,4 +1,4 @@
-; written by Paul Baxter using Pasm3
+; written by Paul Baxter with ChatGPT AI using Pasm3
 Draw:
             CALL_MAT4_MUL ROTATION_MATRIX, SCALING_MATRIX, ROT_SCALE_MATRIX
             CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX
@@ -248,7 +248,6 @@ TestFaces:
         cmp #6
         bne @FaceLoop
 @exit
-        ; stop here for testing
         rts
         
 

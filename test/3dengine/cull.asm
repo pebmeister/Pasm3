@@ -192,9 +192,7 @@ TEST_FACE
         lda #0
         sta FACE_VERTEX_Y+1
         rts
-        
- 
-        
+               
 ;********************************************
 ;* Load one screen vertex
 ;*

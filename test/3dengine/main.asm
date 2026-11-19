@@ -5,6 +5,7 @@
 ; ====================================================
 
             .basic_hdr
+
             lda     #$36
             sta     $01                 ; Configure C64 memory banking:
             ; LORAM=0, HIRAM=1, CHAREN=1
