@@ -24,38 +24,38 @@ TEST_FACE
         asl
         sta FACE_TABLE_OFFSET
 
-        ;------------------------------------
+         ;------------------------------------
         ; Load vertex 0
         ;------------------------------------
-        ldy FACE_TABLE_OFFSET
-        lda CUBE_FACES,y
-        sta FACE_VERTEX_INDEX
-        jsr @LoadVertex
-        MOVE16 FACE_VERTEX_X, FACE_X0
-        MOVE16 FACE_VERTEX_Y, FACE_Y0
+        ldy     FACE_TABLE_OFFSET
+        lda     (MODEL_FACES_PTR),y
+        sta     FACE_VERTEX_INDEX
+        jsr     @LoadVertex
+        MOVE16  FACE_VERTEX_X, FACE_X0
+        MOVE16  FACE_VERTEX_Y, FACE_Y0
 
         ;------------------------------------
         ; Load vertex 1
         ;------------------------------------
-        inc FACE_TABLE_OFFSET
-        ldy FACE_TABLE_OFFSET
-        lda CUBE_FACES,y
-        sta FACE_VERTEX_INDEX
-        jsr @LoadVertex
-        MOVE16 FACE_VERTEX_X, FACE_X1
-        MOVE16 FACE_VERTEX_Y, FACE_Y1
+        inc     FACE_TABLE_OFFSET
+        ldy     FACE_TABLE_OFFSET
+        lda     (MODEL_FACES_PTR),y
+        sta     FACE_VERTEX_INDEX
+        jsr     @LoadVertex
+        MOVE16  FACE_VERTEX_X, FACE_X1
+        MOVE16  FACE_VERTEX_Y, FACE_Y1
 
         ;------------------------------------
         ; Load vertex 2
         ;------------------------------------
-        inc FACE_TABLE_OFFSET
-        ldy FACE_TABLE_OFFSET
-        lda CUBE_FACES,y
-        sta FACE_VERTEX_INDEX
-        jsr @LoadVertex
-        MOVE16 FACE_VERTEX_X, FACE_X2
-        MOVE16 FACE_VERTEX_Y, FACE_Y2
-
+        inc     FACE_TABLE_OFFSET
+        ldy     FACE_TABLE_OFFSET
+        lda     (MODEL_FACES_PTR),y
+        sta     FACE_VERTEX_INDEX
+        jsr     @LoadVertex
+        MOVE16  FACE_VERTEX_X, FACE_X2
+        MOVE16  FACE_VERTEX_Y, FACE_Y2
+        
         ;------------------------------------
         ; DX1 = X1 - X0
         ;------------------------------------
@@ -167,6 +167,7 @@ TEST_FACE
         sta CUBE_VISIBLE,y
         rts
         
+ 
         ;------------------------------------
         ; Load screen vertex
         ; Input: FACE_VERTEX_INDEX
@@ -191,6 +192,8 @@ TEST_FACE
         lda #0
         sta FACE_VERTEX_Y+1
         rts
+        
+ 
         
 ;********************************************
 ;* Load one screen vertex

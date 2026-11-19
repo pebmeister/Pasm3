@@ -11,7 +11,7 @@
 
             ; this can be any order
             ; I keep it alphabetical
-            .inc    "cube.asm"
+            .inc    "model.asm"
             .inc    "cull.asm"
             .inc    "draw.asm"
             .inc    "gr.asm"

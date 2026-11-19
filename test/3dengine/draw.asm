@@ -4,11 +4,18 @@ Draw:
             CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX
 
             jsr     CreateProjection
-
-            jsr     TestFaces
-
             jsr     HGRCls
-            jmp     DRAW_MESH_EDGES
+
+            lda     CUR_MODEL
+            cmp     #2
+            bne     @Draw_Mesh
+            
+            jsr     TestFaces            
+            jsr     DRAW_MESH_CULL_EDGES
+            rts
+@Draw_Mesh            
+            jsr     DRAW_MESH_EDGES
+            rts
 
 Update_X_Rotation:
             jsr     ROTATION_X
@@ -67,6 +74,90 @@ CreateProjection:
             
             rts
 
+; ============================================
+; DRAW_MESH_CULL_EDGES
+; Draws edges belonging to at least one
+; visible face.
+; ============================================
+DRAW_MESH_CULL_EDGES:
+            lda     MODEL_NUM_EDGES
+            sta     DRAW_EDGE_LEFT
+            lda     #0
+            sta     DRAW_EDGE_INDEX
+
+@DrawEdge:
+            ; --------------------------------
+            ; Check adjacent face visibility
+            ; --------------------------------
+            ldy     DRAW_EDGE_INDEX
+
+            lda     (MODEL_EDGE_FACES_PTR),y
+            tax
+            lda     CUBE_VISIBLE,x
+            bne     @VisibleEdge
+
+            iny
+            lda     (MODEL_EDGE_FACES_PTR),y
+            tax
+            lda     CUBE_VISIBLE,x
+            beq     @NextEdge
+
+@VisibleEdge:
+            ; --------------------------------
+            ; Get first vertex index
+            ; --------------------------------
+            ldy     DRAW_EDGE_INDEX
+            lda     (MODEL_EDGES_PTR),y
+            sta     DRAW_VERTEX_INDEX
+
+            asl
+            clc
+            adc     DRAW_VERTEX_INDEX
+            tay
+
+            lda     SCREEN_VERTICES,y
+            sta     X0
+            iny
+            lda     SCREEN_VERTICES,y
+            sta     X0+1
+            iny
+            lda     SCREEN_VERTICES,y
+            sta     Y0
+
+            ; --------------------------------
+            ; Get second vertex index
+            ; --------------------------------
+            ldy     DRAW_EDGE_INDEX
+            iny
+            lda     (MODEL_EDGES_PTR),y
+            sta     DRAW_VERTEX_INDEX
+
+            asl
+            clc
+            adc     DRAW_VERTEX_INDEX
+            tay
+
+            lda     SCREEN_VERTICES,y
+            sta     X1
+            iny
+            lda     SCREEN_VERTICES,y
+            sta     X1+1
+            iny
+            lda     SCREEN_VERTICES,y
+            sta     Y1
+
+            jsr     CLAMP_LINE_COORDS
+            jsr     _Line
+
+@NextEdge:
+            inc     DRAW_EDGE_INDEX
+            inc     DRAW_EDGE_INDEX
+
+            dec     DRAW_EDGE_LEFT
+            bne     @DrawEdge
+
+            rts
+            
 ; ============================================
 ; DRAW_MESH_EDGES
 ; Draws all edges using generic variables:
@@ -145,7 +236,7 @@ DRAW_MESH_EDGES:
 
             rts
 
-TestFaces:
+TestFaces:        
         lda #0
         sta FACE_INDEX
 
@@ -156,7 +247,7 @@ TestFaces:
         lda FACE_INDEX
         cmp #6
         bne @FaceLoop
-
+@exit
         ; stop here for testing
         rts
         
