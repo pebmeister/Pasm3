@@ -173,10 +173,138 @@ LOAD_EDGE_ENDPOINTS:
             lda     FACE_VERTEX_Y
             sta     EDGE_Y1
         
-            jsr     @Debug
+            rts
+
+;********************************************
+; GET_FACE_SCAN_X
+;********************************************
+GET_FACE_SCAN_X:
+
+            ; Edge A -> FACE_X0
+            lda     EDGE_A_X+2
+            sta     FACE_X0
+            lda     EDGE_A_X+3
+            sta     FACE_X0+1
+
+            ; Edge B -> FACE_X1
+            lda     EDGE_B_X+2
+            sta     FACE_X1
+            lda     EDGE_B_X+3
+            sta     FACE_X1+1
 
             rts
-;            rts
+            
+;********************************************
+; INIT_FACE_SCAN
+;********************************************
+
+INIT_FACE_SCAN:
+            lda     FACE_TOP_Y
+            sta     FACE_SCAN_Y
+            rts
+
+;********************************************
+; DRAW_FACE_SCANLINES
+;********************************************
+
+DRAW_FACE_SCANLINES:
+
+@ScanLoop:
+            ; --------------------------------
+            ; Get integer X coordinates
+            ; --------------------------------
+
+            jsr     GET_FACE_SCAN_X
+
+            ; --------------------------------
+            ; Set up horizontal line
+            ; --------------------------------
+
+            lda     FACE_X0
+            sta     X0
+            lda     FACE_X0+1
+            sta     X0+1
+
+            lda     FACE_X1
+            sta     X1
+            lda     FACE_X1+1
+            sta     X1+1
+
+            lda     FACE_SCAN_Y
+            sta     Y0
+            sta     Y1
+
+            ; --------------------------------
+            ; Draw horizontal span
+            ; --------------------------------
+
+            jsr     CLAMP_LINE_COORDS
+            jsr     _Line
+
+            jmp     @Done
+
+            ; --------------------------------
+            ; Have we reached the bottom?
+            ; --------------------------------
+
+            lda     FACE_SCAN_Y
+            cmp     FACE_BOTTOM_Y
+            beq     @Done
+
+            ; --------------------------------
+            ; Advance Edge A X by its slope
+            ; --------------------------------
+
+            clc
+            lda     EDGE_A_X
+            adc     EDGE_A_SLOPE
+            sta     EDGE_A_X
+
+            lda     EDGE_A_X+1
+            adc     EDGE_A_SLOPE+1
+            sta     EDGE_A_X+1
+
+            lda     EDGE_A_X+2
+            adc     EDGE_A_SLOPE+2
+            sta     EDGE_A_X+2
+
+            lda     EDGE_A_X+3
+            adc     EDGE_A_SLOPE+3
+            sta     EDGE_A_X+3
+
+            ; --------------------------------
+            ; Advance Edge B X by its slope
+            ; --------------------------------
+
+            clc
+            lda     EDGE_B_X
+            adc     EDGE_B_SLOPE
+            sta     EDGE_B_X
+
+            lda     EDGE_B_X+1
+            adc     EDGE_B_SLOPE+1
+            sta     EDGE_B_X+1
+
+            lda     EDGE_B_X+2
+            adc     EDGE_B_SLOPE+2
+            sta     EDGE_B_X+2
+
+            lda     EDGE_B_X+3
+            adc     EDGE_B_SLOPE+3
+            sta     EDGE_B_X+3
+
+            ; --------------------------------
+            ; Next scanline
+            ; --------------------------------
+
+            inc     FACE_SCAN_Y
+            jmp     @ScanLoop
+
+@Done:
+            ; jsr  @Debug
+            rts
+            
+
 
 @Border_Color   .ds 1
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -291,7 +419,7 @@ INIT_FACE_EDGE_WALKERS:
             bne     @CopySlopeB
 
             rts
-
+            
 ;********************************************
 ;* FACE EDGE WALKER WORKSPACE
 ;********************************************
@@ -340,3 +468,5 @@ EDGE_START_POSITION:
             .byte   0
 EDGE_END_POSITION:
             .byte   0
+EDGE_A_POSITION        .byte 0
+EDGE_B_POSITION        .byte 0

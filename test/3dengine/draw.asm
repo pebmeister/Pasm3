@@ -34,10 +34,13 @@ DRAW_MESH:
             ; ---------------- Culled rendering ----------------                       
 
             jsr     TestFaces
-            ; jsr     TestFindFace
 
             jsr     HGRCls
-            jsr     DRAW_MESH_CULL_EDGES
+            jsr     InitFindFindFace
+            jsr     TestFindFace
+
+            jsr     DRAW_FACE_SCANLINES
+            ; jsr     DRAW_MESH_CULL_EDGES
             rts
 
 @Wireframe:
@@ -543,10 +546,7 @@ FIND_FACE_TOP_BOTTOM:
 
             rts
 
-;********************************************
-;* TestFindFace
-;********************************************
-TestFindFace:
+InitFindFindFace
             lda     #0
             sta     FACE_INDEX
 
@@ -554,7 +554,15 @@ TestFindFace:
             jsr     FIND_FACE_TOP_BOTTOM
             jsr     FIND_FACE_EDGE_PATHS
             jsr     INIT_FACE_EDGE_WALKERS
-
+            jsr     INIT_FACE_SCAN
+            jsr     GET_FACE_SCAN_X
+            rts
+            
+;********************************************
+;* TestFindFace
+;********************************************
+TestFindFace:
+            
             lda     Border
             sta     @Border_Color
             jsr     SwitchToText
@@ -631,40 +639,90 @@ TestFindFace:
             .word   FACE_SCAN_Y
 
             .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE A START POSITION", 0
+            .byte   STRING, KEY_WHITE, "EDGE-A-START POSITION", 0
             .byte   TAB, 25
             .byte   INT8_HEX
             .word   EDGE_A_START_POSITION
 
             .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE B START POSITION", 0
+            .byte   STRING, KEY_WHITE, "EDGE-B-START POSITION", 0
             .byte   TAB, 25
             .byte   INT8_HEX
             .word   EDGE_B_START_POSITION
 
             .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE A X", 0
+            .byte   STRING, KEY_WHITE, "EDGE-A-X", 0
             .byte   TAB, 25
             .byte   INT16_HEX
             .word   EDGE_A_X
 
             .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE B X", 0
+            .byte   STRING, KEY_WHITE, "EDGE-B-X", 0
             .byte   TAB, 25
             .byte   INT16_HEX
             .word   EDGE_B_X
 
             .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE A SLOPE", 0
+            .byte   STRING, KEY_WHITE, "EDGE-A-SLOPE", 0
             .byte   TAB, 25
             .byte   FIX16
             .word   EDGE_A_SLOPE
 
             .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE B SLOPE", 0
+            .byte   STRING, KEY_WHITE, "EDGE-B-SLOPE", 0
             .byte   TAB, 25
             .byte   FIX16
             .word   EDGE_B_SLOPE
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE-X0", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   FACE_X0
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE-X1", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   FACE_X1
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE-X0", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_X0
+            .byte   NEXTROW
+
+            .byte   STRING, KEY_WHITE, "EDGE-Y0", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_Y0
+            .byte   NEXTROW
+
+            .byte   STRING, KEY_WHITE, "EDGE-X1", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_X1
+            .byte   NEXTROW
+
+            .byte   STRING, KEY_WHITE, "EDGE-Y1", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_Y1
+            .byte   NEXTROW
+
+            .byte   STRING, KEY_WHITE, "EDGE-A-X + 2", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_A_X+2
+            .byte   NEXTROW
+
+            .byte   STRING, KEY_WHITE, "EDGE-B-X + 2", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_B_X+2
+            .byte   NEXTROW
+
 
             .byte   ENDPAGE
 
