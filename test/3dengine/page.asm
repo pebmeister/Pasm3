@@ -14,7 +14,7 @@
             TAB     = 14
             SPC     = 15
             CLS     = 16
-            
+
             ENDPAGE = $ff
 
 DisplayPage:
@@ -66,7 +66,7 @@ DisplayPage:
             lda     TXPTR
             ldy     TXPTR + 1
             jsr     SAFE_STROUT
-            
+
             ; advance TXPTR past terminating null
 @Char_Loop:
             jsr     @GetNextByte
@@ -100,7 +100,6 @@ DisplayPage:
             jsr     PRINT8_HEX
 
             jmp     @CmdLoop
-
 
 @Check_Int16:
             cmp     #INT16
@@ -253,7 +252,7 @@ DisplayPage:
             INC16   LOC
             lda     (LOC),y
             sta     @VERT_PTR + 1
-            
+
             jmp     @PrintVertex
 
 @Check_BrdC:
@@ -290,7 +289,7 @@ DisplayPage:
             ldx     @Row
             clc
             jsr     PLOT
-            
+
             jmp     @CmdLoop
 
 @Check_Spc:
@@ -300,7 +299,7 @@ DisplayPage:
 
 @Print_Spc:
             jsr     PRINT_SP
-            
+
             jmp     @CmdLoop
 
 @Check_Cls:
@@ -315,7 +314,7 @@ DisplayPage:
             stx     @Row
             clc
             jsr     PLOT
-            
+
             jmp     @CmdLoop
 
 @Bad_Cmd:
@@ -364,8 +363,8 @@ DisplayPage:
             lda     (LOC),y
             sta     @Word + 1
             rts
-            
-@Get_Vert_Params
+
+@Get_Vert_Params:
             ; get the count
             jsr     @GetByteFromPtr
             lda     @Byte

@@ -11,14 +11,16 @@
 
             ; this can be any order
             ; I keep it alphabetical
-            .inc    "model.asm"
+            .inc    "clamp.asm"
             .inc    "cull.asm"
             .inc    "draw.asm"
+            .inc    "edge.asm"
             .inc    "gr.asm"
             .inc    "info.asm"
             .inc    "key.asm"
             .inc    "mat.asm"
             .inc    "memory.asm"
+            .inc    "model.asm"
             .inc    "page.asm"
             .inc    "print.asm"
             .inc    "processkey.asm"

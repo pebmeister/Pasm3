@@ -449,8 +449,8 @@ _Plot:
 ;-------------------------------------------*
 ;*          PAGE ZERO USAGE                 *
 ;-------------------------------------------*
-;* YCOL         = PTR1        2 bytes       *
-;* COLORPTR     = TMPDATA     2 bytes       *
+;* YCOL         = 2 bytes                   *
+;* COLORPTR     = 2 bytes                   *
 ;********************************************
 CalcColorByte:
             ; YCOL holds the Y coordinate (0-199). Zero out its high byte.
@@ -485,9 +485,9 @@ CalcColorByte:
 ;-------------------------------------------*
 ;*      PAGE ZERO USAGE                     *
 ;-------------------------------------------*
-;*  LOC         = UNUSED2    2 byte         *
-;*  XCOORD      = LINNUM     2 bytes        *
-;*  TMP         = UNUSED2 + 2  2 bytes      *
+;*  LOC         = 2 byte                    *
+;*  XCOORD      = 2 bytes                   *
+;*  TMP         = 2 bytes                   *
 ;********************************************
 CalcPlot:
             ; 1. Fetch scanline base address using Y (in X register)
@@ -1093,3 +1093,4 @@ InitBitmapScanlineTables:
             cpx     #200
             bne     @InitLoop
             rts
+

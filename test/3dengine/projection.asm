@@ -701,7 +701,7 @@ CONVERT_NDC_TO_SCREEN:
 
 ;            jsr     SCREEN_MUL160
 
-            jsr FIX16_MUL
+            jsr     FIX16_MUL
 
             ; Store integer X
             ldy     #0

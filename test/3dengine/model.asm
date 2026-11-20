@@ -1,12 +1,15 @@
 ; written by Paul Baxter using Pasm3
 
+            MODEL_CUBE = 1
+            MODEL_PYRAMID = 2
+
 MODEL_CAPABILITIES:
-    ; Bit flags
-    MODEL_CAP_WIREFRAME = %00000001
-    MODEL_CAP_FACES     = %00000010
-    MODEL_CAP_CULLING   = %00000100
-    MODEL_CAP_TEXTURES  = %00001000
-    
+            ; Bit flags
+            MODEL_CAP_WIREFRAME = %00000001
+            MODEL_CAP_FACES = %00000010
+            MODEL_CAP_CULLING = %00000100
+            MODEL_CAP_TEXTURES = %00001000
+
 __CUBE_VERTICES:
             ; Vertex 0: X=-1, Y=-1, Z=-1, W=1
             .word   $0000,$FFFF
@@ -91,7 +94,6 @@ __CUBE_FACES:
             .byte   0, 4, 7, 3
             .byte   1, 2, 6, 5
 
-
 __CUBE_EDGE_FACES:
             ; Back face edges
             .byte   0, 2
@@ -110,7 +112,14 @@ __CUBE_EDGE_FACES:
             .byte   2, 5
             .byte   3, 5
             .byte   3, 4
-            
+
+__CUBE_FACE_COLORS:
+            .byte   COLOR_RED
+            .byte   COLOR_GREEN
+            .byte   COLOR_BLUE
+            .byte   COLOR_YELLOW
+            .byte   COLOR_CYAN
+            .byte   COLOR_BROWN
 
 __CUBE_VERTEX_COUNT:
             .byte   8

@@ -242,11 +242,11 @@ MODEL_EDGES_PTR:
             .ds     2                   ; .word _PYRAMID_EDGES
 
             .ds     2
-MODEL_FACES_PTR
+MODEL_FACES_PTR:
             .ds     2
-MODEL_EDGE_FACES_PTR
+MODEL_EDGE_FACES_PTR:
             .ds     2
-            
+
             *       = PC_SAVE
 
             TXPTR   = X0

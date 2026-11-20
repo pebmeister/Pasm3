@@ -394,52 +394,52 @@ PRINT_INT16_HEX:
 ;* Output: Prints $XX
 ;********************************************
 
-PRINT8_HEX
-        ldy #0
+PRINT8_HEX:
+            ldy     #0
 
-        ; Print '$' prefix
-        lda #'$'
-        sta STRING_BUF,y
-        iny
+            ; Print '$' prefix
+            lda     #'$'
+            sta     STRING_BUF,y
+            iny
 
-        ; High nibble
-        lda TMP
-        lsr
-        lsr
-        lsr
-        lsr
-        jsr @PrintNibble
+            ; High nibble
+            lda     TMP
+            lsr
+            lsr
+            lsr
+            lsr
+            jsr     @PrintNibble
 
-        ; Low nibble
-        lda TMP
-        and #$0f
-        jsr @PrintNibble
+            ; Low nibble
+            lda     TMP
+            and     #$0f
+            jsr     @PrintNibble
 
-        lda #0
-        sta STRING_BUF,y
+            lda     #0
+            sta     STRING_BUF,y
 
-        lda #<STRING_BUF
-        ldy #>STRING_BUF
-        jsr SAFE_STROUT
-        rts
+            lda     #<STRING_BUF
+            ldy     #>STRING_BUF
+            jsr     SAFE_STROUT
+            rts
 
-@PrintNibble
-        cmp #10
-        bcc @HexDigit
+@PrintNibble:
+            cmp     #10
+            bcc     @HexDigit
 
-        clc
-        adc #('A' - 10)
-        bne @StoreDigit
+            clc
+            adc     #('A' - 10)
+            bne     @StoreDigit
 
-@HexDigit
-        clc
-        adc #'0'
+@HexDigit:
+            clc
+            adc     #'0'
 
-@StoreDigit
-        sta STRING_BUF,y
-        iny
-        rts
-        
+@StoreDigit:
+            sta     STRING_BUF,y
+            iny
+            rts
+
 ; ============================================
 ; PRINT_FIX16
 ; IN: FIXPTR - Pointer to 16.16 fixed-point value
@@ -460,102 +460,102 @@ PRINT_FIX16:
 ;* zeroes and trailing fractional zeroes.   *
 ;* Preserve negative sign and decimal point.*
 ;********************************************
-TRIM_FIX_STRING
+TRIM_FIX_STRING:
 
-        ;------------------------------------
-        ; Find beginning of integer
-        ;------------------------------------
-        ldx #0
-        lda STRING_BUF
-        cmp #' '
-        bne @CheckSign
-        inx
+            ;------------------------------------
+            ; Find beginning of integer
+            ;------------------------------------
+            ldx     #0
+            lda     STRING_BUF
+            cmp     #' '
+            bne     @CheckSign
+            inx
 
-@CheckSign
-        ; Skip minus sign when locating digits
-        lda STRING_BUF,x
-        cmp #'-'
-        bne @FindInteger
-        inx
+@CheckSign:
+            ; Skip minus sign when locating digits
+            lda     STRING_BUF,x
+            cmp     #'-'
+            bne     @FindInteger
+            inx
 
-@FindInteger
-        ;------------------------------------
-        ; Skip leading integer zeroes
-        ; Keep at least one integer digit
-        ;------------------------------------
-        lda STRING_BUF,x
-        cmp #'0'
-        bne @IntegerFound
+@FindInteger:
+            ;------------------------------------
+            ; Skip leading integer zeroes
+            ; Keep at least one integer digit
+            ;------------------------------------
+            lda     STRING_BUF,x
+            cmp     #'0'
+            bne     @IntegerFound
 
-        lda STRING_BUF+1,x
-        cmp #'.'
-        beq @IntegerFound
+            lda     STRING_BUF+1,x
+            cmp     #'.'
+            beq     @IntegerFound
 
-        inx
-        jmp @FindInteger
+            inx
+            jmp     @FindInteger
 
-@IntegerFound
-        stx TMP
+@IntegerFound:
+            stx     TMP
 
-        ;------------------------------------
-        ; Shift remaining string
-        ; Preserve minus sign if negative
-        ;------------------------------------
-        ldy #0
+            ;------------------------------------
+            ; Shift remaining string
+            ; Preserve minus sign if negative
+            ;------------------------------------
+            ldy     #0
 
-        lda FMT_SIGNFLG
-        beq @PositiveShift
+            lda     FMT_SIGNFLG
+            beq     @PositiveShift
 
-        ; Negative: preserve minus sign
-        lda #'-'
-        sta STRING_BUF
-        iny
-        ldx TMP
-        jmp @Shift
+            ; Negative: preserve minus sign
+            lda     #'-'
+            sta     STRING_BUF
+            iny
+            ldx     TMP
+            jmp     @Shift
 
-@PositiveShift
-        ldx TMP
+@PositiveShift:
+            ldx     TMP
 
-@Shift
-        lda STRING_BUF,x
-        sta STRING_BUF,y
-        inx
-        iny
-        cmp #0
-        bne @Shift
+@Shift:
+            lda     STRING_BUF,x
+            sta     STRING_BUF,y
+            inx
+            iny
+            cmp     #0
+            bne     @Shift
 
-        ;------------------------------------
-        ; Find end of string
-        ;------------------------------------
-        dey
-        tya
-        tax
+            ;------------------------------------
+            ; Find end of string
+            ;------------------------------------
+            dey
+            tya
+            tax
 
-        ;------------------------------------
-        ; Trim trailing fractional zeroes
-        ;------------------------------------
-@TrimFraction
-        dex
-        lda STRING_BUF,x
-        cmp #'0'
-        beq @TrimFraction
+            ;------------------------------------
+            ; Trim trailing fractional zeroes
+            ;------------------------------------
+@TrimFraction:
+            dex
+            lda     STRING_BUF,x
+            cmp     #'0'
+            beq     @TrimFraction
 
-        ;------------------------------------
-        ; If decimal point is last, append 0
-        ;------------------------------------
-        cmp #'.'
-        bne @Terminate
+            ;------------------------------------
+            ; If decimal point is last, append 0
+            ;------------------------------------
+            cmp     #'.'
+            bne     @Terminate
 
-        inx
-        lda #'0'
-        sta STRING_BUF,x
-        inx
-        lda #0
-        sta STRING_BUF,x
-        rts
+            inx
+            lda     #'0'
+            sta     STRING_BUF,x
+            inx
+            lda     #0
+            sta     STRING_BUF,x
+            rts
 
-@Terminate
-        inx
-        lda #0
-        sta STRING_BUF,x
-        rts
+@Terminate:
+            inx
+            lda     #0
+            sta     STRING_BUF,x
+            rts

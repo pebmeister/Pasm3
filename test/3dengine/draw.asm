@@ -1,52 +1,60 @@
 ; written by Paul Baxter with ChatGPT AI using Pasm3
+
+            RENDER_WIREFRAME = 0
+            RENDER_CULLED = 1
+            RENDER_FILLED = 2
+
+RENDER_MODE:
+            .byte   RENDER_WIREFRAME
+
 Draw:
             CALL_MAT4_MUL ROTATION_MATRIX, SCALING_MATRIX, ROT_SCALE_MATRIX
             CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX
 
             jsr     CreateProjection
-            jsr     HGRCls
+            jsr     DRAW_MESH
+            rts
 
-            lda     CUR_MODEL
-            cmp     #2
-            bne     @Draw_Mesh
-            
-            jsr     TestFaces            
+DRAW_MESH:
+            lda     RENDER_MODE
+            beq     @Wireframe
+
+            cmp     #RENDER_CULLED
+            beq     @Culled
+
+            ; ---------------- Filled rendering ----------------
+            jsr     TestFaces
+
+            jsr     HGRCls
+            jsr     DRAW_MESH_FACES
             jsr     DRAW_MESH_CULL_EDGES
             rts
-@Draw_Mesh            
+
+@Culled:
+            ; ---------------- Culled rendering ----------------                       
+
+            jsr     TestFaces
+            ; jsr     TestFindFace
+
+            jsr     HGRCls
+            jsr     DRAW_MESH_CULL_EDGES
+            rts
+
+@Wireframe:
+            ; -------------- WireFrame  rendering --------------
+            jsr     HGRCls
             jsr     DRAW_MESH_EDGES
             rts
 
-Update_X_Rotation:
-            jsr     ROTATION_X
-            jmp     BUILD_ROTATION_MATRIX_X
-
-Update_Y_Rotation:
-            jsr     ROTATION_Y
-            jsr     BUILD_ROT_ZY_MATRIX
-            jmp     BUILD_ROTATION_MATRIX_X
-
-Update_Z_Rotation:
-            jsr     ROTATION_Z
-            jsr     BUILD_ROT_ZY_MATRIX
-            jmp     BUILD_ROTATION_MATRIX_X
-            rts
-
-Update_X_Translation:
-            jmp     BUILD_TRANSLATION_MATRIX_X
-
-Update_Y_Translation:
-            jmp     BUILD_TRANSLATION_MATRIX_Y
-
-Update_Z_Translation:
-            jmp     BUILD_TRANSLATION_MATRIX_Z
-
+; ============================================
+; CreateProjection
+; ============================================
 CreateProjection:
             ; Transform model vertices
             lda     CUR_MODEL
-            cmp     #1
+            cmp     #MODEL_PYRAMID
             beq     @Pyramid
-            cmp     #2
+            cmp     #MODEL_CUBE
             beq     @Cube
 
             jsr     TRANSFORM_WORLD_VERTICES
@@ -59,7 +67,7 @@ CreateProjection:
             ; jmp @Done_Transform
 
 @Done_Transform:
-            
+
             ; Perspective projection
             jsr     PROJECT_WORLD_VERTICES
 
@@ -69,9 +77,7 @@ CreateProjection:
 
             ; set to screen
             jsr     CONVERT_NDC_TO_SCREEN
-            
-            
-            
+
             rts
 
 ; ============================================
@@ -157,7 +163,7 @@ DRAW_MESH_CULL_EDGES:
             bne     @DrawEdge
 
             rts
-            
+
 ; ============================================
 ; DRAW_MESH_EDGES
 ; Draws all edges using generic variables:
@@ -236,87 +242,463 @@ DRAW_MESH_EDGES:
 
             rts
 
-TestFaces:        
-        lda #0
-        sta FACE_INDEX
-
-@FaceLoop        
-        jsr TEST_FACE
-
-        inc FACE_INDEX
-        lda FACE_INDEX
-        cmp #6
-        bne @FaceLoop
-@exit
-        rts
-        
-
-; ============================================
-; CLAMP_LINE_COORDS
-; Clamps X0, X1 to screen range 0-319 ($013F)
-; Clamps Y0, Y1 to screen range 0-199 ($C7)
-; ============================================
-CLAMP_LINE_COORDS:
-            ; --- Clamp X0 ---
-            lda     X0 + 1
-            bmi     @clamp_x0_zero
-            beq     @clamp_y0
-            cmp     #1
-            bne     @clamp_x0_max
-            lda     X0
-            cmp     #$40
-            bcc     @clamp_y0
-@clamp_x0_max:
-            lda     #<319
-            sta     X0
-            lda     #>319
-            sta     X0 + 1
-            jmp     @clamp_y0
-@clamp_x0_zero:
+TestFaces:
             lda     #0
-            sta     X0
-            sta     X0 + 1
+            sta     FACE_INDEX
 
-@clamp_y0:
-            ; --- Clamp Y0 (unsigned 0-199) ---
-            lda     Y0
-            cmp     #200
-            bcc     @clamp_x1
-            lda     #199
-            sta     Y0
+@FaceLoop:
+            jsr     TEST_FACE
 
-@clamp_x1:
-            ; --- Clamp X1 ---
-            lda     X1 + 1
-            bmi     @clamp_x1_zero
-            beq     @clamp_y1
-            cmp     #1
-            bne     @clamp_x1_max
-            lda     X1
-            cmp     #$40
-            bcc     @clamp_y1
-@clamp_x1_max:
-            lda     #<319
-            sta     X1
-            lda     #>319
-            sta     X1 + 1
-            jmp     @clamp_y1
-@clamp_x1_zero:
-            lda     #0
-            sta     X1
-            sta     X1 + 1
-
-@clamp_y1:
-            ; --- Clamp Y1 ---
-            lda     Y1
-            cmp     #200
-            bcc     @clamp_done
-            lda     #199
-            sta     Y1
-            jmp     @clamp_done
-@clamp_y1_zero:
-            lda     #0
-            sta     Y1
-
-@clamp_done:
+            inc     FACE_INDEX
+            lda     FACE_INDEX
+            cmp     #6
+            bne     @FaceLoop
+@exit:
             rts
+
+; ============================================
+; DRAW_MESH_FACES
+;
+; Draw outlines of visible faces.
+;
+; For now:
+;   6 faces
+;   4 vertices per face
+;
+; Uses:
+;   MODEL_FACES_PTR
+;   CUBE_VISIBLE
+;   SCREEN_VERTICES
+;   CLAMP_LINE_COORDS
+;   _Line
+; ============================================
+
+DRAW_MESH_FACES:
+            lda     #0
+            sta     DRAW_FACE_INDEX
+
+@FaceLoop:
+            ; --------------------------------
+            ; Skip hidden face
+            ; --------------------------------
+            ldx     DRAW_FACE_INDEX
+            lda     CUBE_VISIBLE,x
+            bne     @Continue
+            jmp     @NextFace
+@Continue:
+            ; --------------------------------
+            ; Face offset = face * 4
+            ; --------------------------------
+            lda     DRAW_FACE_INDEX
+            asl
+            asl
+            sta     DRAW_FACE_OFFSET
+
+            ; --------------------------------
+            ; Load vertex 0
+            ; --------------------------------
+            ldy     DRAW_FACE_OFFSET
+            lda     (MODEL_FACES_PTR),y
+            sta     DRAW_FACE_VERTEX
+
+            lda     DRAW_FACE_VERTEX
+            sta     FACE_VERTEX_INDEX
+            jsr     LoadVertex
+
+            MOVE16  FACE_VERTEX_X, X0
+            MOVE16  FACE_VERTEX_Y, Y0
+
+            ; Save vertex 0 as the closing point
+            MOVE16  FACE_VERTEX_X, DRAW_FACE_X0
+            MOVE16  FACE_VERTEX_Y, DRAW_FACE_Y0
+
+            ; --------------------------------
+            ; Draw vertices 0->1, 1->2, 2->3
+            ; --------------------------------
+            lda     #3
+            sta     DRAW_FACE_LEFT
+
+@EdgeLoop:
+            inc     DRAW_FACE_OFFSET
+            ldy     DRAW_FACE_OFFSET
+
+            lda     (MODEL_FACES_PTR),y
+            sta     FACE_VERTEX_INDEX
+            jsr     LoadVertex
+
+            MOVE16  FACE_VERTEX_X, X1
+            MOVE16  FACE_VERTEX_Y, Y1
+
+            jsr     CLAMP_LINE_COORDS
+            jsr     _Line
+
+            ; Current vertex becomes next X0/Y0
+            MOVE16  FACE_VERTEX_X, X0
+            MOVE16  FACE_VERTEX_Y, Y0
+
+            dec     DRAW_FACE_LEFT
+            bne     @EdgeLoop
+
+            ; --------------------------------
+            ; Close face: vertex 3 -> vertex 0
+            ; --------------------------------
+            MOVE16  DRAW_FACE_X0, X1
+            MOVE16  DRAW_FACE_Y0, Y1
+
+            jsr     CLAMP_LINE_COORDS
+            jsr     _Line
+
+@NextFace:
+            inc     DRAW_FACE_INDEX
+            lda     DRAW_FACE_INDEX
+            cmp     #6
+            beq     @Exit
+            jmp     @FaceLoop
+@Exit:
+            rts
+
+; ============================================
+; DRAW_MESH_FACE_OUTLINES
+;
+; Draw outlines of visible faces.
+;
+; For now:
+;   6 faces
+;   4 vertices per face
+;
+; Uses:
+;   MODEL_FACES_PTR
+;   CUBE_VISIBLE
+;   SCREEN_VERTICES
+;   CLAMP_LINE_COORDS
+;   _Line
+; ============================================
+DRAW_MESH_FACE_OUTLINES:
+            lda     #0
+            sta     DRAW_FACE_INDEX
+
+@FaceLoop:
+            ; --------------------------------
+            ; Skip hidden face
+            ; --------------------------------
+            ldx     DRAW_FACE_INDEX
+            lda     CUBE_VISIBLE,x
+            bne     @Continue
+            jmp     @NextFace
+@Continue:
+            ; --------------------------------
+            ; Face offset = face * 4
+            ; --------------------------------
+            lda     DRAW_FACE_INDEX
+            asl
+            asl
+            sta     DRAW_FACE_OFFSET
+
+            ; --------------------------------
+            ; Load vertex 0
+            ; --------------------------------
+            ldy     DRAW_FACE_OFFSET
+            lda     (MODEL_FACES_PTR),y
+            sta     DRAW_FACE_VERTEX
+
+            lda     DRAW_FACE_VERTEX
+            sta     FACE_VERTEX_INDEX
+            jsr     LoadVertex
+
+            MOVE16  FACE_VERTEX_X, X0
+            MOVE16  FACE_VERTEX_Y, Y0
+
+            ; Save vertex 0 as the closing point
+            MOVE16  FACE_VERTEX_X, DRAW_FACE_X0
+            MOVE16  FACE_VERTEX_Y, DRAW_FACE_Y0
+
+            ; --------------------------------
+            ; Draw vertices 0->1, 1->2, 2->3
+            ; --------------------------------
+            lda     #3
+            sta     DRAW_FACE_LEFT
+
+@EdgeLoop:
+            inc     DRAW_FACE_OFFSET
+            ldy     DRAW_FACE_OFFSET
+
+            lda     (MODEL_FACES_PTR),y
+            sta     FACE_VERTEX_INDEX
+            jsr     LoadVertex
+
+            MOVE16  FACE_VERTEX_X, X1
+            MOVE16  FACE_VERTEX_Y, Y1
+
+            jsr     CLAMP_LINE_COORDS
+            jsr     _Line
+
+            ; Current vertex becomes next X0/Y0
+            MOVE16  FACE_VERTEX_X, X0
+            MOVE16  FACE_VERTEX_Y, Y0
+
+            dec     DRAW_FACE_LEFT
+            bne     @EdgeLoop
+
+            ; --------------------------------
+            ; Close face: vertex 3 -> vertex 0
+            ; --------------------------------
+            MOVE16  DRAW_FACE_X0, X1
+            MOVE16  DRAW_FACE_Y0, Y1
+
+            jsr     CLAMP_LINE_COORDS
+            jsr     _Line
+
+@NextFace:
+            inc     DRAW_FACE_INDEX
+            lda     DRAW_FACE_INDEX
+            cmp     #6
+            beq     @Exit
+            jmp     @FaceLoop
+@Exit:
+            rts
+
+;********************************************
+;* LOAD_FACE_VERTICES
+;*
+;* Input:
+;*   FACE_INDEX
+;*   MODEL_FACES_PTR
+;*
+;* Output:
+;*   FACE_VERTEX_LIST[0..3]
+;********************************************
+
+LOAD_FACE_VERTICES:
+
+            lda     FACE_INDEX
+            asl
+            asl
+            sta     DRAW_FACE_OFFSET
+
+            ldx     #0
+
+@LoadLoop:
+            ldy     DRAW_FACE_OFFSET
+            lda     (MODEL_FACES_PTR),y
+            sta     FACE_VERTEX_LIST,x
+
+            sta     FACE_VERTEX_INDEX
+            jsr     LoadVertex
+
+            ; Save Y coordinate for top/bottom search
+            lda     FACE_VERTEX_Y
+            sta     FACE_VERTEX_Y_LIST,x
+
+            inc     DRAW_FACE_OFFSET
+            inx
+            cpx     #4
+            bne     @LoadLoop
+
+            rts
+
+;********************************************
+;* FIND_FACE_TOP_BOTTOM
+;*
+;* Input:
+;*   FACE_VERTEX_Y_LIST
+;*
+;* Output:
+;*   FACE_TOP_POSITION
+;*   FACE_BOTTOM_POSITION
+;********************************************
+
+FIND_FACE_TOP_BOTTOM:
+
+            lda     #0
+            sta     FACE_TOP_POSITION
+            sta     FACE_BOTTOM_POSITION
+
+            lda     FACE_VERTEX_Y_LIST
+            sta     FACE_TOP_Y
+            sta     FACE_BOTTOM_Y
+
+            ldx     #1
+
+@FindLoop:
+            lda     FACE_VERTEX_Y_LIST,x
+
+            cmp     FACE_TOP_Y
+            bcs     @CheckBottom
+
+            sta     FACE_TOP_Y
+            stx     FACE_TOP_POSITION
+
+@CheckBottom:
+            lda     FACE_VERTEX_Y_LIST,x
+            cmp     FACE_BOTTOM_Y
+            bcc     @NextVertex
+
+            sta     FACE_BOTTOM_Y
+            stx     FACE_BOTTOM_POSITION
+
+@NextVertex:
+            inx
+            cpx     #4
+            bne     @FindLoop
+
+            rts
+
+;********************************************
+;* TestFindFace
+;********************************************
+TestFindFace:
+            lda     #0
+            sta     FACE_INDEX
+
+            jsr     LOAD_FACE_VERTICES
+            jsr     FIND_FACE_TOP_BOTTOM
+            jsr     FIND_FACE_EDGE_PATHS
+            jsr     INIT_FACE_EDGE_WALKERS
+
+            lda     Border
+            sta     @Border_Color
+            jsr     SwitchToText
+
+            MOVE16I TXPTR, @PG_INFO
+            jsr     DisplayPage
+
+@Loop:
+            jsr     GETIN
+            beq     @Loop
+
+            jsr     SwitchToHGR
+            lda     @Border_Color
+            sta     Border
+            rts
+
+@PG_INFO:
+            .byte   BRD_C, COLOR_BLUE
+            .byte   SCR_C, COLOR_BLUE
+            .byte   CLS
+            .byte   SETPOS, 0, 0
+            .byte   STRING, KEY_WHITE, "FACE VERTEX LIST", 0
+
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_LIST + 0
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_LIST + 1
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_LIST + 2
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_LIST + 3
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE VERTEX Y LIST", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_Y_LIST + 0
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_Y_LIST + 1
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_Y_LIST + 2
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_Y_LIST + 3
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE TOP POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_TOP_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE BOTTOM POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_BOTTOM_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE TOP Y", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_TOP_Y
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE SCAN Y", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_SCAN_Y
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE A START POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_A_START_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE B START POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_B_START_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE A X", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_A_X
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE B X", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_B_X
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE A SLOPE", 0
+            .byte   TAB, 25
+            .byte   FIX16
+            .word   EDGE_A_SLOPE
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE B SLOPE", 0
+            .byte   TAB, 25
+            .byte   FIX16
+            .word   EDGE_B_SLOPE
+
+            .byte   ENDPAGE
+
+@Border_Color:
+            .ds     1
+
+DRAW_FACE_INDEX:
+            .byte   0
+DRAW_FACE_OFFSET:
+            .byte   0
+DRAW_FACE_LEFT:
+            .byte   0
+DRAW_FACE_VERTEX:
+            .byte   0
+DRAW_FACE_X0:
+            .word   0
+DRAW_FACE_Y0:
+            .word   0
+
+FACE_VERTEX_Y_LIST:
+            .ds     4
+
+FACE_VERTEX_LIST:
+            .ds     4
+
+FACE_TOP_POSITION:
+            .byte   0
+FACE_BOTTOM_POSITION:
+            .byte   0
+
+FACE_TOP_Y:
+            .byte   0
+FACE_BOTTOM_Y:
+            .byte   0
+
+FACE_SCAN_Y:
+            .byte   0

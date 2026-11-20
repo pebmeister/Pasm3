@@ -13,10 +13,12 @@
 
             jsr     SwitchToHGR         ; Turn on graphics memory
 
-            lda     #COLOR_BLACK
-            jsr     _HGRFColor
             lda     #COLOR_YELLOW
+            jsr     _HGRFColor
+            lda     #COLOR_BLACK
             jsr     _HGRBColor
+
+            lda     #COLOR_BLACK
             sta     Border
 
             jsr     HGRCls
@@ -24,8 +26,6 @@
 
             jsr     Reset
             jsr     Load_Cube
-
-            ; jsr Debug
 
             jsr     Draw
 

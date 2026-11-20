@@ -136,31 +136,29 @@ DrawDebugInfo:
             .byte   ENDPAGE
 
 DrawCullInfo:
- 
- 
+
             MOVE16I TXPTR, @PG_CULL_DEBUG
             jmp     DisplayPage
 
+            SHOW_FACE_VISABLE = 1
+            SHOW_FACE_CROSS_RESULTS = 1
+            SHOW_SCREEN_VERTICES = 1
 
-SHOW_FACE_VISABLE = 1
-SHOW_FACE_CROSS_RESULTS = 1
-SHOW_SCREEN_VERTICES = 1
-        
 @PG_CULL_DEBUG:
             .byte   BRD_C, COLOR_WHITE
             .byte   SCR_C, COLOR_WHITE
             .byte   CLS
 
-.ifdef SHOW_FACE_VISABLE
+            .ifdef  SHOW_FACE_VISABLE
             .byte   STRING, KEY_RED, "FACE VISABLE", 0
 
             .byte   NEXTROW
             .byte   STRING, KEY_BLACK, 0
-           
+
             .byte   INT8
-            .word   CUBE_VISIBLE + 0 
+            .word   CUBE_VISIBLE + 0
             .byte   INT8
-            .word   CUBE_VISIBLE + 1            
+            .word   CUBE_VISIBLE + 1
             .byte   INT8
             .word   CUBE_VISIBLE + 2
             .byte   INT8
@@ -169,9 +167,9 @@ SHOW_SCREEN_VERTICES = 1
             .word   CUBE_VISIBLE + 4
             .byte   INT8
             .word   CUBE_VISIBLE + 5
-.endif
+            .endif
 
-.ifdef SHOW_FACE_CROSS_RESULTS
+            .ifdef  SHOW_FACE_CROSS_RESULTS
             .byte   NEXTROW
             .byte   NEXTROW
             .byte   STRING, KEY_RED, "FACE CROSS RESULTS", 0
@@ -214,12 +212,12 @@ SHOW_SCREEN_VERTICES = 1
             .byte   SPC
             .byte   INT16_HEX
             .word   FACE_CROSS_RESULTS + 22
-            
+
             .byte   NEXTROW
             .byte   NEXTROW
-.endif
- 
-.ifdef SHOW_SCREEN_VERTICES
+            .endif
+
+            .ifdef  SHOW_SCREEN_VERTICES
             .byte   STRING, KEY_RED, "SCREEN VERTICES", 0
             .byte   NEXTROW
             .byte   STRING, KEY_BLACK, 0
@@ -230,14 +228,14 @@ SHOW_SCREEN_VERTICES = 1
             .byte   INT8
             .word   SCREEN_VERTICES + 2
             .byte   NEXTROW
-            
+
             .byte   INT16
             .word   SCREEN_VERTICES + 3
             .byte   SPC
             .byte   INT8
             .word   SCREEN_VERTICES + 5
             .byte   NEXTROW
-            
+
             .byte   INT16
             .word   SCREEN_VERTICES + 6
             .byte   SPC
@@ -280,8 +278,8 @@ SHOW_SCREEN_VERTICES = 1
             .word   SCREEN_VERTICES + 23
             .byte   NEXTROW
 
-.endif
-.ifdef NDC_VERTICES
+            .endif
+            .ifdef  NDC_VERTICES
 
             .byte   STRING, KEY_RED, "NDC VERTICES", 0
             .byte   NEXTROW
@@ -293,6 +291,6 @@ SHOW_SCREEN_VERTICES = 1
             .word   MODEL_VERTEX_COUNT
             .byte   0, 9, 18, 27
             .word   NDC_VERTICES
-.endif
+            .endif
             .byte   ENDPAGE
-         
+

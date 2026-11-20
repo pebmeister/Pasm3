@@ -83,7 +83,6 @@
             KEY_SHIFT_POUND = $a9       ;
             KEY_CTRL_POUND = $1c        ;
             KEY_CBM_POUND = $a8         ;
-
             KEY_HOME = $13              ; Home
             KEY_CLR = $93               ; Clear Screen (Shift + Home)
 ; KEY_CTRL_HOME  NOTHING    ;

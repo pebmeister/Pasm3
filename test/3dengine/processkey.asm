@@ -146,7 +146,6 @@ ProcessKey:
             bne     @Check_Cull_Debug
             jmp     Debug
 
-
             ; =======================================================
             ; CullDebug
             ; =======================================================
@@ -154,7 +153,7 @@ ProcessKey:
             cmp     #KEY_T
             bne     @Check_Reset
             jmp     CullDebug
-            
+
             ; =======================================================
             ; Reset
             ; =======================================================
@@ -336,7 +335,6 @@ Debug:
             jsr     DrawDebugInfo
             jmp     Info@Loop
 
-
             ; *************************************************************    
             ; CullDebugDebug
             ; *************************************************************            
@@ -368,6 +366,30 @@ Info:
 @Border_Color:
             .ds     1
 
+Update_X_Rotation:
+            jsr     ROTATION_X
+            jmp     BUILD_ROTATION_MATRIX_X
+
+Update_Y_Rotation:
+            jsr     ROTATION_Y
+            jsr     BUILD_ROT_ZY_MATRIX
+            jmp     BUILD_ROTATION_MATRIX_X
+
+Update_Z_Rotation:
+            jsr     ROTATION_Z
+            jsr     BUILD_ROT_ZY_MATRIX
+            jmp     BUILD_ROTATION_MATRIX_X
+            rts
+
+Update_X_Translation:
+            jmp     BUILD_TRANSLATION_MATRIX_X
+
+Update_Y_Translation:
+            jmp     BUILD_TRANSLATION_MATRIX_Y
+
+Update_Z_Translation:
+            jmp     BUILD_TRANSLATION_MATRIX_Z
+
             ; *************************************************************    
             ; Load_Pyramid
             ; *************************************************************            
@@ -384,15 +406,19 @@ Load_Pyramid:
             sta     MODEL_VERTEX_COUNT
             lda     __PYRAMID_EDGE_COUNT
             sta     MODEL_NUM_EDGES
-            
+
             lda     #0
             sta     MODEL_FACES_PTR
             sta     MODEL_FACES_PTR + 1
             sta     MODEL_EDGE_FACES_PTR
             sta     MODEL_EDGE_FACES_PTR + 1
-            
-            lda     #1
+
+            lda     #MODEL_PYRAMID
             sta     CUR_MODEL
+
+            lda     #RENDER_WIREFRAME
+            sta     RENDER_MODE
+
             rts
 
             ; *************************************************************    
@@ -416,13 +442,15 @@ Load_Cube:
             sta     MODEL_FACES_PTR
             lda     #>__CUBE_FACES
             sta     MODEL_FACES_PTR + 1
- 
+
             lda     #<__CUBE_EDGE_FACES
             sta     MODEL_EDGE_FACES_PTR
             lda     #>__CUBE_EDGE_FACES
             sta     MODEL_EDGE_FACES_PTR + 1
 
-
-            lda     #2
+            lda     #MODEL_CUBE
             sta     CUR_MODEL
+
+            lda     #RENDER_CULLED
+            sta     RENDER_MODE
             rts
