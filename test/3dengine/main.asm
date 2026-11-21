@@ -11,15 +11,17 @@
             ; LORAM=0, HIRAM=1, CHAREN=1
             ; BASIC ROM disabled, KERNAL and I/O enabled.                       
 
+            lda     #COLOR_BLACK
+            sta     Border
+
+            lda     #0
+            sta     GrahicsMode
             jsr     SwitchToHGR         ; Turn on graphics memory
 
             lda     #COLOR_YELLOW
             jsr     _HGRFColor
             lda     #COLOR_BLACK
             jsr     _HGRBColor
-
-            lda     #COLOR_BLACK
-            sta     Border
 
             jsr     HGRCls
             jsr     ClearColor
@@ -33,6 +35,10 @@ MainLoop:
             jsr     GETIN
             beq     MainLoop
             jsr     ProcessKey
+
+            lda     GrahicsMode            
+            beq     MainLoop
+
             jsr     Draw
             jmp     MainLoop
 
@@ -49,6 +55,17 @@ MainLoop:
             ; ************************************
 SwitchToText:
             ; $0400–$07E7 Text screen (1000 bytes)
+            lda     GrahicsMode
+            bne     @Continue
+            rts
+
+@Continue
+            lda     #0
+            sta     GrahicsMode
+            
+            lda     Border
+            sta     BorderSV
+            
             lda     #TXT_BANK
             jsr     BankSelect
 
@@ -65,6 +82,16 @@ SwitchToText:
             ;
             ; ************************************
 SwitchToHGR:
+            lda     GrahicsMode
+            beq     @Continue
+            rts
+@Continue
+            lda     #1
+            sta     GrahicsMode
+
+            lda     BorderSV
+            sta     Border
+
             lda     #HGR_BANK
             jsr     BankSelect
 
@@ -75,3 +102,9 @@ SwitchToHGR:
 
             jsr     HGRInit
             jmp     HGROn
+
+BorderSV  
+            .ds  1
+GrahicsMode
+            .ds 1
+            

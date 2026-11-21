@@ -172,254 +172,502 @@ LOAD_EDGE_ENDPOINTS:
             sta     EDGE_X1+1
             lda     FACE_VERTEX_Y
             sta     EDGE_Y1
-        
-            rts
-
-;********************************************
-; GET_FACE_SCAN_X
-;********************************************
-GET_FACE_SCAN_X:
-
-            ; Edge A -> FACE_X0
-            lda     EDGE_A_X+2
-            sta     FACE_X0
-            lda     EDGE_A_X+3
-            sta     FACE_X0+1
-
-            ; Edge B -> FACE_X1
-            lda     EDGE_B_X+2
-            sta     FACE_X1
-            lda     EDGE_B_X+3
-            sta     FACE_X1+1
-
+       
             rts
             
+            
 ;********************************************
-; INIT_FACE_SCAN
+;* SET_EDGE_A_SEGMENT                       *
+;*                                          *
+;* EDGE_A_POSITION = current vertex         *
+;* Finds next vertex going backward.        *
+;* Skips vertices with the same Y.          *
+;*                                          *
+;* Sets:                                    *
+;*   EDGE_A_END_POSITION                    *
+;*   EDGE_A_X                              *
+;*   EDGE_A_SLOPE                          *
 ;********************************************
 
-INIT_FACE_SCAN:
-            lda     FACE_TOP_Y
-            sta     FACE_SCAN_Y
+SET_EDGE_A_SEGMENT:
+            lda FACE_WALK_POSITION
+            beq @Wrap
+
+            sec
+            sbc #1
+            jmp @Check
+
+@Wrap:
+            lda #3
+
+@Check:
+            sta EDGE_A_END_POSITION
+
+            ; Skip same-Y vertex
+            tax
+            lda FACE_VERTEX_Y_LIST,x
+
+            ldx FACE_WALK_POSITION
+            cmp FACE_VERTEX_Y_LIST,x
+            beq SET_EDGE_A_SEGMENT
+
+            ; Load this segment
+            lda FACE_WALK_POSITION
+            sta EDGE_START_POSITION
+
+            lda EDGE_A_END_POSITION
+            sta EDGE_END_POSITION
+
+            jsr LOAD_EDGE_ENDPOINTS
+            jsr CALC_EDGE_SLOPE
+
+            ; Start X
+            lda EDGE_X0
+            sta EDGE_A_X+2
+            lda EDGE_X0+1
+            sta EDGE_A_X+3
+
+            lda #0
+            sta EDGE_A_X
+            sta EDGE_A_X+1
+
+            ; Save slope
+            lda EDGE_SLOPE
+            sta EDGE_A_SLOPE
+            lda EDGE_SLOPE+1
+            sta EDGE_A_SLOPE+1
+            lda EDGE_SLOPE+2
+            sta EDGE_A_SLOPE+2
+            lda EDGE_SLOPE+3
+            sta EDGE_A_SLOPE+3
+
+            rts
+
+
+;********************************************
+;* LOAD_FACE_VERTICES
+;*
+;* Input:
+;*   FACE_INDEX
+;*   MODEL_FACES_PTR
+;*
+;* Output:
+;*   FACE_VERTEX_LIST[0..3]
+;********************************************
+
+LOAD_FACE_VERTICES:
+
+            lda     FACE_INDEX
+            asl
+            asl
+            sta     DRAW_FACE_OFFSET
+
+            ldx     #0
+
+@LoadLoop:
+            ldy     DRAW_FACE_OFFSET
+            lda     (MODEL_FACES_PTR),y
+            sta     FACE_VERTEX_LIST,x
+
+            sta     FACE_VERTEX_INDEX
+            jsr     LoadVertex
+
+            ; Save Y coordinate for top/bottom search
+            lda     FACE_VERTEX_Y
+            sta     FACE_VERTEX_Y_LIST,x
+
+            inc     DRAW_FACE_OFFSET
+            inx
+            cpx     #4
+            bne     @LoadLoop
+
             rts
 
 ;********************************************
-; DRAW_FACE_SCANLINES
+;* FIND_FACE_TOP_BOTTOM
+;*
+;* Input:
+;*   FACE_VERTEX_Y_LIST
+;*
+;* Output:
+;*   FACE_TOP_POSITION
+;*   FACE_BOTTOM_POSITION
 ;********************************************
 
-DRAW_FACE_SCANLINES:
+FIND_FACE_TOP_BOTTOM:
 
-@ScanLoop:
-            ; --------------------------------
-            ; Get integer X coordinates
-            ; --------------------------------
+            lda     #0
+            sta     FACE_TOP_POSITION
+            sta     FACE_BOTTOM_POSITION
 
-            jsr     GET_FACE_SCAN_X
+            lda     FACE_VERTEX_Y_LIST
+            sta     FACE_TOP_Y
+            sta     FACE_BOTTOM_Y
 
-            ; --------------------------------
-            ; Set up horizontal line
-            ; --------------------------------
+            ldx     #1
 
-            lda     FACE_X0
-            sta     X0
-            lda     FACE_X0+1
-            sta     X0+1
+@FindLoop:
+            lda     FACE_VERTEX_Y_LIST,x
 
-            lda     FACE_X1
-            sta     X1
-            lda     FACE_X1+1
-            sta     X1+1
+            cmp     FACE_TOP_Y
+            bcs     @CheckBottom
 
-            lda     FACE_SCAN_Y
-            sta     Y0
-            sta     Y1
+            sta     FACE_TOP_Y
+            stx     FACE_TOP_POSITION
 
-            ; --------------------------------
-            ; Draw horizontal span
-            ; --------------------------------
-
-            jsr     CLAMP_LINE_COORDS
-            jsr     _Line
-
-            jmp     @Done
-
-            ; --------------------------------
-            ; Have we reached the bottom?
-            ; --------------------------------
-
-            lda     FACE_SCAN_Y
+@CheckBottom:
+            lda     FACE_VERTEX_Y_LIST,x
             cmp     FACE_BOTTOM_Y
-            beq     @Done
+            bcc     @NextVertex
 
-            ; --------------------------------
-            ; Advance Edge A X by its slope
-            ; --------------------------------
+            sta     FACE_BOTTOM_Y
+            stx     FACE_BOTTOM_POSITION
 
-            clc
-            lda     EDGE_A_X
-            adc     EDGE_A_SLOPE
-            sta     EDGE_A_X
+@NextVertex:
+            inx
+            cpx     #4
+            bne     @FindLoop
 
-            lda     EDGE_A_X+1
-            adc     EDGE_A_SLOPE+1
-            sta     EDGE_A_X+1
+            rts            
 
-            lda     EDGE_A_X+2
-            adc     EDGE_A_SLOPE+2
-            sta     EDGE_A_X+2
-
-            lda     EDGE_A_X+3
-            adc     EDGE_A_SLOPE+3
-            sta     EDGE_A_X+3
-
-            ; --------------------------------
-            ; Advance Edge B X by its slope
-            ; --------------------------------
-
-            clc
-            lda     EDGE_B_X
-            adc     EDGE_B_SLOPE
-            sta     EDGE_B_X
-
-            lda     EDGE_B_X+1
-            adc     EDGE_B_SLOPE+1
-            sta     EDGE_B_X+1
-
-            lda     EDGE_B_X+2
-            adc     EDGE_B_SLOPE+2
-            sta     EDGE_B_X+2
-
-            lda     EDGE_B_X+3
-            adc     EDGE_B_SLOPE+3
-            sta     EDGE_B_X+3
-
-            ; --------------------------------
-            ; Next scanline
-            ; --------------------------------
-
-            inc     FACE_SCAN_Y
-            jmp     @ScanLoop
-
-@Done:
-            ; jsr  @Debug
-            rts
-            
-
-
-@Border_Color   .ds 1
-;;;;;;;;;;;;;;;;;;;;;;;
-@Debug
-            lda     Border
-            sta     @Border_Color
-            jsr     SwitchToText
-
-            MOVE16I TXPTR, @PG_INFO
-            jsr     DisplayPage
-
-@Loop:
-            jsr     GETIN
-            beq     @Loop
-
-            jsr     SwitchToHGR
-            lda     @Border_Color
-            sta     Border
-            rts
-
-@PG_INFO:
-            .byte   BRD_C, COLOR_RED
-            .byte   SCR_C, COLOR_RED
-            .byte   CLS
-            .byte   SETPOS, 0, 0
-            .byte   STRING, KEY_WHITE, "EDGE X0", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   EDGE_X0
-            .byte   NEXTROW
-
-            .byte   STRING, KEY_WHITE, "EDGE Y0", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   EDGE_Y0
-            .byte   NEXTROW
-
-            .byte   STRING, KEY_WHITE, "EDGE X1", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   EDGE_X1
-            .byte   NEXTROW
-
-            .byte   STRING, KEY_WHITE, "EDGE Y1", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   EDGE_Y1
-            .byte   NEXTROW
-            .byte   ENDPAGE
-
+;********************************************
+;* INIT_FACE_EDGE_WALKERS                   *
+;*                                          *
+;* Initialize both edge walkers at the      *
+;* top vertex of the face.                  *
+;********************************************
 
 INIT_FACE_EDGE_WALKERS:
 
             ; --------------------------------
-            ; Initialize edge A
+            ; EDGE A
+            ; Walk backward from top
             ; --------------------------------
+            lda FACE_TOP_POSITION
+            sta EDGE_A_START_POSITION
 
-            lda     EDGE_A_START_POSITION
-            sta     EDGE_START_POSITION
-            lda     EDGE_A_END_POSITION
-            sta     EDGE_END_POSITION
+            ; Previous position, wrapping 0 -> 3
+            beq @A_Wrap
 
-            jsr     LOAD_EDGE_ENDPOINTS
-            jsr     CALC_EDGE_SLOPE
+            sec
+            sbc #1
+            jmp @A_SetEnd
 
-            ; Starting X -> 16.16
-            lda     #0
-            sta     EDGE_A_X
-            sta     EDGE_A_X+1
-            lda     EDGE_X0
-            sta     EDGE_A_X+2
-            lda     EDGE_X0+1
-            sta     EDGE_A_X+3
+@A_Wrap:
+            lda #3
 
-            ; Save slope A
-            ldx     #0
-@CopySlopeA:
-            lda     EDGE_SLOPE,x
-            sta     EDGE_A_SLOPE,x
-            inx
-            cpx     #4
-            bne     @CopySlopeA
+@A_SetEnd:
+            sta EDGE_A_END_POSITION
+
+            ; Load A segment
+            lda EDGE_A_START_POSITION
+            sta EDGE_START_POSITION
+
+            lda EDGE_A_END_POSITION
+            sta EDGE_END_POSITION
+
+            jsr LOAD_EDGE_ENDPOINTS
+            jsr CALC_EDGE_SLOPE
+
+            ; A X = starting vertex X, converted
+            ; from integer to 16.16
+            lda #0
+            sta EDGE_A_X
+            sta EDGE_A_X+1
+
+            lda EDGE_X0
+            sta EDGE_A_X+2
+            lda EDGE_X0+1
+            sta EDGE_A_X+3
+
+            ; Save A slope
+            lda EDGE_SLOPE
+            sta EDGE_A_SLOPE
+            lda EDGE_SLOPE+1
+            sta EDGE_A_SLOPE+1
+            lda EDGE_SLOPE+2
+            sta EDGE_A_SLOPE+2
+            lda EDGE_SLOPE+3
+            sta EDGE_A_SLOPE+3
+
 
             ; --------------------------------
-            ; Initialize edge B
+            ; EDGE B
+            ; Walk forward from top
+            ; Skip horizontal top edge
             ; --------------------------------
+            lda FACE_TOP_POSITION
+            sta EDGE_B_START_POSITION
 
-            lda     EDGE_B_START_POSITION
-            sta     EDGE_START_POSITION
-            lda     EDGE_B_END_POSITION
-            sta     EDGE_END_POSITION
+@B_FindEnd:
+            lda EDGE_B_START_POSITION
+            cmp #3
+            beq @B_Wrap
 
-            jsr     LOAD_EDGE_ENDPOINTS
-            jsr     CALC_EDGE_SLOPE
+            clc
+            adc #1
+            jmp @B_CheckY
 
-            ; Starting X -> 16.16
-            lda     #0
-            sta     EDGE_B_X
-            sta     EDGE_B_X+1
-            lda     EDGE_X0
-            sta     EDGE_B_X+2
-            lda     EDGE_X0+1
-            sta     EDGE_B_X+3
+@B_Wrap:
+            lda #0
 
-            ; Save slope B
-            ldx     #0
-@CopySlopeB:
-            lda     EDGE_SLOPE,x
-            sta     EDGE_B_SLOPE,x
-            inx
-            cpx     #4
-            bne     @CopySlopeB
+@B_CheckY:
+            sta EDGE_B_END_POSITION
+
+            tax
+            lda FACE_VERTEX_Y_LIST,x
+
+            ldx EDGE_B_START_POSITION
+            cmp FACE_VERTEX_Y_LIST,x
+            bne @B_LoadSegment
+
+            ; Horizontal edge: move start forward
+            lda EDGE_B_END_POSITION
+            sta EDGE_B_START_POSITION
+            jmp @B_FindEnd
+
+@B_LoadSegment:
+            lda EDGE_B_START_POSITION
+            sta EDGE_START_POSITION
+
+            lda EDGE_B_END_POSITION
+            sta EDGE_END_POSITION
+
+            jsr LOAD_EDGE_ENDPOINTS
+            jsr CALC_EDGE_SLOPE
+
+            lda #0
+            sta EDGE_B_X
+            sta EDGE_B_X+1
+
+            lda EDGE_X0
+            sta EDGE_B_X+2
+            lda EDGE_X0+1
+            sta EDGE_B_X+3
+
+            lda EDGE_SLOPE
+            sta EDGE_B_SLOPE
+            lda EDGE_SLOPE+1
+            sta EDGE_B_SLOPE+1
+            lda EDGE_SLOPE+2
+            sta EDGE_B_SLOPE+2
+            lda EDGE_SLOPE+3
+            sta EDGE_B_SLOPE+3
+            rts
+
+ADVANCE_EDGE_A:
+
+            ; Current segment has ended.
+            ; New start = old end.
+            lda EDGE_A_END_POSITION
+            sta EDGE_A_START_POSITION
+
+            ; Find previous position.
+            beq @Wrap
+
+            sec
+            sbc #1
+            jmp @SetEnd
+
+@Wrap:
+            lda #3
+
+@SetEnd:
+            sta EDGE_A_END_POSITION
+
+            ; Load new segment
+            lda EDGE_A_START_POSITION
+            sta EDGE_START_POSITION
+
+            lda EDGE_A_END_POSITION
+            sta EDGE_END_POSITION
+
+            jsr LOAD_EDGE_ENDPOINTS
+            jsr CALC_EDGE_SLOPE
+
+            ; Reset A X to new segment start
+            lda #0
+            sta EDGE_A_X
+            sta EDGE_A_X+1
+
+            lda EDGE_X0
+            sta EDGE_A_X+2
+            lda EDGE_X0+1
+            sta EDGE_A_X+3
+
+            ; Save new A slope
+            lda EDGE_SLOPE
+            sta EDGE_A_SLOPE
+            lda EDGE_SLOPE+1
+            sta EDGE_A_SLOPE+1
+            lda EDGE_SLOPE+2
+            sta EDGE_A_SLOPE+2
+            lda EDGE_SLOPE+3
+            sta EDGE_A_SLOPE+3
 
             rts
-            
+
+ADVANCE_EDGE_B:
+
+            lda EDGE_B_END_POSITION
+            sta EDGE_B_START_POSITION
+
+            cmp #3
+            beq @Wrap
+
+            clc
+            adc #1
+            jmp @SetEnd
+
+@Wrap:
+            lda #0
+
+@SetEnd:
+            sta EDGE_B_END_POSITION
+
+            ; Load new segment
+            lda EDGE_B_START_POSITION
+            sta EDGE_START_POSITION
+
+            lda EDGE_B_END_POSITION
+            sta EDGE_END_POSITION
+
+            jsr LOAD_EDGE_ENDPOINTS
+            jsr CALC_EDGE_SLOPE
+
+            ; Reset B X
+            lda #0
+            sta EDGE_B_X
+            sta EDGE_B_X+1
+
+            lda EDGE_X0
+            sta EDGE_B_X+2
+            lda EDGE_X0+1
+            sta EDGE_B_X+3
+
+            ; Save new B slope
+            lda EDGE_SLOPE
+            sta EDGE_B_SLOPE
+            lda EDGE_SLOPE+1
+            sta EDGE_B_SLOPE+1
+            lda EDGE_SLOPE+2
+            sta EDGE_B_SLOPE+2
+            lda EDGE_SLOPE+3
+            sta EDGE_B_SLOPE+3
+
+            rts
+
+;********************************************
+;* TEST_EDGE_A_TRANSITION                   *
+;********************************************
+TEST_EDGE_A_TRANSITION
+
+            ; Move A to the endpoint of its current segment
+            lda EDGE_A_END_POSITION
+            sta EDGE_A_START_POSITION
+
+            ; Find previous position (backward)
+            beq @Wrap
+
+            sec
+            sbc #1
+            jmp @SetEnd
+
+@Wrap:
+            lda #3
+
+@SetEnd:
+            sta EDGE_A_END_POSITION
+
+            ; Load new segment endpoints
+            lda EDGE_A_START_POSITION
+            sta EDGE_START_POSITION
+
+            lda EDGE_A_END_POSITION
+            sta EDGE_END_POSITION
+
+            jsr LOAD_EDGE_ENDPOINTS
+            jsr CALC_EDGE_SLOPE
+
+            ; Initialize A X from new starting vertex
+            lda #0
+            sta EDGE_A_X
+            sta EDGE_A_X+1
+
+            lda EDGE_X0
+            sta EDGE_A_X+2
+            lda EDGE_X0+1
+            sta EDGE_A_X+3
+
+            ; Save new slope
+            lda EDGE_SLOPE
+            sta EDGE_A_SLOPE
+            lda EDGE_SLOPE+1
+            sta EDGE_A_SLOPE+1
+            lda EDGE_SLOPE+2
+            sta EDGE_A_SLOPE+2
+            lda EDGE_SLOPE+3
+            sta EDGE_A_SLOPE+3
+
+            rts
+                        
+;********************************************
+;* TEST_EDGE_B_TRANSITION                   *
+;*                                          *
+;* Advance edge B to its next segment       *
+;********************************************
+
+TEST_EDGE_B_TRANSITION:
+
+            ; Move B to the endpoint of its current segment
+            lda EDGE_B_END_POSITION
+            sta EDGE_B_START_POSITION
+
+            ; Find next position (forward)
+            cmp #3
+            beq @Wrap
+
+            clc
+            adc #1
+            jmp @SetEnd
+
+@Wrap:
+            lda #0
+
+@SetEnd:
+            sta EDGE_B_END_POSITION
+
+            ; Load new segment endpoints
+            lda EDGE_B_START_POSITION
+            sta EDGE_START_POSITION
+
+            lda EDGE_B_END_POSITION
+            sta EDGE_END_POSITION
+
+            jsr LOAD_EDGE_ENDPOINTS
+            jsr CALC_EDGE_SLOPE
+
+            ; Initialize B X from new starting vertex
+            lda #0
+            sta EDGE_B_X
+            sta EDGE_B_X+1
+
+            lda EDGE_X0
+            sta EDGE_B_X+2
+            lda EDGE_X0+1
+            sta EDGE_B_X+3
+
+            ; Save new slope
+            lda EDGE_SLOPE
+            sta EDGE_B_SLOPE
+            lda EDGE_SLOPE+1
+            sta EDGE_B_SLOPE+1
+            lda EDGE_SLOPE+2
+            sta EDGE_B_SLOPE+2
+            lda EDGE_SLOPE+3
+            sta EDGE_B_SLOPE+3
+
+            rts
 ;********************************************
 ;* FACE EDGE WALKER WORKSPACE
 ;********************************************
@@ -468,5 +716,3 @@ EDGE_START_POSITION:
             .byte   0
 EDGE_END_POSITION:
             .byte   0
-EDGE_A_POSITION        .byte 0
-EDGE_B_POSITION        .byte 0

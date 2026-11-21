@@ -151,8 +151,24 @@ ProcessKey:
             ; =======================================================
 @Check_Cull_Debug:
             cmp     #KEY_T
-            bne     @Check_Reset
+            bne     @Check_Edge_Debug
             jmp     CullDebug
+
+            ; =======================================================
+            ; EdgeDebug
+            ; =======================================================
+@Check_Edge_Debug:
+            cmp     #KEY_Y
+            bne     @Check_Graphics
+            jmp     EdgeDebug
+
+            ; =======================================================
+            ; Graphics
+            ; =======================================================
+@Check_Graphics:
+            cmp     #KEY_G
+            bne     @Check_Reset
+            jmp     DisplayGraphics
 
             ; =======================================================
             ; Reset
@@ -307,6 +323,13 @@ Trans_X_Dec:
             jmp     BUILD_TRANSLATION_MATRIX_X
 
             ; *************************************************************    
+            ; DisplayGraphics
+            ; *************************************************************            
+DisplayGraphics            
+            jsr SwitchToHGR
+            rts
+            
+            ; *************************************************************    
             ; Reset
             ; *************************************************************            
 Reset:
@@ -325,46 +348,37 @@ Reset:
             SET_TRANSLATION MY_TRANS_X, MY_TRANS_Y, MY_TRANS_Z
             rts
 
+
+
             ; *************************************************************    
             ; Debug
             ; *************************************************************            
 Debug:
-            lda     Border
-            sta     Info@Border_Color
             jsr     SwitchToText
-            jsr     DrawDebugInfo
-            jmp     Info@Loop
+            jmp     DrawDebugInfo
+
+            ; *************************************************************    
+            ; Debug
+            ; *************************************************************            
+EdgeDebug:
+            jsr     SwitchToText
+            jmp     DrawEdgeInfo
+
 
             ; *************************************************************    
             ; CullDebugDebug
             ; *************************************************************            
 CullDebug:
-            lda     Border
-            sta     Info@Border_Color
             jsr     SwitchToText
-            jsr     DrawCullInfo
-            jmp     Info@Loop
+            jmp     DrawCullInfo
 
             ; *************************************************************    
             ; Info
             ; *************************************************************            
 Info:
-            lda     Border
-            sta     @Border_Color
             jsr     SwitchToText
-            jsr     DrawInfo
+            jmp     DrawInfo
 
-@Loop:
-            jsr     GETIN
-            beq     @Loop
-
-            jsr     SwitchToHGR
-            lda     @Border_Color
-            sta     Border
-            rts
-
-@Border_Color:
-            .ds     1
 
 Update_X_Rotation:
             jsr     ROTATION_X

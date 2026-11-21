@@ -13,10 +13,10 @@
             ; I keep it alphabetical
             .inc    "clamp.asm"
             .inc    "cull.asm"
+            .inc    "debug.asm"
             .inc    "draw.asm"
             .inc    "edge.asm"
             .inc    "gr.asm"
-            .inc    "info.asm"
             .inc    "key.asm"
             .inc    "mat.asm"
             .inc    "memory.asm"

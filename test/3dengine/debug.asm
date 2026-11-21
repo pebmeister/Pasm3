@@ -294,3 +294,153 @@ DrawCullInfo:
             .endif
             .byte   ENDPAGE
 
+DrawEdgeInfo:
+            jsr     BuildModel
+
+            lda     #0
+            sta     FACE_INDEX
+
+            jsr     LOAD_FACE_VERTICES
+            jsr     FIND_FACE_TOP_BOTTOM
+            jsr     FIND_FACE_EDGE_PATHS
+            jsr     INIT_FACE_EDGE_WALKERS
+            jsr     TEST_EDGE_B_TRANSITION
+
+            MOVE16I TXPTR, @PG_EDGE_INFO
+            jmp     DisplayPage
+
+@PG_EDGE_INFO:
+            .byte   BRD_C, COLOR_BLUE
+            .byte   SCR_C, COLOR_BLUE
+            .byte   CLS
+            .byte   SETPOS, 0, 0
+            .byte   STRING, KEY_WHITE, "FACE VERTEX LIST", 0
+
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_LIST + 0
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_LIST + 1
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_LIST + 2
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_LIST + 3
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE VERTEX Y LIST", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_Y_LIST + 0
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_Y_LIST + 1
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_Y_LIST + 2
+            .byte   SPC
+            .byte   INT8_HEX
+            .word   FACE_VERTEX_Y_LIST + 3
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE TOP POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_TOP_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE BOTTOM POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_BOTTOM_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE TOP Y", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_TOP_Y
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "FACE SCAN Y", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   FACE_SCAN_Y
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE A START POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_A_START_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE B START POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_B_START_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE A X", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_A_X + 2
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE B X", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_B_X + 2
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE A SLOPE", 0
+            .byte   TAB, 25
+            .byte   FIX16
+            .word   EDGE_A_SLOPE
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE B SLOPE", 0
+            .byte   TAB, 25
+            .byte   FIX16
+            .word   EDGE_B_SLOPE
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE A END POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_A_END_POSITION
+
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE B END POSITION", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_B_END_POSITION
+
+SHOW_EDGES = 1
+.ifdef SHOW_EDGES
+            .byte   NEXTROW
+            .byte   STRING, KEY_WHITE, "EDGE X0", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_X0
+            .byte   NEXTROW
+
+            .byte   STRING, KEY_WHITE, "EDGE Y0", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_Y0
+            .byte   NEXTROW
+
+            .byte   STRING, KEY_WHITE, "EDGE X1", 0
+            .byte   TAB, 25
+            .byte   INT16_HEX
+            .word   EDGE_X1
+            .byte   NEXTROW
+
+            .byte   STRING, KEY_WHITE, "EDGE Y1", 0
+            .byte   TAB, 25
+            .byte   INT8_HEX
+            .word   EDGE_Y1
+            .byte   NEXTROW
+.endif
+            .byte   ENDPAGE

@@ -4,15 +4,15 @@
             RENDER_CULLED = 1
             RENDER_FILLED = 2
 
+            
+
 RENDER_MODE:
             .byte   RENDER_WIREFRAME
 
 Draw:
-            CALL_MAT4_MUL ROTATION_MATRIX, SCALING_MATRIX, ROT_SCALE_MATRIX
-            CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX
-
-            jsr     CreateProjection
+            jsr     BuildModel
             jsr     DRAW_MESH
+ @Exit
             rts
 
 DRAW_MESH:
@@ -24,7 +24,6 @@ DRAW_MESH:
 
             ; ---------------- Filled rendering ----------------
             jsr     TestFaces
-
             jsr     HGRCls
             jsr     DRAW_MESH_FACES
             jsr     DRAW_MESH_CULL_EDGES
@@ -34,13 +33,10 @@ DRAW_MESH:
             ; ---------------- Culled rendering ----------------                       
 
             jsr     TestFaces
+            ; jsr     TestFindFace
 
             jsr     HGRCls
-            jsr     InitFindFindFace
-            jsr     TestFindFace
-
-            jsr     DRAW_FACE_SCANLINES
-            ; jsr     DRAW_MESH_CULL_EDGES
+            jsr     DRAW_MESH_CULL_EDGES
             rts
 
 @Wireframe:
@@ -460,274 +456,14 @@ DRAW_MESH_FACE_OUTLINES:
 @Exit:
             rts
 
-;********************************************
-;* LOAD_FACE_VERTICES
-;*
-;* Input:
-;*   FACE_INDEX
-;*   MODEL_FACES_PTR
-;*
-;* Output:
-;*   FACE_VERTEX_LIST[0..3]
-;********************************************
 
-LOAD_FACE_VERTICES:
+BuildModel
+            CALL_MAT4_MUL ROTATION_MATRIX, SCALING_MATRIX, ROT_SCALE_MATRIX
+            CALL_MAT4_MUL TRANSLATION_MATRIX, ROT_SCALE_MATRIX, MODEL_MATRIX
 
-            lda     FACE_INDEX
-            asl
-            asl
-            sta     DRAW_FACE_OFFSET
-
-            ldx     #0
-
-@LoadLoop:
-            ldy     DRAW_FACE_OFFSET
-            lda     (MODEL_FACES_PTR),y
-            sta     FACE_VERTEX_LIST,x
-
-            sta     FACE_VERTEX_INDEX
-            jsr     LoadVertex
-
-            ; Save Y coordinate for top/bottom search
-            lda     FACE_VERTEX_Y
-            sta     FACE_VERTEX_Y_LIST,x
-
-            inc     DRAW_FACE_OFFSET
-            inx
-            cpx     #4
-            bne     @LoadLoop
-
+            jsr     CreateProjection   
             rts
 
-;********************************************
-;* FIND_FACE_TOP_BOTTOM
-;*
-;* Input:
-;*   FACE_VERTEX_Y_LIST
-;*
-;* Output:
-;*   FACE_TOP_POSITION
-;*   FACE_BOTTOM_POSITION
-;********************************************
-
-FIND_FACE_TOP_BOTTOM:
-
-            lda     #0
-            sta     FACE_TOP_POSITION
-            sta     FACE_BOTTOM_POSITION
-
-            lda     FACE_VERTEX_Y_LIST
-            sta     FACE_TOP_Y
-            sta     FACE_BOTTOM_Y
-
-            ldx     #1
-
-@FindLoop:
-            lda     FACE_VERTEX_Y_LIST,x
-
-            cmp     FACE_TOP_Y
-            bcs     @CheckBottom
-
-            sta     FACE_TOP_Y
-            stx     FACE_TOP_POSITION
-
-@CheckBottom:
-            lda     FACE_VERTEX_Y_LIST,x
-            cmp     FACE_BOTTOM_Y
-            bcc     @NextVertex
-
-            sta     FACE_BOTTOM_Y
-            stx     FACE_BOTTOM_POSITION
-
-@NextVertex:
-            inx
-            cpx     #4
-            bne     @FindLoop
-
-            rts
-
-InitFindFindFace
-            lda     #0
-            sta     FACE_INDEX
-
-            jsr     LOAD_FACE_VERTICES
-            jsr     FIND_FACE_TOP_BOTTOM
-            jsr     FIND_FACE_EDGE_PATHS
-            jsr     INIT_FACE_EDGE_WALKERS
-            jsr     INIT_FACE_SCAN
-            jsr     GET_FACE_SCAN_X
-            rts
-            
-;********************************************
-;* TestFindFace
-;********************************************
-TestFindFace:
-            
-            lda     Border
-            sta     @Border_Color
-            jsr     SwitchToText
-
-            MOVE16I TXPTR, @PG_INFO
-            jsr     DisplayPage
-
-@Loop:
-            jsr     GETIN
-            beq     @Loop
-
-            jsr     SwitchToHGR
-            lda     @Border_Color
-            sta     Border
-            rts
-
-@PG_INFO:
-            .byte   BRD_C, COLOR_BLUE
-            .byte   SCR_C, COLOR_BLUE
-            .byte   CLS
-            .byte   SETPOS, 0, 0
-            .byte   STRING, KEY_WHITE, "FACE VERTEX LIST", 0
-
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   FACE_VERTEX_LIST + 0
-            .byte   SPC
-            .byte   INT8_HEX
-            .word   FACE_VERTEX_LIST + 1
-            .byte   SPC
-            .byte   INT8_HEX
-            .word   FACE_VERTEX_LIST + 2
-            .byte   SPC
-            .byte   INT8_HEX
-            .word   FACE_VERTEX_LIST + 3
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "FACE VERTEX Y LIST", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   FACE_VERTEX_Y_LIST + 0
-            .byte   SPC
-            .byte   INT8_HEX
-            .word   FACE_VERTEX_Y_LIST + 1
-            .byte   SPC
-            .byte   INT8_HEX
-            .word   FACE_VERTEX_Y_LIST + 2
-            .byte   SPC
-            .byte   INT8_HEX
-            .word   FACE_VERTEX_Y_LIST + 3
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "FACE TOP POSITION", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   FACE_TOP_POSITION
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "FACE BOTTOM POSITION", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   FACE_BOTTOM_POSITION
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "FACE TOP Y", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   FACE_TOP_Y
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "FACE SCAN Y", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   FACE_SCAN_Y
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE-A-START POSITION", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   EDGE_A_START_POSITION
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE-B-START POSITION", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   EDGE_B_START_POSITION
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE-A-X", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   EDGE_A_X
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE-B-X", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   EDGE_B_X
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE-A-SLOPE", 0
-            .byte   TAB, 25
-            .byte   FIX16
-            .word   EDGE_A_SLOPE
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE-B-SLOPE", 0
-            .byte   TAB, 25
-            .byte   FIX16
-            .word   EDGE_B_SLOPE
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "FACE-X0", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   FACE_X0
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "FACE-X1", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   FACE_X1
-
-            .byte   NEXTROW
-            .byte   STRING, KEY_WHITE, "EDGE-X0", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   EDGE_X0
-            .byte   NEXTROW
-
-            .byte   STRING, KEY_WHITE, "EDGE-Y0", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   EDGE_Y0
-            .byte   NEXTROW
-
-            .byte   STRING, KEY_WHITE, "EDGE-X1", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   EDGE_X1
-            .byte   NEXTROW
-
-            .byte   STRING, KEY_WHITE, "EDGE-Y1", 0
-            .byte   TAB, 25
-            .byte   INT8_HEX
-            .word   EDGE_Y1
-            .byte   NEXTROW
-
-            .byte   STRING, KEY_WHITE, "EDGE-A-X + 2", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   EDGE_A_X+2
-            .byte   NEXTROW
-
-            .byte   STRING, KEY_WHITE, "EDGE-B-X + 2", 0
-            .byte   TAB, 25
-            .byte   INT16_HEX
-            .word   EDGE_B_X+2
-            .byte   NEXTROW
-
-
-            .byte   ENDPAGE
-
-@Border_Color:
-            .ds     1
 
 DRAW_FACE_INDEX:
             .byte   0
@@ -744,19 +480,15 @@ DRAW_FACE_Y0:
 
 FACE_VERTEX_Y_LIST:
             .ds     4
-
 FACE_VERTEX_LIST:
             .ds     4
-
 FACE_TOP_POSITION:
             .byte   0
 FACE_BOTTOM_POSITION:
             .byte   0
-
 FACE_TOP_Y:
             .byte   0
 FACE_BOTTOM_Y:
             .byte   0
-
 FACE_SCAN_Y:
             .byte   0
