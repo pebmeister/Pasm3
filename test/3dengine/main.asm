@@ -54,7 +54,6 @@ MainLoop:
             ;
             ; ************************************
 SwitchToText:
-            ; $0400–$07E7 Text screen (1000 bytes)
             lda     GrahicsMode
             bne     @Continue
             rts

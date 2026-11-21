@@ -465,6 +465,6 @@ Load_Cube:
             lda     #MODEL_CUBE
             sta     CUR_MODEL
 
-            lda     #RENDER_CULLED
+            lda     #RENDER_FILLED
             sta     RENDER_MODE
             rts

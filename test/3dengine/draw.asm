@@ -5,14 +5,13 @@
             RENDER_FILLED = 2
 
             
-
 RENDER_MODE:
             .byte   RENDER_WIREFRAME
 
 Draw:
             jsr     BuildModel
             jsr     DRAW_MESH
- @Exit
+@Exit
             rts
 
 DRAW_MESH:
@@ -33,8 +32,6 @@ DRAW_MESH:
             ; ---------------- Culled rendering ----------------                       
 
             jsr     TestFaces
-            ; jsr     TestFindFace
-
             jsr     HGRCls
             jsr     DRAW_MESH_CULL_EDGES
             rts
@@ -258,18 +255,9 @@ TestFaces:
 ; ============================================
 ; DRAW_MESH_FACES
 ;
-; Draw outlines of visible faces.
+; Process visible faces.
+; Draw first scanline only (initial test).
 ;
-; For now:
-;   6 faces
-;   4 vertices per face
-;
-; Uses:
-;   MODEL_FACES_PTR
-;   CUBE_VISIBLE
-;   SCREEN_VERTICES
-;   CLAMP_LINE_COORDS
-;   _Line
 ; ============================================
 
 DRAW_MESH_FACES:
@@ -284,66 +272,65 @@ DRAW_MESH_FACES:
             lda     CUBE_VISIBLE,x
             bne     @Continue
             jmp     @NextFace
+
 @Continue:
             ; --------------------------------
-            ; Face offset = face * 4
+            ; Set current face index
             ; --------------------------------
             lda     DRAW_FACE_INDEX
-            asl
-            asl
-            sta     DRAW_FACE_OFFSET
+            sta     FACE_INDEX
 
             ; --------------------------------
-            ; Load vertex 0
+            ; Load face vertices
             ; --------------------------------
-            ldy     DRAW_FACE_OFFSET
-            lda     (MODEL_FACES_PTR),y
-            sta     DRAW_FACE_VERTEX
-
-            lda     DRAW_FACE_VERTEX
-            sta     FACE_VERTEX_INDEX
-            jsr     LoadVertex
-
-            MOVE16  FACE_VERTEX_X, X0
-            MOVE16  FACE_VERTEX_Y, Y0
-
-            ; Save vertex 0 as the closing point
-            MOVE16  FACE_VERTEX_X, DRAW_FACE_X0
-            MOVE16  FACE_VERTEX_Y, DRAW_FACE_Y0
+            jsr     LOAD_FACE_VERTICES
 
             ; --------------------------------
-            ; Draw vertices 0->1, 1->2, 2->3
+            ; Find top and bottom vertices
             ; --------------------------------
-            lda     #3
-            sta     DRAW_FACE_LEFT
-
-@EdgeLoop:
-            inc     DRAW_FACE_OFFSET
-            ldy     DRAW_FACE_OFFSET
-
-            lda     (MODEL_FACES_PTR),y
-            sta     FACE_VERTEX_INDEX
-            jsr     LoadVertex
-
-            MOVE16  FACE_VERTEX_X, X1
-            MOVE16  FACE_VERTEX_Y, Y1
-
-            jsr     CLAMP_LINE_COORDS
-            jsr     _Line
-
-            ; Current vertex becomes next X0/Y0
-            MOVE16  FACE_VERTEX_X, X0
-            MOVE16  FACE_VERTEX_Y, Y0
-
-            dec     DRAW_FACE_LEFT
-            bne     @EdgeLoop
+            jsr     FIND_FACE_TOP_BOTTOM
 
             ; --------------------------------
-            ; Close face: vertex 3 -> vertex 0
+            ; Initialize edge walkers
             ; --------------------------------
-            MOVE16  DRAW_FACE_X0, X1
-            MOVE16  DRAW_FACE_Y0, Y1
+            jsr     INIT_FACE_EDGE_WALKERS
 
+            ; --------------------------------
+            ; Initialize scanline Y
+            ; --------------------------------
+            ldx     FACE_TOP_POSITION
+            lda     FACE_VERTEX_Y_LIST,x
+            sta     FACE_SCAN_Y
+
+            ; --------------------------------
+            ; Set horizontal line X coordinates
+            ; Use integer portion of 16.16 X
+            ; --------------------------------
+            lda     EDGE_A_X+2
+            sta     X0
+            lda     EDGE_A_X+3
+            sta     X0+1
+
+            lda     EDGE_B_X+2
+            sta     X1
+            lda     EDGE_B_X+3
+            sta     X1+1
+
+            ; --------------------------------
+            ; Set horizontal line Y coordinates
+            ; --------------------------------
+            lda     FACE_SCAN_Y
+            sta     Y0
+            sta     Y1
+
+            lda     #0
+            sta     Y0+1
+            sta     Y1+1
+
+            ; --------------------------------
+            ; Draw horizontal span
+            ; --------------------------------
+@Break:
             jsr     CLAMP_LINE_COORDS
             jsr     _Line
 
@@ -353,6 +340,7 @@ DRAW_MESH_FACES:
             cmp     #6
             beq     @Exit
             jmp     @FaceLoop
+
 @Exit:
             rts
 
