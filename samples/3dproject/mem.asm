@@ -2,13 +2,14 @@
         PC_SAVE = *
 
         * = 5
+
         MAT_A_PTR           .ds 2
         MAT_B_PTR           .ds 2
         MAT_R_PTR           .ds 2
         FIX16_WORK_A        .ds 4
         FIX16_WORK_B        .ds 4
         FIX16_WORK_RESULT   .ds 4
-        FIX16_SCRATCH       .ds 8                   ; Dedicated extra room for 32-bit shifting
+        FIX16_SCRATCH       .ds 8
         FIX16_SIGN          .ds 1
         FIX16_A_PTR         .ds 2
         FIX16_B_PTR         .ds 2
@@ -27,7 +28,14 @@
         TEMP16              .ds 2
         TMP                 .ds 2
         STR_PTR             .ds 2
-            
+        ROT_OUT_PTR         .ds 2    
+        ROT_X_ANGLE         .ds 1
+        ROT_Y_ANGLE         .ds 1
+        ROT_Z_ANGLE         .ds 1       
+        ROT_XYZ_AX          .ds 1
+        ROT_XYZ_AY          .ds 1
+        ROT_XYZ_AZ          .ds 1
+        
         * = PC_SAVE
 
         FIX16_DIV_ZP =  FIX16_WORK_A

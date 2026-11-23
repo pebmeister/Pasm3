@@ -17,7 +17,6 @@ SAFE_STROUT:
             rts
 
 
-
 ; ====================================================
 ; FORMAT_FIX16 Routine (Space-padded for alignment)
 ;

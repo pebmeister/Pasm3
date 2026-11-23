@@ -704,6 +704,387 @@ VEC3_MAT4_MUL
         rts
 
 ;********************************************
+;* ROT_X_MAT4                               *
+;* Builds 4x4 Fix16 X-rotation matrix in     *
+;* (ROT_OUT_PTR) from ROT_X_ANGLE (0..255)   *
+;* Uses GET_COSINE and GET_SINE             *
+;********************************************
+ROT_X_MAT4
+        jmp @Start
+
+@COS_VAL        .ds 4
+@SIN_VAL        .ds 4
+@NEG_SIN        .ds 4
+
+@Start
+        ; Copy 64-byte identity matrix MAT_I to (ROT_OUT_PTR)
+        ldx #0
+@CopyIdLoop
+        lda MAT_I,x
+        ldy #0
+        sta (ROT_OUT_PTR),y
+        inc ROT_OUT_PTR
+        bne @NoIncHi1
+        inc ROT_OUT_PTR + 1
+@NoIncHi1
+        inx
+        cpx #64
+        bne @CopyIdLoop
+
+        ; Restore ROT_OUT_PTR back by 64 bytes
+        sec
+        lda ROT_OUT_PTR
+        sbc #64
+        sta ROT_OUT_PTR
+        lda ROT_OUT_PTR + 1
+        sbc #0
+        sta ROT_OUT_PTR + 1
+
+        ; Fetch cos(angle) and sin(angle) into 16.16 variables
+        GET_COSINE ROT_X_ANGLE, @COS_VAL
+        GET_SINE ROT_X_ANGLE, @SIN_VAL
+
+        ; Compute -sin = (~sin) + 1 (two's complement 32-bit)
+        sec
+        lda #0
+        sbc @SIN_VAL
+        sta @NEG_SIN
+        lda #0
+        sbc @SIN_VAL + 1
+        sta @NEG_SIN + 1
+        lda #0
+        sbc @SIN_VAL + 2
+        sta @NEG_SIN + 2
+        lda #0
+        sbc @SIN_VAL + 3
+        sta @NEG_SIN + 3
+
+        ; Write mat[1][1] = cos at offset +20 (16 + 4)
+        ldy #20
+        lda @COS_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[1][2] = -sin at offset +24 (16 + 8)
+        ldy #24
+        lda @NEG_SIN
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[2][1] = sin at offset +36 (32 + 4)
+        ldy #36
+        lda @SIN_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[2][2] = cos at offset +40 (32 + 8)
+        ldy #40
+        lda @COS_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        rts
+
+;********************************************
+;* ROT_Y_MAT4                               *
+;* Builds 4x4 Fix16 Y-rotation matrix in     *
+;* (ROT_OUT_PTR) from ROT_Y_ANGLE (0..255)   *
+;* Uses GET_COSINE and GET_SINE             *
+;********************************************
+ROT_Y_MAT4
+        jmp @Start
+
+@COS_VAL        .ds 4
+@SIN_VAL        .ds 4
+@NEG_SIN        .ds 4
+
+@Start
+        ; Copy 64-byte identity matrix MAT_I to (ROT_OUT_PTR)
+        ldx #0
+@CopyIdLoop
+        lda MAT_I,x
+        ldy #0
+        sta (ROT_OUT_PTR),y
+        inc ROT_OUT_PTR
+        bne @NoIncHi1
+        inc ROT_OUT_PTR + 1
+@NoIncHi1
+        inx
+        cpx #64
+        bne @CopyIdLoop
+
+        ; Restore ROT_OUT_PTR back by 64 bytes
+        sec
+        lda ROT_OUT_PTR
+        sbc #64
+        sta ROT_OUT_PTR
+        lda ROT_OUT_PTR + 1
+        sbc #0
+        sta ROT_OUT_PTR + 1
+
+        ; Fetch cos(angle) and sin(angle) into 16.16 variables
+        GET_COSINE ROT_Y_ANGLE, @COS_VAL
+        GET_SINE ROT_Y_ANGLE, @SIN_VAL
+
+        ; Compute -sin = (~sin) + 1 (two's complement 32-bit)
+        sec
+        lda #0
+        sbc @SIN_VAL
+        sta @NEG_SIN
+        lda #0
+        sbc @SIN_VAL + 1
+        sta @NEG_SIN + 1
+        lda #0
+        sbc @SIN_VAL + 2
+        sta @NEG_SIN + 2
+        lda #0
+        sbc @SIN_VAL + 3
+        sta @NEG_SIN + 3
+
+        ; Write mat[0][0] = cos at offset +0
+        ldy #0
+        lda @COS_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[0][2] = sin at offset +8
+        ldy #8
+        lda @SIN_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[2][0] = -sin at offset +32
+        ldy #32
+        lda @NEG_SIN
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[2][2] = cos at offset +40
+        ldy #40
+        lda @COS_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        rts
+
+;********************************************
+;* ROT_Z_MAT4                               *
+;* Builds 4x4 Fix16 Z-rotation matrix in     *
+;* (ROT_OUT_PTR) from ROT_Z_ANGLE (0..255)   *
+;* Uses GET_COSINE and GET_SINE             *
+;********************************************
+ROT_Z_MAT4
+        jmp @Start
+
+@COS_VAL        .ds 4
+@SIN_VAL        .ds 4
+@NEG_SIN        .ds 4
+
+@Start
+        ; Copy 64-byte identity matrix MAT_I to (ROT_OUT_PTR)
+        ldx #0
+@CopyIdLoop
+        lda MAT_I,x
+        ldy #0
+        sta (ROT_OUT_PTR),y
+        inc ROT_OUT_PTR
+        bne @NoIncHi1
+        inc ROT_OUT_PTR + 1
+@NoIncHi1
+        inx
+        cpx #64
+        bne @CopyIdLoop
+
+        ; Restore ROT_OUT_PTR back by 64 bytes
+        sec
+        lda ROT_OUT_PTR
+        sbc #64
+        sta ROT_OUT_PTR
+        lda ROT_OUT_PTR + 1
+        sbc #0
+        sta ROT_OUT_PTR + 1
+
+        ; Fetch cos(angle) and sin(angle) into 16.16 variables
+        GET_COSINE ROT_Z_ANGLE, @COS_VAL
+        GET_SINE ROT_Z_ANGLE, @SIN_VAL
+
+        ; Compute -sin = (~sin) + 1 (two's complement 32-bit)
+        sec
+        lda #0
+        sbc @SIN_VAL
+        sta @NEG_SIN
+        lda #0
+        sbc @SIN_VAL + 1
+        sta @NEG_SIN + 1
+        lda #0
+        sbc @SIN_VAL + 2
+        sta @NEG_SIN + 2
+        lda #0
+        sbc @SIN_VAL + 3
+        sta @NEG_SIN + 3
+
+        ; Write mat[0][0] = cos at offset +0
+        ldy #0
+        lda @COS_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[0][1] = -sin at offset +4
+        ldy #4
+        lda @NEG_SIN
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @NEG_SIN + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[1][0] = sin at offset +16
+        ldy #16
+        lda @SIN_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @SIN_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        ; Write mat[1][1] = cos at offset +20
+        ldy #20
+        lda @COS_VAL
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 1
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 2
+        sta (ROT_OUT_PTR),y
+        iny
+        lda @COS_VAL + 3
+        sta (ROT_OUT_PTR),y
+
+        rts
+
+;********************************************
+;* ROT_XYZ_MAT4                             *
+;* Builds ((Rx * Ry) * Rz) in (ROT_OUT_PTR) *
+;* Preserves and calls ROT_X_MAT4,          *
+;* ROT_Y_MAT4, and ROT_Z_MAT4               *
+;********************************************
+ROT_XYZ_MAT4
+        jmp @Start
+
+@MAT_RX         .ds 64
+@MAT_RY         .ds 64
+@MAT_XY         .ds 64
+@FINAL_PTR      .ds 2
+
+@Start
+        ; Save caller destination pointer so ROT_OUT_PTR can be reused
+        lda ROT_OUT_PTR
+        sta @FINAL_PTR
+        lda ROT_OUT_PTR + 1
+        sta @FINAL_PTR + 1
+
+        ; Build Rx, Ry, and Rz into dedicated buffers
+        CALL_ROT_X_MAT4 ROT_XYZ_AX, @MAT_RX
+        CALL_ROT_Y_MAT4 ROT_XYZ_AY, @MAT_RY
+
+        ; Compute @MAT_XY = @MAT_RX * @MAT_RY
+        CALL_MAT4_MUL @MAT_RX, @MAT_RY, @MAT_XY
+
+        ; Build Rz into caller output buffer, then multiply (@MAT_XY * Rz)
+        lda @FINAL_PTR
+        sta ROT_OUT_PTR
+        lda @FINAL_PTR + 1
+        sta ROT_OUT_PTR + 1
+
+        CALL_ROT_Z_MAT4 ROT_XYZ_AZ, ROT_OUT_PTR
+        CALL_MAT4_MUL @MAT_XY, @MAT_RX, @MAT_XY
+
+        rts
+        
+;********************************************
 ;* MAT_I Identity matrix
 ;********************************************
 MAT_I:

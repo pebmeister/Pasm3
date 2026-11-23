@@ -331,4 +331,86 @@
             lda     (FIXPTR),y
             sta     \2+3
             .endm        
+
+;********************************************
+;* CALL_ROT_X_MAT4                          *
+;* Build 4x4 Fix16 X-rotation matrix        *
+;* \1 Angle byte address (8-bit, 0..255)    *
+;* \2 Output 64-byte 4x4 Fix16 matrix addr  *
+;********************************************
+        .macro CALL_ROT_X_MAT4
+        lda \1
+        sta ROT_X_ANGLE
+
+        lda #<\2
+        sta ROT_OUT_PTR
+        lda #>\2
+        sta ROT_OUT_PTR + 1
+
+        jsr ROT_X_MAT4
+        .endm
+
+;********************************************
+;* CALL_ROT_Y_MAT4                          *
+;* Build 4x4 Fix16 Y-rotation matrix        *
+;* \1 Angle byte address (8-bit, 0..255)    *
+;* \2 Output 64-byte 4x4 Fix16 matrix addr  *
+;********************************************
+        .macro CALL_ROT_Y_MAT4
+        lda \1
+        sta ROT_Y_ANGLE
+
+        lda #<\2
+        sta ROT_OUT_PTR
+        lda #>\2
+        sta ROT_OUT_PTR + 1
+
+        jsr ROT_Y_MAT4
+        .endm
+
+;********************************************
+;* CALL_ROT_Z_MAT4                          *
+;* Build 4x4 Fix16 Z-rotation matrix        *
+;* \1 Angle byte address (8-bit, 0..255)    *
+;* \2 Output 64-byte 4x4 Fix16 matrix addr  *
+;********************************************
+        .macro CALL_ROT_Z_MAT4
+        lda \1
+        sta ROT_Z_ANGLE
+
+        lda #<\2
+        sta ROT_OUT_PTR
+        lda #>\2
+        sta ROT_OUT_PTR + 1
+
+        jsr ROT_Z_MAT4
+        .endm
+
+
+;********************************************
+;* CALL_ROT_XYZ_MAT4                        *
+;* Build combined 4x4 Fix16 XYZ rot matrix  *
+;* \1 X angle byte address (0..255)         *
+;* \2 Y angle byte address (0..255)         *
+;* \3 Z angle byte address (0..255)         *
+;* \4 Output 64-byte 4x4 Fix16 matrix addr  *
+;********************************************
+        .macro CALL_ROT_XYZ_MAT4
+        lda \1
+        sta ROT_XYZ_AX
+
+        lda \2
+        sta ROT_XYZ_AY
+
+        lda \3
+        sta ROT_XYZ_AZ
+
+        lda #<\4
+        sta ROT_OUT_PTR
+        lda #>\4
+        sta ROT_OUT_PTR + 1
+
+        jsr ROT_XYZ_MAT4
+        .endm
+        
 .print pop

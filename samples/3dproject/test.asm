@@ -328,3 +328,474 @@ RunVec3Mat4Test
 @TEST_VEC3_OUT
         .ds 12
         
+; --------------------------------------------
+; RunRotXTest
+; Tests CALL_ROT_X_MAT4 at angle 0 and 64
+; --------------------------------------------
+RunRotXTest
+        jmp @Start
+
+@ANGLE_0        .byte 0
+@ANGLE_64       .byte 64
+@ERR_FLAG       .ds 1
+@ROT_OUT_0      .ds 64
+@ROT_OUT_64     .ds 64
+
+@EXP_ROT_0
+        ; Row 0: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  0.0,  1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@EXP_ROT_64
+        ; Row 0: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 0.0,  0.0, -1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $FF, $FF
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@Start
+        lda #1
+        sta BORDER
+
+        lda #0
+        sta @ERR_FLAG
+
+        CALL_ROT_X_MAT4 @ANGLE_0, @ROT_OUT_0
+
+        ldx #0
+@Cmp0Loop
+        lda @ROT_OUT_0,x
+        cmp @EXP_ROT_0,x
+        beq @Match0
+
+        lda #1
+        sta @ERR_FLAG
+
+@Match0
+        inx
+        cpx #64
+        bne @Cmp0Loop
+
+        CALL_ROT_X_MAT4 @ANGLE_64, @ROT_OUT_64
+
+        ldx #0
+@Cmp64Loop
+        lda @ROT_OUT_64,x
+        cmp @EXP_ROT_64,x
+        beq @Match64
+
+        lda #1
+        sta @ERR_FLAG
+
+@Match64
+        inx
+        cpx #64
+        bne @Cmp64Loop
+
+        lda @ERR_FLAG
+        bne @Fail
+
+        lda #5
+        sta BORDER
+        jmp @Done
+
+@Fail
+        lda #2
+        sta BORDER
+
+@Done
+        rts
+        
+        
+; --------------------------------------------
+; RunRotYTest
+; Tests CALL_ROT_Y_MAT4 at angle 0 and 64
+; --------------------------------------------
+RunRotYTest
+        jmp @Start
+
+@ANGLE_0        .byte 0
+@ANGLE_64       .byte 64
+@ERR_FLAG       .ds 1
+@ROT_OUT_0      .ds 64
+@ROT_OUT_64     .ds 64
+
+@EXP_ROT_0
+        ; Row 0: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  0.0,  1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@EXP_ROT_64
+        ; Row 0: [ 0.0,  0.0,  1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [-1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $FF, $FF
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@Start
+        lda #1
+        sta BORDER
+
+        lda #0
+        sta @ERR_FLAG
+
+        CALL_ROT_Y_MAT4 @ANGLE_0, @ROT_OUT_0
+
+        ldx #0
+@Cmp0Loop
+        lda @ROT_OUT_0,x
+        cmp @EXP_ROT_0,x
+        beq @Match0
+
+        lda #1
+        sta @ERR_FLAG
+
+@Match0
+        inx
+        cpx #64
+        bne @Cmp0Loop
+
+        CALL_ROT_Y_MAT4 @ANGLE_64, @ROT_OUT_64
+
+        ldx #0
+@Cmp64Loop
+        lda @ROT_OUT_64,x
+        cmp @EXP_ROT_64,x
+        beq @Match64
+
+        lda #1
+        sta @ERR_FLAG
+
+@Match64
+        inx
+        cpx #64
+        bne @Cmp64Loop
+
+        lda @ERR_FLAG
+        bne @Fail
+
+        lda #5
+        sta BORDER
+        jmp @Done
+
+@Fail
+        lda #2
+        sta BORDER
+
+@Done
+        rts
+        
+; --------------------------------------------
+; RunRotZTest
+; Tests CALL_ROT_Z_MAT4 at angle 0 and 64
+; --------------------------------------------
+RunRotZTest
+        jmp @Start
+
+@ANGLE_0        .byte 0
+@ANGLE_64       .byte 64
+@ERR_FLAG       .ds 1
+@ROT_OUT_0      .ds 64
+@ROT_OUT_64     .ds 64
+
+@EXP_ROT_0
+        ; Row 0: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  0.0,  1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@EXP_ROT_64
+        ; Row 0: [ 0.0, -1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $FF, $FF
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  0.0,  1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@Start
+        lda #1
+        sta BORDER
+
+        lda #0
+        sta @ERR_FLAG
+
+        CALL_ROT_Z_MAT4 @ANGLE_0, @ROT_OUT_0
+
+        ldx #0
+@Cmp0Loop
+        lda @ROT_OUT_0,x
+        cmp @EXP_ROT_0,x
+        beq @Match0
+
+        lda #1
+        sta @ERR_FLAG
+
+@Match0
+        inx
+        cpx #64
+        bne @Cmp0Loop
+
+        CALL_ROT_Z_MAT4 @ANGLE_64, @ROT_OUT_64
+
+        ldx #0
+@Cmp64Loop
+        lda @ROT_OUT_64,x
+        cmp @EXP_ROT_64,x
+        beq @Match64
+
+        lda #1
+        sta @ERR_FLAG
+
+@Match64
+        inx
+        cpx #64
+        bne @Cmp64Loop
+
+        lda @ERR_FLAG
+        bne @Fail
+
+        lda #5
+        sta BORDER
+        jmp @Done
+
+@Fail
+        lda #2
+        sta BORDER
+
+@Done
+        rts
+        
+ ; --------------------------------------------
+; RunRotXyzTest
+; Tests CALL_ROT_XYZ_MAT4 with (0,0,0) and
+; (64,0,0) against 64-byte Fix16 matrices
+; --------------------------------------------
+RunRotXyzTest
+        jmp @Start
+
+@AX_ZERO        .byte 0
+@AY_ZERO        .byte 0
+@AZ_ZERO        .byte 0
+
+@AX_64          .byte 64
+@AY_0           .byte 0
+@AZ_0           .byte 0
+
+@ERR_FLAG       .ds 1
+@OUT_ZERO       .ds 64
+@OUT_X64        .ds 64
+
+@EXP_XYZ_ZERO
+        ; Row 0: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  0.0,  1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@EXP_XYZ_X64
+        ; Row 0: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 0.0,  0.0, -1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $FF, $FF
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@Start
+        lda #1
+        sta BORDER
+
+        lda #0
+        sta @ERR_FLAG
+
+        CALL_ROT_XYZ_MAT4 @AX_ZERO, @AY_ZERO, @AZ_ZERO, @OUT_ZERO
+
+        ldx #0
+@CmpZeroLoop
+        lda @OUT_ZERO,x
+        cmp @EXP_XYZ_ZERO,x
+        beq @MatchZero
+
+        lda #1
+        sta @ERR_FLAG
+
+@MatchZero
+        inx
+        cpx #64
+        bne @CmpZeroLoop
+
+        CALL_ROT_XYZ_MAT4 @AX_64, @AY_0, @AZ_0, @OUT_X64
+
+        ldx #0
+@CmpX64Loop
+        lda @OUT_X64,x
+        cmp @EXP_XYZ_X64,x
+        beq @MatchX64
+
+        lda #1
+        sta @ERR_FLAG
+
+@MatchX64
+        inx
+        cpx #64
+        bne @CmpX64Loop
+
+        lda @ERR_FLAG
+        bne @Fail
+
+        lda #5
+        sta BORDER
+        jmp @Done
+
+@Fail
+        lda #2
+        sta BORDER
+
+@Done
+        rts
