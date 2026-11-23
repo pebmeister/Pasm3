@@ -677,10 +677,10 @@ RunRotZTest
 @Done
         rts
         
- ; --------------------------------------------
+; --------------------------------------------
 ; RunRotXyzTest
-; Tests CALL_ROT_XYZ_MAT4 with (0,0,0) and
-; (64,0,0) against 64-byte Fix16 matrices
+; Tests CALL_ROT_XYZ_MAT4 with (0,0,0),
+; (64,0,0), and (64,64,0)
 ; --------------------------------------------
 RunRotXyzTest
         jmp @Start
@@ -693,9 +693,14 @@ RunRotXyzTest
 @AY_0           .byte 0
 @AZ_0           .byte 0
 
+@AX_64_B        .byte 64
+@AY_64_B        .byte 64
+@AZ_0_B         .byte 0
+
 @ERR_FLAG       .ds 1
 @OUT_ZERO       .ds 64
 @OUT_X64        .ds 64
+@OUT_XY64       .ds 64
 
 @EXP_XYZ_ZERO
         ; Row 0: [ 1.0,  0.0,  0.0,  0.0]
@@ -733,6 +738,31 @@ RunRotXyzTest
         .byte $00, $00, $00, $00
         .byte $00, $00, $00, $00
         .byte $00, $00, $FF, $FF
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@EXP_XYZ_XY64
+        ; Row 0: [ 0.0,  0.0,  1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
         .byte $00, $00, $00, $00
 
         ; Row 2: [ 0.0,  1.0,  0.0,  0.0]
@@ -786,6 +816,22 @@ RunRotXyzTest
         cpx #64
         bne @CmpX64Loop
 
+        CALL_ROT_XYZ_MAT4 @AX_64_B, @AY_64_B, @AZ_0_B, @OUT_XY64
+
+        ldx #0
+@CmpXy64Loop
+        lda @OUT_XY64,x
+        cmp @EXP_XYZ_XY64,x
+        beq @MatchXy64
+
+        lda #1
+        sta @ERR_FLAG
+
+@MatchXy64
+        inx
+        cpx #64
+        bne @CmpXy64Loop
+
         lda @ERR_FLAG
         bne @Fail
 
@@ -799,3 +845,4 @@ RunRotXyzTest
 
 @Done
         rts
+        
