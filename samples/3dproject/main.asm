@@ -47,8 +47,12 @@ STROUT  = $AB1E
         cmp     #5
         bne     @Done
 
-; next test goes here
-        jsr     RunRotXyzTest
+        jsr     RunRotXyzTest1
+        lda     BORDER
+        cmp     #5
+        bne     @Done
+        
+        jsr     RunRotXyzTest2
         lda     BORDER
         cmp     #5
         bne     @Done
