@@ -135,8 +135,16 @@ ProcessKey:
             ; =======================================================
 @Check_Info:
             cmp     #KEY_I
-            bne     @Check_Debug
+            bne     @Check_LineInfo
             jmp     Info
+
+            ; =======================================================
+            ; LineInfo
+            ; =======================================================
+@Check_LineInfo:
+            cmp     #KEY_L
+            bne     @Check_Debug
+            jmp     LineInfo
 
             ; =======================================================
             ; Info
@@ -379,6 +387,13 @@ Info:
             jsr     SwitchToText
             jmp     DrawInfo
 
+
+            ; *************************************************************    
+            ; LineInfo
+            ; *************************************************************            
+LineInfo:
+            jsr     SwitchToText
+            jmp     DrawLineInfo
 
 Update_X_Rotation:
             jsr     ROTATION_X

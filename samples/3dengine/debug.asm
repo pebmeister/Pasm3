@@ -444,3 +444,54 @@ SHOW_EDGES = 1
             .byte   NEXTROW
 .endif
             .byte   ENDPAGE
+
+            ; ************************************
+            ;
+            ; DrawLineInfo
+            ;
+            ; ************************************
+DrawLineInfo:
+            MOVE16I TXPTR, @PG_INFO            
+            jmp     DisplayPage
+
+@PG_INFO
+            .byte   BRD_C, COLOR_BLUE
+            .byte   SCR_C, COLOR_BLUE
+            .byte   CLS
+            .byte   SETPOS, 0, 0
+            .byte   STRING, KEY_WHITE, "NUM LINES ", 0
+            .byte   INT16_HEX
+            .word   Entries
+            .byte   NEXTROW
+            
+            .byte   STRING, KEY_WHITE, "FACE SCAN LINE ", 0
+            .byte   INT8_HEX
+            .word FACE_SCAN_Y
+            .byte   NEXTROW
+      
+        .var  CNT = 0
+        
+@Lines
+            .while CNT < 2
+                ; X0
+                .byte   INT16_HEX
+                .word   LogBuffer + 0 + (CNT * 6)
+                .byte   spc
+                ; Y0
+                .byte   INT8_HEX
+                .word   LogBuffer + 2 + (CNT * 6)
+                .byte   spc
+                ; X1
+                .byte   INT16_HEX
+                .word   LogBuffer + 3 + (CNT * 6)
+                .byte   spc
+                ; Y1
+                .byte   INT8_HEX
+                .word   LogBuffer + 5 + (CNT * 6)
+                .byte   spc
+
+                .byte   NEXTROW
+                CNT = CNT + 1
+            .wend
+
+            .byte   ENDPAGE

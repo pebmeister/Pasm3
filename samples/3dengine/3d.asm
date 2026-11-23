@@ -18,6 +18,8 @@
             .inc    "edge.asm"
             .inc    "gr.asm"
             .inc    "key.asm"
+            .inc    "key.asm"
+            .inc    "logline.asm"
             .inc    "mat.asm"
             .inc    "memory.asm"
             .inc    "model.asm"

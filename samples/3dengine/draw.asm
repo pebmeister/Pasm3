@@ -264,6 +264,11 @@ DRAW_MESH_FACES:
             lda     #0
             sta     DRAW_FACE_INDEX
 
+            sta LogSize
+            sta LogSize + 1
+            sta Entries
+            sta Entries + 1
+            
 @FaceLoop:
             ; --------------------------------
             ; Skip hidden face
@@ -323,16 +328,113 @@ DRAW_MESH_FACES:
             sta     Y0
             sta     Y1
 
-            lda     #0
-            sta     Y0+1
-            sta     Y1+1
+            ; --------------------------------
+            ; Draw horizontal span
+            ; --------------------------------
+            ; --------------------------------
+            ; Draw 5 scanlines
+            ; --------------------------------
+            lda     #5
+            sta     FACE_WALK_POSITION
+
+@ScanLoop:
+            ; --------------------------------
+            ; Get integer X from edge walkers
+            ; --------------------------------
+            lda     EDGE_A_X+2
+            sta     X0
+            lda     EDGE_A_X+3
+            sta     X0+1
+
+            lda     EDGE_B_X+2
+            sta     X1
+            lda     EDGE_B_X+3
+            sta     X1+1
+
+            ; --------------------------------
+            ; Set scanline Y
+            ; --------------------------------
+            lda     FACE_SCAN_Y
+            sta     Y0
+            sta     Y1
 
             ; --------------------------------
             ; Draw horizontal span
             ; --------------------------------
-@Break:
             jsr     CLAMP_LINE_COORDS
+            jsr     LogLine
             jsr     _Line
+
+            ; --------------------------------
+            ; Advance edge walkers
+            ; --------------------------------
+            ADD_FIX16 EDGE_A_X, EDGE_A_SLOPE, EDGE_A_X
+            ADD_FIX16 EDGE_B_X, EDGE_B_SLOPE, EDGE_B_X
+            inc FACE_SCAN_Y
+
+            ; --------------------------------
+            ; Has A reached the end of segment?
+            ; --------------------------------
+            ldx EDGE_A_END_POSITION
+            lda FACE_VERTEX_Y_LIST,x
+            cmp FACE_SCAN_Y
+            bne @NoATransition
+
+            ; Is this the bottom vertex?
+            lda EDGE_A_END_POSITION
+            cmp FACE_BOTTOM_POSITION
+            beq @NoATransition
+
+            ; --------------------------------
+            ; Begin next A segment
+            ; --------------------------------
+            lda EDGE_A_END_POSITION
+            sta EDGE_A_START_POSITION
+
+            ; Previous position, wrapping 0 -> 3
+            beq @A_Wrap
+            sec
+            sbc #1
+            jmp @A_SetEnd
+
+@A_Wrap:
+            lda #3
+
+@A_SetEnd:
+            sta EDGE_A_END_POSITION
+
+            ; Load next segment
+            lda EDGE_A_START_POSITION
+            sta EDGE_START_POSITION
+            lda EDGE_A_END_POSITION
+            sta EDGE_END_POSITION
+            jsr LOAD_EDGE_ENDPOINTS
+            jsr CALC_EDGE_SLOPE
+
+            ; Reset A X to the new segment start
+            lda #0
+            sta EDGE_A_X
+            sta EDGE_A_X+1
+            lda EDGE_X0
+            sta EDGE_A_X+2
+            lda EDGE_X0+1
+            sta EDGE_A_X+3
+
+            ; Save new A slope
+            lda EDGE_SLOPE
+            sta EDGE_A_SLOPE
+            lda EDGE_SLOPE+1
+            sta EDGE_A_SLOPE+1
+            lda EDGE_SLOPE+2
+            sta EDGE_A_SLOPE+2
+            lda EDGE_SLOPE+3
+            sta EDGE_A_SLOPE+3
+
+@NoATransition:
+            dec FACE_WALK_POSITION
+            beq @NextFace
+            jmp @ScanLoop
+            
 
 @NextFace:
             inc     DRAW_FACE_INDEX
