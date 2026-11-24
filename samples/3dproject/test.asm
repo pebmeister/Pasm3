@@ -1,23 +1,77 @@
+
+Mat4MulTestResult   .byte '?',0
+DivTestResult       .byte '?',0
+Vec3Mat4TestResult  .byte '?',0
+
+RunTests            
+            jsr     DisplayVec3Mat4
+            rts
+
+            jsr     RunVec3Mat4Test                       
+            rts
+            
+            jsr     RunMat4MulTest            
+            jsr     RunDivTest
+
+            rts
+        
+            lda     BORDER
+            cmp     #5
+            bne     @Done
+
+            jsr     RunRotXTest
+            lda     BORDER
+            cmp     #5
+            bne     @Done
+
+            jsr     RunRotYTest
+            lda     BORDER
+            cmp     #5
+            bne     @Done
+            
+            jsr     RunRotZTest
+            lda     BORDER
+            cmp     #5
+            bne     @Done
+
+            jsr     RunRotXyzTest1
+            lda     BORDER
+            cmp     #5
+            bne     @Done
+            
+            jsr     RunRotXyzTest2
+            lda     BORDER
+            cmp     #5
+            bne     @Done
+         
+            jsr     RunXformTest
+            lda     BORDER
+            cmp     #5
+            bne     @Done
+     
+@Done
+            jmp     @Done
+
         
 ; --------------------------------------------
 ; RunMat4MulTest
 ; --------------------------------------------
         
 RunMat4MulTest
-        lda #1
-        sta BORDER
+        lda #'P'
+        sta Mat4MulTestResult
+        
         CALL_MAT4_MUL @MAT_TEST_A, @MAT_TEST_B, @MAT_TEST_OUT
-        lda #5
-        sta BORDER
-        ldx #0
 
 @TestLoop
         lda @MAT_TEST_OUT, x
         cmp @MAT_TEST_EXPECTED, x
         beq @Match
 
-        lda #2
-        sta BORDER
+        lda #'F'
+        sta Mat4MulTestResult
+        rts
+
 @Match
         inx
         cpx #64
@@ -106,11 +160,10 @@ RunMat4MulTest
 ; RunDivTest
 ; --------------------------------------------
 RunDivTest
-        lda #1
-        sta BORDER
+        lda #'P'
+        sta DivTestResult
 
         lda #0
-        sta @ERR_FLAG
         sta @CASE_IDX
 
 @CaseLoop
@@ -147,9 +200,10 @@ RunDivTest
         cmp @DIV_EXP_TABLE,x
         beq @ByteMatch
 
-        lda #1
-        sta @ERR_FLAG
-
+        lda #'F'
+        sta DivTestResult
+        rts
+        
 @ByteMatch
         inx
         iny
@@ -161,18 +215,6 @@ RunDivTest
         cmp #7
         bne @CaseLoop
 
-        ; Set border: green (5) if all 28 bytes match, red (2) on any mismatch
-        lda @ERR_FLAG
-        bne @TestFail
-
-        lda #5
-        sta BORDER
-        jmp @Done
-
-@TestFail
-        lda #2
-        sta BORDER
-
 @Done        
         rts
         
@@ -181,7 +223,6 @@ RunDivTest
 @CUR_RES        .ds 4
 @CASE_IDX       .ds 1
 @BYTE_IDX       .ds 1
-@ERR_FLAG       .ds 1
     
 ;********************************************
 ;* FIX16_DIV Test Harness (7 cases x 4B)    *
@@ -238,15 +279,13 @@ RunDivTest
         .ds 28
         
 
+
 ; --------------------------------------------
 ; RunVec3Mat4Test
 ; --------------------------------------------
 RunVec3Mat4Test
-        lda #1
-        sta BORDER
-
-        lda #0
-        sta @ERR_FLAG
+        lda #'P'
+        sta Vec3Mat4TestResult
 
         CALL_VEC3_MAT4_MUL @TEST_MAT4_IN, @TEST_VEC3_IN, @TEST_VEC3_OUT
 
@@ -254,32 +293,20 @@ RunVec3Mat4Test
 @CmpLoop
         lda @TEST_VEC3_OUT,x
         cmp @TEST_VEC3_EXP,x
-        beq @Match
-
-        lda #1
-        sta @ERR_FLAG
+        beq @Match       
+        
+        lda #'F'
+        sta Vec3Mat4TestResult
+        
 
 @Match
         inx
         cpx #12
         bne @CmpLoop
-
-        lda @ERR_FLAG
-        bne @Fail
-
-        lda #5
-        sta BORDER
-        jmp @Done
-
-@Fail
-        lda #2
-        sta BORDER
-
+        
 @Done
         rts
-
-@ERR_FLAG
-        .byte 0
+            
 
 ;********************************************
 ;* VEC3_MAT4_MUL Test (12-byte output)      *
@@ -326,8 +353,12 @@ RunVec3Mat4Test
         .byte $00, $00, $01, $00
 
 @TEST_VEC3_OUT
-        .ds 12
-        
+        .byte  $FF, $FF, $FF, $FF
+        .byte  $FF, $FF, $FF, $FF
+        .byte  $FF, $FF, $FF, $FF
+        .byte  $FF, $FF, $FF, $FF
+   
+   
 ; --------------------------------------------
 ; RunRotXTest
 ; Tests CALL_ROT_X_MAT4 at angle 0 and 64
@@ -1060,3 +1091,143 @@ RunRotXyzTest2
 
 @Done
         rts
+        
+        
+; --------------------------------------------
+; RunXformTest
+; Tests CALL_CREATE_XFORM_MAT4 with identity
+; and combined T=(10,-5,20), R=(0,0,64),
+; S=(2,3,4)
+; --------------------------------------------
+RunXformTest
+        jmp @Start
+
+; Case 1 inputs: Identity
+@ID_TX          .byte $00, $00, $00, $00
+@ID_TY          .byte $00, $00, $00, $00
+@ID_TZ          .byte $00, $00, $00, $00
+@ID_RX          .byte 0
+@ID_RY          .byte 0
+@ID_RZ          .byte 0
+@ID_SX          .byte $00, $00, $01, $00
+@ID_SY          .byte $00, $00, $01, $00
+@ID_SZ          .byte $00, $00, $01, $00
+
+; Case 2 inputs: T=(10,-5,20), R=(0,0,64), S=(2,3,4)
+@TRS_TX         .byte $00, $00, $0A, $00
+@TRS_TY         .byte $00, $00, $FB, $FF
+@TRS_TZ         .byte $00, $00, $14, $00
+@TRS_RX         .byte 0
+@TRS_RY         .byte 0
+@TRS_RZ         .byte 64
+@TRS_SX         .byte $00, $00, $02, $00
+@TRS_SY         .byte $00, $00, $03, $00
+@TRS_SZ         .byte $00, $00, $04, $00
+
+@ERR_FLAG       .ds 1
+@OUT_ID         .ds 64
+@OUT_TRS        .ds 64
+
+@EXP_ID
+        ; Row 0: [ 1.0,  0.0,  0.0,  0.0]
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 1: [ 0.0,  1.0,  0.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 2: [ 0.0,  0.0,  1.0,  0.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+        .byte $00, $00, $00, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@EXP_TRS
+        ; Row 0: [ 0.0, -3.0,  0.0, 10.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $FD, $FF
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $0A, $00
+
+        ; Row 1: [ 2.0,  0.0,  0.0, -5.0]
+        .byte $00, $00, $02, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $FB, $FF
+
+        ; Row 2: [ 0.0,  0.0,  4.0, 20.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $04, $00
+        .byte $00, $00, $14, $00
+
+        ; Row 3: [ 0.0,  0.0,  0.0,  1.0]
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $00, $00
+        .byte $00, $00, $01, $00
+
+@Start
+        lda #1
+        sta BORDER
+
+        lda #0
+        sta @ERR_FLAG
+
+        CALL_CREATE_XFORM_MAT4 @ID_TX, @ID_TY, @ID_TZ, @ID_RX, @ID_RY, @ID_RZ, @ID_SX, @ID_SY, @ID_SZ, @OUT_ID
+
+        ldx #0
+@CmpIdLoop
+        lda @OUT_ID,x
+        cmp @EXP_ID,x
+        beq @MatchId
+
+        lda #1
+        sta @ERR_FLAG
+
+@MatchId
+        inx
+        cpx #64
+        bne @CmpIdLoop
+
+        CALL_CREATE_XFORM_MAT4 @TRS_TX, @TRS_TY, @TRS_TZ, @TRS_RX, @TRS_RY, @TRS_RZ, @TRS_SX, @TRS_SY, @TRS_SZ, @OUT_TRS
+
+        ldx #0
+@CmpTrsLoop
+        lda @OUT_TRS,x
+        cmp @EXP_TRS,x
+        beq @MatchTrs
+
+        lda #1
+        sta @ERR_FLAG
+
+@MatchTrs
+        inx
+        cpx #64
+        bne @CmpTrsLoop
+
+        lda @ERR_FLAG
+        bne @Fail
+
+        lda #5
+        sta BORDER
+        jmp @Done
+
+@Fail
+        lda #2
+        sta BORDER
+
+@Done
+        rts
+        

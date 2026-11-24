@@ -14,6 +14,8 @@
             TAB     = 14
             SPC     = 15
             CLS     = 16
+            STRING_VAR  = 17
+            INT16_HEX_I  = 18
 
             ENDPAGE = $ff
 
@@ -60,7 +62,7 @@ DisplayPage:
 
 @Check_String:
             cmp     #STRING
-            bne     @Check_Int8
+            bne     @Check_StringVar
 
 ; Print String
             lda     TXPTR
@@ -72,6 +74,18 @@ DisplayPage:
             jsr     @GetNextByte
             lda     @Char
             bne     @Char_Loop
+
+            jmp     @CmdLoop
+
+@Check_StringVar:
+            cmp     #STRING_VAR
+            bne     @Check_Int8
+
+; Print String
+            jsr     @GetPtr            
+            lda     @Ptr
+            ldy     @Ptr + 1
+            jsr     SAFE_STROUT
 
             jmp     @CmdLoop
 
@@ -103,7 +117,7 @@ DisplayPage:
 
 @Check_Int16:
             cmp     #INT16
-            bne     @Check_Fix16
+            bne     @Check_Int16_Hex_I
 
 ; Print Int16
             jsr     @GetWordFromPtr
@@ -111,6 +125,18 @@ DisplayPage:
             jsr     PRINT_INT16
 
             jmp     @CmdLoop
+
+@Check_Int16_Hex_I:
+            cmp     #INT16_HEX_I
+            bne     @Check_Fix16
+
+; Print Int16 hex io
+            jsr     @GetWord
+            MOVE16  @Word, TEMP16
+            jsr     PRINT_INT16_HEX
+
+            jmp     @CmdLoop
+
 
 @Check_Fix16:
             cmp     #FIX16
@@ -335,6 +361,15 @@ DisplayPage:
             jsr     @GetNextByte
             lda     @Char
             sta     @Ptr + 1
+            rts
+
+@GetWord:
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @Word
+            jsr     @GetNextByte
+            lda     @Char
+            sta     @Word + 1
             rts
 
 @GetByteFromPtr:

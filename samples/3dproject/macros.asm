@@ -40,7 +40,245 @@
 @exit:
         .endm
 
+
+;********************************************
+;* MOVE16                                   *
+;* Move a 16-bit variable                   *
+;* \1 Source                                *
+;* \2 Destination                           *
+;* Destroys A                               *
+;*******************************************
+        .macro MOVE16
+        lda \1
+        sta \2
+        lda \1 + 1
+        sta \2 + 1
+        .endm
         
+;********************************************
+;* MOVE16I                                  *
+;* Move a 16-bit value to a variable        *
+;* \1 Variable                              *
+;* \2 Value                                 *
+;* Destroys A                               *
+;********************************************
+        .macro MOVE16I
+        lda #<\2
+        sta \1
+        lda #>\2
+        sta \1 + 1
+        .endm
+
+;********************************************
+;* BLE16                                    *
+;* 16-bit branch if less than or equal      *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label (if a <= b)         *
+;* Destroys A                               *
+;********************************************
+        .macro BLE16
+        lda \1 + 1
+        cmp \2 + 1
+        bcc \3
+        bne @exit
+        lda \1
+        cmp \2
+        bcc \3
+        beq \3
+@exit:
+        .endm
+        
+;********************************************
+;* BLT16                                    *
+;* 16-bit branch if less than (a < b)       *
+;* \1 Variable a (16-bit)                   *
+;* \2 Variable b (16-bit)                   *
+;* \3 Destination label                     *
+;* Destroys A                               *
+;********************************************
+        .macro BLT16
+        lda \1 + 1
+        cmp \2 + 1
+        bcc \3
+        bne @exit
+        lda \1
+        cmp \2
+        bcc \3
+@exit:
+        .endm
+
+;********************************************
+;* SUB8                                     *
+;* Subtract 8-bit variables                 *
+;* \1 Variable                              *
+;* \2 Variable to subtract                  *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro SUB8
+        sec
+        lda \1
+        sbc \2
+        sta \3
+        .endm
+        
+;********************************************
+;* ADD16                                    *
+;* Add 16-bit variables                     *
+;* \1 Variable 1                            *
+;* \2 Variable 2                            *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro ADD16
+        clc
+        lda \1
+        adc \2
+        sta \3
+        lda \1 + 1
+        adc \2 + 1
+        sta \3 + 1
+        .endm
+
+;********************************************
+;* ADD16I                                   *
+;* Add 16-bit immediate to 16-bit variable  *
+;* \1 Variable                              *
+;* \2 Value                                 *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro ADD16I
+        clc
+        lda \1
+        adc #<\2
+        sta \3
+        lda \1 + 1
+        adc #>\2
+        sta \3 + 1
+        .endm
+
+
+;********************************************
+;*                                          *
+;*  SWAP16                                  *
+;*                                          *
+;*  Swap 2 16 bit values                    *
+;*                                          *
+;*  \1  Variable a     16-bit               *
+;*  \2  Variable b     16 bit               *
+;*                                          *
+;********************************************
+            .macro SWAP16
+            ldx \1
+            ldy \1 + 1
+            lda \2
+            sta \1
+            lda \2 + 1
+            sta \1 + 1
+            stx \2
+            sty \2 + 1
+            .endm
+
+;********************************************
+;* SUB16                                    *
+;* Subtract 16-bit variables                *
+;* \1 Variable                              *
+;* \2 Variable to subtract                  *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro SUB16
+        sec
+        lda \1
+        sbc \2
+        sta \3
+        lda \1 + 1
+        sbc \2 + 1
+        sta \3 + 1
+        .endm
+
+;********************************************
+;* SUB16I                                   *
+;* Subtract 16-bit immediate from variable  *
+;* \1 Variable                              *
+;* \2 Value to subtract                     *
+;* \3 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro SUB16I
+        sec
+        lda \1
+        sbc #<\2
+        sta \3
+        lda \1 + 1
+        sbc #>\2
+        sta \3 + 1
+        .endm
+
+;********************************************
+;* MOVE8                                    *
+;* Move an 8-bit variable                   *
+;* \1 Source                                *
+;* \2 Destination                           *
+;* Destroys A                               *
+;********************************************
+        .macro MOVE8
+        lda \1
+        sta \2
+        .endm
+
+;********************************************
+;* MOVE8I                                   *
+;* Move an 8-bit value to a variable        *
+;* \1 Variable                              *
+;* \2 Value                                 *
+;* Destroys A                               *
+;********************************************
+        .macro MOVE8I
+        lda #\2
+        sta \1
+        .endm
+
+;********************************************
+;* LSHIFT16                                 *
+;* 16-bit left shift                        *
+;* \1 Variable                              *
+;* \2 Bits to shift                         *
+;* Destroys X                               *
+;********************************************
+        .macro LSHIFT16
+        ldx #\2
+        beq @LSH16Exit
+@LS16Loop:
+        asl \1
+        rol \1 + 1
+        dex
+        bne @LS16Loop
+@LSH16Exit:
+        .endm
+
+;********************************************
+;* DEC8                                     *
+;* Decrement an 8-bit variable              *
+;* \1 Variable                              *
+;* Destroys A                               *
+;********************************************
+        .macro DEC8
+        dec \1
+        .endm
+
+;********************************************
+;* DEC16                                    *
+;* Decrement a 16-bit variable              *
+;* \1 Variable                              *
+;* Destroys A                               *
+;********************************************
+        .macro DEC16
+        SUB16I \1, 1, \1
+        .endm
+                
 ;********************************************
 ;* MULT16I                                  *
 ;* 16-bit immediate multiplication          *
@@ -282,6 +520,84 @@
         .endm
 
 ;********************************************
+;* CALL_CREATE_XFORM_MAT4                   *
+;* Build full 4x4 Fix16 TRS transform mat   *
+;* \1  tx addr (4-byte Fix16)               *
+;* \2  ty addr (4-byte Fix16)               *
+;* \3  tz addr (4-byte Fix16)               *
+;* \4  rx angle byte addr (0..255)          *
+;* \5  ry angle byte addr (0..255)          *
+;* \6  rz angle byte addr (0..255)          *
+;* \7  sx addr (4-byte Fix16)               *
+;* \8  sy addr (4-byte Fix16)               *
+;* \9  sz addr (4-byte Fix16)               *
+;* \10 Output 64-byte 4x4 Fix16 matrix addr *
+;********************************************
+        .macro CALL_CREATE_XFORM_MAT4
+        ldx #0
+@CopyTx
+        lda \1,x
+        sta XFORM_TX,x
+        inx
+        cpx #4
+        bne @CopyTx
+
+        ldx #0
+@CopyTy
+        lda \2,x
+        sta XFORM_TY,x
+        inx
+        cpx #4
+        bne @CopyTy
+
+        ldx #0
+@CopyTz
+        lda \3,x
+        sta XFORM_TZ,x
+        inx
+        cpx #4
+        bne @CopyTz
+
+        lda \4
+        sta XFORM_RX_ANG
+        lda \5
+        sta XFORM_RY_ANG
+        lda \6
+        sta XFORM_RZ_ANG
+
+        ldx #0
+@CopySx
+        lda \7,x
+        sta XFORM_SX,x
+        inx
+        cpx #4
+        bne @CopySx
+
+        ldx #0
+@CopySy
+        lda \8,x
+        sta XFORM_SY,x
+        inx
+        cpx #4
+        bne @CopySy
+
+        ldx #0
+@CopySz
+        lda \9,x
+        sta XFORM_SZ,x
+        inx
+        cpx #4
+        bne @CopySz
+
+        lda #<\10
+        sta XFORM_OUT_PTR
+        lda #>\10
+        sta XFORM_OUT_PTR + 1
+
+        jsr CREATE_XFORM_MAT4
+        .endm
+
+;********************************************
 ;* GET_SINE                                 *
 ;* Lookup 16.16 Sine value from table       *
 ;* \1 Angle (8-bit index 0-255)             *
@@ -412,5 +728,55 @@
 
         jsr ROT_XYZ_MAT4
         .endm
-        
+
+;********************************************
+;* CALL_PROJECT_POINT3D                     *
+;* Project 3D Fix16 point to 2D screen Fix16*
+;* \1 Input Point3D addr (12 bytes: X,Y,Z)  *
+;* \2 half_width addr (4-byte Fix16)        *
+;* \3 half_height addr (4-byte Fix16)       *
+;* \4 fov_distance addr (4-byte Fix16)      *
+;* \5 Output Point2D addr (8 bytes: X,Y)    *
+;********************************************
+        .macro CALL_PROJECT_POINT3D
+        lda #<\1
+        sta PROJ_IN_PTR
+        lda #>\1
+        sta PROJ_IN_PTR + 1
+
+        ldx #0
+@CopyHalfW
+        lda \2,x
+        sta PROJ_HALF_W,x
+        inx
+        cpx #4
+        bne @CopyHalfW
+
+        ldx #0
+@CopyHalfH
+        lda \3,x
+        sta PROJ_HALF_H,x
+        inx
+        cpx #4
+        bne @CopyHalfH
+
+        ldx #0
+@CopyFov
+        lda \4,x
+        sta PROJ_FOV,x
+        inx
+        cpx #4
+        bne @CopyFov
+
+        lda #<\5
+        sta PROJ_OUT_PTR
+        lda #>\5
+        sta PROJ_OUT_PTR + 1
+
+        jsr PROJECT_POINT3D
+        .endm
+
+
+
 .print pop
+
